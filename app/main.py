@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import agent, clients, config, data, stt
+from . import agent, audit, clients, config, data, stt
 from .manuals import BY_ID
 
 log = logging.getLogger("mechanic")
@@ -134,6 +134,7 @@ class ChatIn(BaseModel):
     message: str = ""
     action: str | None = None
     lang: str = "ru"
+    detail: str = "brief"
 
 
 ACTION_TEXT = {
@@ -158,8 +159,19 @@ def chat(body: ChatIn, request: Request):
     def work():
         t0 = time.time()
         shown: set = set()
+        trace = {"answer": None, "citations": [], "tools": [], "diagnosis": None, "error": None}
 
         def put(ev: dict) -> None:
+            t = ev.get("type")
+            if t == "message":
+                trace["answer"], trace["citations"] = ev.get("text"), [f"{c.get('manual_id')}#{c.get('page')}" for c in ev.get("citations") or []]
+            elif t == "step" and ev.get("status") == "done":
+                trace["tools"].append(ev.get("tool"))
+            elif t == "diagnosis":
+                dd = ev.get("data") or {}
+                trace["diagnosis"] = {k: dd.get(k) for k in ("session_id", "status", "anomaly_type", "urgency", "rule")}
+            elif t == "error":
+                trace["error"] = ev.get("text")
             # карточка вердикта по одной проверке – один раз за запрос
             if ev.get("type") == "diagnosis":
                 key = (ev.get("data") or {}).get("session_id")
@@ -169,7 +181,7 @@ def chat(body: ChatIn, request: Request):
             q.put(ev)
 
         try:
-            a = agent.Agent(conv, put, lang=body.lang)
+            a = agent.Agent(conv, put, lang=body.lang, detail=body.detail)
             if body.action == "diagnose":
                 # кнопка «Получить результат» всегда показывает карточку, даже если разговор уже был
                 a.t_get_diagnosis()
@@ -179,6 +191,9 @@ def chat(body: ChatIn, request: Request):
             q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте ещё раз."})
         finally:
             log.info("chat %s %s %.1fs usage=%s", body.vehicle_id, body.action or "msg", time.time() - t0, conv.usage.as_dict())
+            audit.write("chat", conversation=body.conversation_id, vehicle=body.vehicle_id, session=body.session_id,
+                        action=body.action, lang=body.lang, detail=body.detail, question=(body.message or "")[:2000],
+                        seconds=round(time.time() - t0, 1), **trace)
             q.put({"type": "done"})
 
     threading.Thread(target=work, daemon=True).start()
@@ -204,6 +219,7 @@ async def transcribe(request: Request, audio: UploadFile = File(...), lang: str 
     data_ = await audio.read()
     try:
         text = stt.transcribe(data_, stt.audio_format(audio.content_type or "", audio.filename or ""), lang)
+        audit.write("voice", lang=lang, bytes=len(data_), text=text)
     except stt.SttError as e:
         raise HTTPException(502, f"Не удалось распознать речь: {e}")
     return {"text": text, "lang": lang}
@@ -220,7 +236,9 @@ class ConfirmIn(BaseModel):
 @app.post("/api/tickets/confirm")
 def confirm(body: ConfirmIn):
     try:
-        return agent.confirm_ticket(body.draft_id, body.model_dump(exclude={"draft_id"}, exclude_none=True))
+        res = agent.confirm_ticket(body.draft_id, body.model_dump(exclude={"draft_id"}, exclude_none=True))
+        audit.write("ticket", draft=body.draft_id, result=res)
+        return res
     except ValueError as e:
         raise HTTPException(400, str(e))
     except clients.ServiceError as e:

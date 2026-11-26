@@ -39,6 +39,7 @@ class Verdict:
     rule: str = ""
     severity: str | None = None
     applicable: str | None = None
+    inspect_first: bool = False     # сигнал сомнительный: заявка только после подтверждения осмотром
     policy: str = POLICY_VERSION
 
     def as_dict(self) -> dict:
@@ -46,7 +47,7 @@ class Verdict:
             "verdict": self.verdict, "urgency": self.urgency, "action": self.action,
             "ticket_allowed": self.ticket_allowed, "urgency_reasons": self.reasons,
             "warnings": self.warnings, "rule": self.rule, "severity": self.severity,
-            "applicable": self.applicable, "policy": self.policy,
+            "applicable": self.applicable, "policy": self.policy, "inspect_first": self.inspect_first,
         }
 
 
@@ -129,7 +130,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if appl == "check":
         warnings.append(f"Убедитесь, что на этой машине есть узел «{result.get('anomaly_title')}»: для {engine} это зависит от комплектации.")
     if doubtful:
-        warnings.append("Запись с помехами или уверенность модели низкая – подтвердите повторной записью или осмотром.")
+        warnings.append("Запись с помехами или уверенность модели невысокая. Перезапись не нужна: сначала осмотрите узел на машине. Подтвердился признак – оформляйте заявку, не подтвердился – машина идёт в рейс.")
 
     if sev == "C":
         urg, rule = "high", "R4-critical"
@@ -152,7 +153,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
         reasons.insert(0, "Отклонение есть, но причин срочно снимать машину с линии нет.")
     if hist_note and not repeated:
         reasons.append(hist_note)
-    return Verdict("anomaly", urg, action, True, reasons, warnings, rule, sev, appl)
+    return Verdict("anomaly", urg, action, True, reasons, warnings, rule, sev, appl, inspect_first=doubtful)
 
 
 def _band(score) -> str:
