@@ -136,7 +136,7 @@ def _client_ip(request: Request) -> str:
     return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
 
 
-@app.get("/demo.mp4")
+@app.api_route("/demo.mp4", methods=["GET", "HEAD"])   # HEAD – для проверок ссылки и предпросмотра в мессенджерах
 def demo_video():
     """Демо-видео для жюри (STATE_DIR/public/demo.mp4, в Git не входит). Открыто и при включенных учетных записях."""
     f = config.STATE_DIR / "public" / "demo.mp4"
