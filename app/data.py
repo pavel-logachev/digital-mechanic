@@ -101,6 +101,7 @@ def summary(v: dict) -> dict:
         "last_check": {k: last.get(k) for k in keys} if last else None,
         "last_urgency": verdict.urgency if verdict else None,
         "last_action": verdict.action if verdict else None,
+        "last_severity": verdict.severity if verdict else None,
         "fleet_status": status, "open_ticket": open_t,
     }
 

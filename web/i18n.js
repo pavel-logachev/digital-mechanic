@@ -16,34 +16,32 @@ chat|Диагностика|Diagnostika|Ташхис|Диагностика|Ди
 draft|Черновик заявки|Buyurtma qoralamasi|Пешнависи дархост|Өтүнмөнүн долбоору|Өтінім жобасы|वर्क ऑर्डर का मसौदा|Work order draft
 receipt|Заявка создана|Buyurtma ochildi|Дархост сабт шуд|Өтүнмө түзүлдү|Өтінім жасалды|वर्क ऑर्डर बन गया|Work order created
 choose|Выберите машину|Mashinani tanlang|Мошинро интихоб кунед|Унааны тандаңыз|Көлікті таңдаңыз|गाड़ी चुनें|Choose a vehicle
-search|Госномер или гаражный №|Davlat yoki garaj raqami|Рақами давлатӣ ё гаражӣ|Мамлекеттик же гараж номери|Мемлекеттік не гараж нөмірі|रजिस्ट्रेशन या गैराज नंबर|Plate or garage number
-numberKeys|Клавиатура: цифры|Raqamli klaviatura|Клавиатураи рақамӣ|Сан баскычтары|Сандық пернетақта|अंकों का कीबोर्ड|Number keypad
-textKeys|Клавиатура: буквы и цифры|Harf va raqam klaviaturasi|Клавиатураи ҳарфу рақам|Тамга жана сан баскычтары|Әріп пен сан пернетақтасы|अक्षर और अंक का कीबोर्ड|Letters and numbers
+search|Госномер или гаражный номер|Davlat yoki garaj raqami|Рақами давлатӣ ё гаражӣ|Мамлекеттик же гараж номери|Мемлекеттік не гараж нөмірі|रजिस्ट्रेशन या गैराज नंबर|Plate or garage number
 clear|Очистить поиск|Qidiruvni tozalash|Тоза кардани ҷустуҷӯ|Издөөнү тазалоо|Іздеуді тазалау|खोज मिटाएँ|Clear search
 vehicleList|Машины|Mashinalar|Мошинҳо|Унаалар|Көліктер|गाड़ियाँ|Vehicles
-count|{found} из {total}|{found} / {total}|{found} аз {total}|{total} ичинен {found}|{total} ішінен {found}|{total} में से {found}|{found} of {total}
+count|Показано {found} из {total}|{total} tadan {found} tasi ko‘rsatilgan|Аз {total} мошин {found} нишон дода шуд|{total} унаанын {found}и көрсөтүлдү|{total} көліктің {found}-і көрсетілді|{total} में से {found} दिख रही हैं|Showing {found} of {total}
 noResults|Машин с таким номером нет|Bunday raqamli mashina yo‘q|Бо ин рақам мошин ёфт нашуд|Мындай номерлүү унаа жок|Мұндай нөмірлі көлік жоқ|इस नंबर की गाड़ी नहीं मिली|No vehicles match this number
-showAll|Показать все ({count})|Hammasini ko‘rsatish ({count})|Ҳамаро нишон диҳед ({count})|Баарын көрсөтүү ({count})|Бәрін көрсету ({count})|सभी दिखाएँ ({count})|Show all ({count})
+showAll|Показать еще {count}|Yana {count} tasini ko‘rsatish|Боз {count} мошинро нишон додан|Дагы {count} унааны көрсөтүү|Тағы {count} көлікті көрсету|{count} और दिखाएँ|Show {count} more
 garage|Гаражный № {no}|Garaj raqami {no}|Рақами гаражӣ {no}|Гараж номери {no}|Гараж нөмірі {no}|गैराज नं. {no}|Garage no. {no}
 normal|Норма|Me’yorda|Дар меъёр|Нормада|Қалыпты|सामान्य|Normal
-anomaly|Отклонение|Og‘ish bor|Инҳироф|Четтөө бар|Ауытқу бар|गड़बड़ी का संकेत|Anomaly
-failed|Плохая запись|Yozuv sifatsiz|Сабти пастсифат|Жазуу сапатсыз|Жазба сапасыз|रिकॉर्डिंग खराब है|Poor recording
+anomaly|Нужна проверка|Tekshirish kerak|Санҷидан лозим|Текшерүү керек|Тексеру керек|जाँच ज़रूरी है|Needs a check
+failed|Перезаписать звук|Ovozni qayta yozing|Садоро аз нав сабт кунед|Үндү кайра жазыңыз|Дыбысты қайта жазыңыз|आवाज़ फिर से रिकॉर्ड करें|Record the sound again
 noCheck|Нет проверки|Tekshiruv yo‘q|Санҷиш нашудааст|Текшерүү жок|Тексеру жоқ|जाँच नहीं हुई|No check
 attention|Нужна проверка|Tekshirish kerak|Санҷидан лозим|Текшерүү керек|Тексеру керек|जाँच ज़रूरी है|Needs attention
-quarantine|Карантин|Karantinda|Дар карантин|Карантинде|Карантинде|सेवा से बाहर|Quarantined
+quarantine|Не выпускать|Yo‘lga chiqarmang|Ба роҳ набароред|Жолго чыгарбаңыз|Жолға шығармаңыз|ड्यूटी पर न भेजें|Keep off the road
 fleetPriority|Машины, требующие внимания|Tekshirish kerak bo‘lgan mashinalar|Мошинҳое, ки бояд санҷид|Текшериле турган унаалар|Тексеру керек көліктер|जिन गाड़ियों की जाँच चाहिए|Vehicles needing attention
-fleetEmpty|Все машины в норме|Hamma mashina me’yorda|Ҳамаи мошинҳо дар меъёр|Бардык унаа нормада|Барлық көлік қалыпты|सभी गाड़ियाँ सामान्य हैं|All vehicles are normal
+fleetEmpty|В этой группе нет машин|Bu guruhda mashina yo‘q|Дар ин гурӯҳ мошин нест|Бул топто унаа жок|Бұл топта көлік жоқ|इस समूह में कोई गाड़ी नहीं है|No vehicles in this group
 engine|Двигатель|Dvigatel|Муҳаррик|Кыймылдаткыч|Қозғалтқыш|इंजन|Engine
-checks|История проверок|Tekshiruvlar tarixi|Санҷишҳои гузашта|Мурунку текшерүүлөр|Бұрынғы тексерулер|पिछली जाँचें|Check history
+checks|Прошлые проверки|Avvalgi tekshiruvlar|Санҷишҳои гузашта|Мурунку текшерүүлөр|Бұрынғы тексерулер|पिछली जाँचें|Past checks
 lastCheck|Последняя проверка|Oxirgi tekshiruv|Санҷиши охирин|Акыркы текшерүү|Соңғы тексеру|आखिरी जाँच|Latest check
 chooseCheck|Выберите проверку|Tekshiruvni tanlang|Санҷишро интихоб кунед|Текшерүүнү тандаңыз|Тексеруді таңдаңыз|जाँच चुनें|Choose a check
 noChecks|Проверок пока нет|Hozircha tekshiruv yo‘q|Ҳоло санҷиш нест|Азырынча текшерүү жок|Әзірге тексеру жоқ|अभी कोई जाँच नहीं है|No checks yet
 score|Оценка отклонения|Og‘ish balli|Баҳои инҳироф|Четтөө баасы|Ауытқу бағасы|गड़बड़ी का स्कोर|Anomaly score
 noScore|Нет оценки|Ball yo‘q|Баҳо нест|Баа жок|Баға жоқ|कोई स्कोर नहीं|No score
 trendNote|Шкала от 0 до 1. × – запись не подошла. Сравнивайте только записи, сделанные в одинаковых условиях.|Shkala 0 dan 1 gacha. × – yozuv yaroqsiz. Faqat bir xil sharoitda olingan yozuvlarni solishtiring.|Миқёс аз 0 то 1. × – сабт корношоям аст. Танҳо сабтҳои дар шароити яксон гирифташударо муқоиса кунед.|Шкала 0дөн 1ге чейин. × – жазуу жараксыз. Бирдей шартта жасалган жазууларды гана салыштырыңыз.|Шкала 0-ден 1-ге дейін. × – жазба жарамсыз. Тек бірдей жағдайда жазылған дыбыстарды салыстырыңыз.|स्कोर 0 से 1 तक है। × – रिकॉर्डिंग काम की नहीं है। एक जैसे हालात में की गई रिकॉर्डिंग ही मिलाएँ।|Scale: 0 to 1. × means the recording was unusable. Only compare recordings made under the same conditions.
-pastTickets|Прошлые заявки|Oldingi buyurtmalar|Дархостҳои гузашта|Мурунку өтүнмөлөр|Бұрынғы өтінімдер|पिछले वर्क ऑर्डर|Past work orders
+pastTickets|Заявки по машине|Mashina bo‘yicha buyurtmalar|Дархостҳои ин мошин|Бул унаа боюнча өтүнмөлөр|Осы көлік бойынша өтінімдер|इस गाड़ी के वर्क ऑर्डर|Vehicle work orders
 noTickets|Заявок пока нет|Hozircha buyurtma yo‘q|Ҳоло дархост нест|Азырынча өтүнмө жок|Әзірге өтінім жоқ|अभी कोई वर्क ऑर्डर नहीं है|No work orders yet
-diagnose|Показать результат|Natijani ko‘rsatish|Нишон додани натиҷа|Жыйынтыкты көрүү|Нәтижені көру|नतीजा देखें|Show result
+diagnose|Открыть результат проверки|Tekshiruv natijasini ochish|Натиҷаи санҷишро кушодан|Текшерүүнүн жыйынтыгын ачуу|Тексеру нәтижесін ашу|जाँच का नतीजा खोलें|Open check result
 loading|Загружаем данные…|Ma’lumot yuklanmoqda…|Маълумот бор мешавад…|Маалымат жүктөлүүдө…|Дерек жүктелуде…|जानकारी आ रही है…|Loading…
 loadFailed|Не удалось загрузить данные|Ma’lumot yuklanmadi|Маълумот бор нашуд|Маалымат жүктөлгөн жок|Дерек жүктелмеді|जानकारी नहीं आ सकी|Could not load data
 retry|Повторить|Qayta urinish|Аз нав кӯшиш кунед|Кайра аракет кылуу|Қайталау|फिर कोशिश करें|Try again
@@ -52,7 +50,7 @@ network|Нет связи. Проверьте интернет и попробу
 normalTitle|Отклонений не выявлено|Og‘ish topilmadi|Инҳироф ёфт нашуд|Четтөө табылган жок|Ауытқу табылмады|कोई गड़बड़ी नहीं मिली|No anomaly found
 anomalyTitle|Есть признаки отклонения|Og‘ish belgilari bor|Нишонаҳои инҳироф ҳастанд|Четтөөнүн белгилери бар|Ауытқу белгілері бар|गड़बड़ी के संकेत मिले|Signs of an anomaly
 notApplicable|Тип отклонения не подтвержден|Og‘ish turi tasdiqlanmadi|Навъи инҳироф тасдиқ нашуд|Четтөөнүн түрү ырасталган жок|Ауытқу түрі расталмады|गड़बड़ी की वजह पक्की नहीं है|Anomaly type not confirmed
-hypothesis|Гипотеза: {name}|Taxmin: {name}|Тахмин: {name}|Божомол: {name}|Болжам: {name}|संभावित खराबी: {name}|Possible fault: {name}
+hypothesis|Возможная причина: {name}|Ehtimoliy sabab: {name}|Сабаби эҳтимолӣ: {name}|Мүмкүн болгон себеп: {name}|Ықтимал себеп: {name}|संभावित कारण: {name}|Possible cause: {name}
 failedTitle|Запись не подошла|Yozuv yaroqsiz|Сабт корношоям аст|Жазуу жараган жок|Жазба жарамсыз|रिकॉर्डिंग जाँच के लायक नहीं है|Recording unusable
 next|Что делать|Nima qilish kerak|Чӣ бояд кард|Эмне кылуу керек|Не істеу керек|क्या करें|What to do
 nextFail|Запишите звук заново.|Ovozni qayta yozing.|Овозро аз нав сабт кунед.|Үндү кайра жазыңыз.|Дыбысты қайта жазыңыз.|आवाज़ फिर रिकॉर्ड करें।|Record the sound again.
@@ -66,7 +64,7 @@ whyPriority|Почему такой приоритет|Nega bunday ustuvorlik|Ч
 whyResult|Почему такой результат|Nega bunday natija|Чаро чунин натиҷа|Эмне үчүн мындай жыйынтык|Неге осындай нәтиже|यह नतीजा क्यों|Why this result
 noReasons|Причины не указаны|Sabablar ko‘rsatilmagan|Сабабҳо нишон дода нашудаанд|Себептери көрсөтүлгөн эмес|Себептері көрсетілмеген|वजह नहीं बताई गई|No reasons given
 important|Важно|Muhim|Муҳим|Маанилүү|Маңызды|ज़रूरी|Important
-metrics|Данные проверки|Tekshiruv ma’lumotlari|Маълумоти санҷиш|Текшерүү маалыматы|Тексеру дерегі|जाँच का विवरण|Check details
+metrics|Подробности проверки|Tekshiruv tafsilotlari|Ҷузъиёти санҷиш|Текшерүүнүн чоо-жайы|Тексеру мәліметтері|जाँच का विवरण|Check details
 confidence|Уверенность модели|Model ishonchi|Эътимоди модел|Моделдин ишеними|Модель сенімділігі|मॉडल का भरोसा|Model confidence
 quality|Качество записи|Yozuv sifati|Сифати сабт|Жазуунун сапаты|Жазба сапасы|रिकॉर्डिंग की गुणवत्ता|Recording quality
 good|Хорошее|Yaxshi|Хуб|Жакшы|Жақсы|अच्छी|Good
@@ -76,12 +74,12 @@ noData|Нет данных|Ma’lumot yo‘q|Маълумот нест|Маал�
 sources|Источники|Manbalar|Манбаъҳо|Булактар|Дереккөздер|स्रोत|Sources
 source|Источник {n}: {name}, страница {page}|Manba {n}: {name}, {page}-bet|Манбаи {n}: {name}, саҳифаи {page}|Булак {n}: {name}, {page}-бет|Дереккөз {n}: {name}, {page}-бет|स्रोत {n}: {name}, पन्ना {page}|Source {n}: {name}, page {page}
 pageRef|{name}, стр. {page}|{name}, {page}-bet|{name}, саҳ. {page}|{name}, {page}-бет|{name}, {page}-бет|{name}, पन्ना {page}|{name}, p. {page}
-steps|Ход проверки|Tekshiruv bosqichlari|Рафти санҷиш|Текшерүүнүн жүрүшү|Тексеру барысы|जाँच के चरण|Progress log
+steps|Что сделал помощник|Yordamchi nima qildi|Ёрдамчӣ чӣ кор кард|Жардамчы эмне кылды|Көмекші не істеді|सहायक ने क्या किया|What the assistant did
 working|В работе|Bajarilmoqda|Дар кор|Аткарылууда|Орындалуда|काम जारी है|In progress
 error|Ошибка|Xato|Хато|Ката|Қате|गड़बड़ी|Error
 done|Готово|Tayyor|Тайёр|Даяр|Дайын|हो गया|Done
 mechanic|Вы|Siz|Шумо|Сиз|Сіз|आप|You
-answer|Ответ механика|Mexanik javobi|Ҷавоби механик|Механиктин жообу|Механик жауабы|मैकेनिक का जवाब|Mechanic’s answer
+answer|Объяснение помощника|Yordamchi izohi|Шарҳи ёрдамчӣ|Жардамчынын түшүндүрмөсү|Көмекшінің түсіндірмесі|सहायक की व्याख्या|Assistant’s explanation
 result|Результат проверки|Tekshiruv natijasi|Натиҷаи санҷиш|Текшерүү жыйынтыгы|Тексеру нәтижесі|जाँच का नतीजा|Check result
 pending|Готовлю ответ…|Javob tayyorlayapman…|Ҷавобро тайёр мекунам…|Жооп даярдап жатам…|Жауап дайындап жатырмын…|जवाब तैयार हो रहा है…|Preparing an answer…
 stepDiagnose|Проверяю запись…|Yozuvni tekshiryapman…|Сабтро месанҷам…|Жазууну текшерип жатам…|Жазбаны тексеріп жатырмын…|रिकॉर्डिंग की जाँच हो रही है…|Checking the recording…
@@ -91,16 +89,16 @@ stepRead|Читаю страницу руководства…|Qo‘llanma betin
 stepFault|Уточняю тип отклонения…|Og‘ish turini aniqlayapman…|Навъи инҳирофро месанҷам…|Четтөөнүн түрүн тактап жатам…|Ауытқу түрін анықтап жатырмын…|गड़बड़ी की वजह देख रहे हैं…|Checking the possible fault…
 stepDraft|Готовлю черновик…|Qoralama tayyorlayapman…|Пешнавис месозам…|Өтүнмөнүн долбоорун даярдап жатам…|Өтінім жобасын дайындап жатырмын…|मसौदा तैयार हो रहा है…|Preparing a draft…
 openReceipt|Открыть квитанцию|Kvitansiyani ochish|Кушодани расид|Дүмүрчөктү ачуу|Түбіртекті ашу|रसीद खोलें|Open receipt
-createDraft|Подготовить заявку|Buyurtma tayyorlash|Тайёр кардани дархост|Өтүнмө даярдоо|Өтінім дайындау|वर्क ऑर्डर तैयार करें|Prepare work order
+createDraft|Подготовить заявку на ремонт|Ta’mirlash buyurtmasini tayyorlash|Дархости таъмирро омода кардан|Оңдоо өтүнмөсүн даярдоо|Жөндеуге өтінім дайындау|मरम्मत का वर्क ऑर्डर तैयार करें|Prepare a repair work order
 openDraft|Открыть черновик|Qoralamani ochish|Кушодани пешнавис|Долбоорду ачуу|Жобаны ашу|मसौदा खोलें|Open draft
-question|Напишите вопрос|Savol yozing|Савол нависед|Суроо жазыңыз|Сұрақ жазыңыз|सवाल लिखें|Type a question
+question|Спросите про эту машину…|Shu mashina haqida so‘rang…|Дар бораи ин мошин пурсед…|Бул унаа жөнүндө сураңыз…|Осы көлік туралы сұраңыз…|इस गाड़ी के बारे में पूछें…|Ask about this vehicle…
 send|Отправить|Yuborish|Фиристодан|Жөнөтүү|Жіберу|भेजें|Send
 sendQuestion|Отправить вопрос|Savolni yuborish|Фиристодани савол|Суроону жөнөтүү|Сұрақты жіберу|सवाल भेजें|Send question
-mic|Продиктовать вопрос|Savolni ovoz bilan aytish|Бо овоз савол додан|Суроону үн менен айтуу|Сұрақты дауыспен айту|बोलकर सवाल पूछें|Dictate a question
+mic|Вопрос голосом|Ovozli savol|Саволи овозӣ|Үн менен суроо|Дауыспен сұрау|आवाज़ से सवाल पूछें|Ask by voice
 micShort|Голосом|Ovoz|Бо овоз|Үн менен|Дауыспен|बोलें|Speak
-micStop|Остановить запись|Yozuvni to‘xtatish|Қатъи сабт|Жазууну токтотуу|Жазуды тоқтату|रिकॉर्डिंग रोकें|Stop recording
+micStop|Стоп|To‘xtatish|Қатъ кардан|Токтотуу|Тоқтату|रोकें|Stop
 micAsk|Запрашиваем доступ к микрофону…|Mikrofonga ruxsat so‘ralmoqda…|Дастрасӣ ба микрофонро мепурсем…|Микрофонго уруксат суралууда…|Микрофонға рұқсат сұралуда…|माइक की अनुमति माँग रहे हैं…|Requesting microphone access…
-micRecording|Идет запись|Ovoz yozilmoqda|Сабт идома дорад|Үн жазылууда|Дыбыс жазылуда|रिकॉर्डिंग चालू है|Recording
+micRecording|Слушаю…|Tinglayapman…|Гӯш мекунам…|Угуп жатам…|Тыңдап тұрмын…|सुन रहा हूँ…|Listening…
 micTranscribe|Распознаем речь…|Nutq matnga o‘girilmoqda…|Овоз ба матн табдил меёбад…|Үн текстке айланууда…|Сөз мәтінге айналуда…|बोली को लिख रहे हैं…|Transcribing…
 micReady|Проверьте текст и нажмите «Отправить».|Matnni tekshirib, «Yuborish»ni bosing.|Матнро санҷед ва «Фиристодан»-ро пахш кунед.|Текстти текшерип, «Жөнөтүү» баскычын басыңыз.|Мәтінді тексеріп, «Жіберу» түймесін басыңыз.|लिखा हुआ देखकर «भेजें» दबाएँ।|Check the text, then press Send.
 micDenied|Доступ к микрофону закрыт. Разрешите его в браузере или напишите вопрос.|Mikrofonga ruxsat yo‘q. Brauzerda ruxsat bering yoki savol yozing.|Дастрасӣ ба микрофон баста аст. Дар браузер иҷозат диҳед ё савол нависед.|Микрофонго уруксат жок. Браузерден уруксат бериңиз же суроону жазыңыз.|Микрофонға рұқсат жоқ. Браузерден рұқсат беріңіз немесе сұрақты жазыңыз.|माइक की अनुमति नहीं है। ब्राउज़र में अनुमति दें या सवाल लिखें।|Microphone access is blocked. Allow it in your browser or type your question.
@@ -124,8 +122,8 @@ parts|Запчасти|Ehtiyot qismlar|Қисмҳои эҳтиётӣ|Тетик�
 newLine|Каждый пункт с новой строки|Har bir band yangi satrda|Ҳар банд дар сатри нав|Ар бир пункт жаңы сапта|Әр тармақ жаңа жолда|हर चीज़ नई लाइन में लिखें|One item per line
 unsent|Не отправлена|Yuborilmagan|Фиристода нашудааст|Жөнөтүлө элек|Жіберілмеген|अभी नहीं भेजा गया|Not sent
 sending|Отправляем…|Yuborilmoqda…|Фиристода мешавад…|Жөнөтүлүүдө…|Жіберілуде…|भेज रहे हैं…|Sending…
-confirm|Подтвердить и отправить|Tasdiqlash va yuborish|Тасдиқ ва фиристодан|Ырастап жөнөтүү|Растап жіберу|पक्का करके भेजें|Confirm and send
-confirmNote|Заявка уйдет в ТОиР.|Buyurtma texnik xizmat tizimiga yuboriladi.|Дархост ба низоми таъмир меравад.|Өтүнмө тейлөө тутумуна жөнөтүлөт.|Өтінім жөндеу жүйесіне жіберіледі.|वर्क ऑर्डर रखरखाव सिस्टम में जाएगा।|This sends the order to the maintenance system.
+confirm|Отправить заявку|Buyurtmani yuborish|Дархостро фиристодан|Өтүнмөнү жөнөтүү|Өтінімді жіберу|वर्क ऑर्डर भेजें|Send work order
+confirmNote|Заявка появится в системе ремонта.|Buyurtma ta’mirlash tizimida ko‘rinadi.|Дархост дар низоми таъмир пайдо мешавад.|Өтүнмө оңдоо системасында көрүнөт.|Өтінім жөндеу жүйесінде пайда болады.|वर्क ऑर्डर मरम्मत सिस्टम में दिखेगा।|The work order will appear in the repair system.
 reasonLine|Причина изменения приоритета: {reason}|Ustuvorlikni o‘zgartirish sababi: {reason}|Сабаби ивази афзалият: {reason}|Артыкчылыкты өзгөртүү себеби: {reason}|Басымдықты өзгерту себебі: {reason}|प्राथमिकता बदलने की वजह: {reason}|Reason for changing priority: {reason}
 needConclusion|Введите заключение.|Xulosani yozing.|Хулосаро нависед.|Корутундуну жазыңыз.|Қорытындыны жазыңыз.|निष्कर्ष लिखें।|Enter a conclusion.
 needReason|Укажите причину изменения приоритета.|Ustuvorlikni nega o‘zgartirganingizni yozing.|Сабаби ивази афзалиятро нависед.|Артыкчылыкты эмне үчүн өзгөрткөнүңүздү жазыңыз.|Басымдықты неге өзгерткеніңізді жазыңыз.|प्राथमिकता बदलने की वजह लिखें।|Enter a reason for changing priority.
@@ -146,10 +144,25 @@ zoomOut|Уменьшить|Kichraytirish|Хурд кардан|Кичирейт�
 zoomIn|Увеличить|Kattalashtirish|Калон кардан|Чоңойтуу|Үлкейту|बड़ा करें|Zoom in
 prevPage|Предыдущая страница|Oldingi bet|Саҳифаи пешина|Мурунку бет|Алдыңғы бет|पिछला पन्ना|Previous page
 nextPage|Следующая страница|Keyingi bet|Саҳифаи баъдӣ|Кийинки бет|Келесі бет|अगला पन्ना|Next page
-pageNumber|Стр. {page} / {total}|{page} / {total}-bet|Саҳ. {page} / {total}|{page} / {total}-бет|{page} / {total}-бет|पन्ना {page} / {total}|Page {page} / {total}
+pageNumber|{page} из {total}|{page} / {total}|{page} аз {total}|{page} / {total}|{page} / {total}|{total} में से {page}|{page} of {total}
 pageText|Текст страницы|Bet matni|Матни саҳифа|Беттин тексти|Бет мәтіні|पन्ने का पाठ|Page text
 quote|Цитата из ответа|Javobdagi iqtibos|Иқтибос аз ҷавоб|Жооптон үзүндү|Жауаптан дәйексөз|जवाब में दिया अंश|Quote from answer
 pageUnavailable|Страница недоступна|Bet ochilmadi|Саҳифа дастрас нест|Бет жеткиликсиз|Бет қолжетімсіз|पन्ना नहीं खुला|Page unavailable
+close|Закрыть|Yopish|Пӯшидан|Жабуу|Жабу|बंद करें|Close
+stopRelease|Не выпускать на линию|Mashinani yo‘lga chiqarmang|Мошинро ба хатсайр набароред|Унааны каттамга чыгарбаңыз|Көлікті бағытқа шығармаңыз|गाड़ी को ड्यूटी पर न भेजें|Do not put this vehicle into service
+noPastChecks|Прошлых проверок нет|Avvalgi tekshiruvlar yo‘q|Санҷиши пешина нест|Мурунку текшерүү жок|Бұрынғы тексерулер жоқ|कोई पिछली जाँच नहीं है|No past checks
+recordTip1|Записывайте там, где тихо.|Tinch joyda yozing.|Дар ҷои ором сабт кунед.|Тынч жерде жазыңыз.|Тыныш жерде жазыңыз.|शांत जगह पर रिकॉर्ड करें।|Record somewhere quiet.
+recordTip2|Держите прибор неподвижно.|Qurilmani qimirlatmay ushlang.|Дастгоҳро беҳаракат нигоҳ доред.|Аспапты кыймылдатпай кармаңыз.|Құрылғыны қозғалтпай ұстаңыз.|डिवाइस को स्थिर रखें।|Keep the recorder still.
+recordTip3|Не разговаривайте во время записи.|Yozuv paytida gaplashmang.|Ҳангоми сабт суҳбат накунед.|Жазып жатканда сүйлөбөңүз.|Жазу кезінде сөйлемеңіз.|रिकॉर्डिंग के दौरान बात न करें।|Do not talk while recording.
+why|Почему|Sababi|Чаро|Эмне үчүн|Неге|क्यों|Why
+priorityLine|Приоритет: {level}|Ustuvorlik: {level}|Афзалият: {level}|Артыкчылык: {level}|Басымдық: {level}|प्राथमिकता: {level}|Priority: {level}
+more|Еще|Ko‘proq|Бештар|Дагы|Толығырақ|और पढ़ें|More
+less|Свернуть|Yig‘ish|Пинҳон кардан|Жыйноо|Жию|कम दिखाएँ|Show less
+zoom|Масштаб|Masshtab|Миқёс|Масштаб|Масштаб|ज़ूम|Zoom
+checkedLabel|Проверка|Tekshiruv|Санҷиш|Текшерүү|Тексеру|जाँच|Check
+checkedAt|Дата и время проверки|Tekshiruv sanasi va vaqti|Сана ва вақти санҷиш|Текшерүүнүн күнү жана убактысы|Тексерілген күн мен уақыт|जाँच की तारीख और समय|Check date and time
+overrideLabel|Причина изменения приоритета|Ustuvorlikni o‘zgartirish sababi|Сабаби иваз кардани афзалият|Артыкчылыкты өзгөртүүнүн себеби|Басымдықты өзгерту себебі|प्राथमिकता बदलने की वजह|Reason for changing priority
+unresolved|Прошлое отклонение еще не закрыто|Oldingi og‘ish hali yopilmagan|Норасоии қаблӣ ҳанӯз бартараф нашудааст|Мурунку четтөө али жабыла элек|Бұрынғы ауытқу әлі жабылған жоқ|पिछली गड़बड़ी अभी दूर नहीं हुई है|A previous fault is still unresolved
 `.trim().split('\n');
   const codes = Object.keys(languages);
   const dictionary = new Map(rows.map(row => {

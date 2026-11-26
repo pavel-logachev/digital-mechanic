@@ -120,12 +120,12 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     strong = score is not None and conf is not None and d(score) >= SCORE_HIGH and d(conf) >= CONF_HIGH and quality == "good"
     doubtful = quality == "warning" or (conf is not None and d(conf) < CONF_MIN)
 
-    reasons.append(f"Тип: {code} «{result.get('anomaly_title')}» – {SEVERITY_RU.get(sev, 'не определена')} неисправность.")
+    reasons.append(f"Код по справочнику: {code}.")
     reasons.append(f"Оценка отклонения {fmt(score)} из 1 ({_band(score)}), уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.")
     if repeated:
-        reasons.append(f"Повторяется: то же отклонение было {len(repeated)} раз(а) в последних проверках ({', '.join(_date(s) for s in repeated)}).")
+        reasons.insert(0, f"Такое же отклонение уже было: {', '.join(_date(s) for s in repeated)}.")
     if growing:
-        reasons.append("Оценка отклонения растёт от проверки к проверке.")
+        reasons.insert(0, "Отклонение растёт от проверки к проверке.")
     if appl == "check":
         warnings.append(f"Убедитесь, что на этой машине есть узел «{result.get('anomaly_title')}»: для {engine} это зависит от комплектации.")
     if doubtful:
@@ -133,22 +133,23 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     if sev == "C":
         urg, rule = "high", "R4-critical"
-        action = "Снять с линии сейчас и не выпускать до дефектовки: возможна тяжёлая поломка."
-        reasons.append("Высокий приоритет: класс критичный, при таких неисправностях продолжение работы рискованно.")
+        action = ("Не выпускать. Если машина в рейсе – остановиться в безопасном месте и заглушить двигатель. "
+                  "Выпуск только после дефектовки и устранения причины.")
+        reasons.insert(0, f"«{result.get('anomaly_title')}» – критичная неисправность: работа с ней может закончиться тяжёлой поломкой двигателя.")
     elif sev == "S" and (strong or growing or (repeated and not doubtful)):
         urg, rule = "high", "R5-significant-strong"
         action = "Поставить на дефектовку в ближайшее время, в дальние рейсы не выпускать."
         why = "сильный и уверенный сигнал" if strong else ("рост отклонения" if growing else "повторяющееся отклонение")
-        reasons.append(f"Высокий приоритет: значимая неисправность и {why}.")
+        reasons.insert(0, f"Значимая неисправность и {why}.")
     elif sev == "L" and not repeated and not growing and not doubtful and conf is not None and d(conf) >= CONF_HIGH \
             and score is not None and d(score) < SCORE_HIGH:
         urg, rule = "low", "R7-minor"
         action = "Запланировать проверку на ближайшее ТО."
-        reasons.append("Низкий приоритет: малозначимая неисправность, отклонение умеренное, сигнал уверенный и не повторяется.")
+        reasons.insert(0, "Малозначимая неисправность: отклонение умеренное, сигнал уверенный и разовый.")
     else:
         urg, rule = "medium", "R6-planned"
         action = "Запланировать дефектовку в плановом порядке, следить за признаками."
-        reasons.append("Средний приоритет: отклонение есть, но оснований для срочного снятия с линии нет.")
+        reasons.insert(0, "Отклонение есть, но причин срочно снимать машину с линии нет.")
     if hist_note and not repeated:
         reasons.append(hist_note)
     return Verdict("anomaly", urg, action, True, reasons, warnings, rule, sev, appl)

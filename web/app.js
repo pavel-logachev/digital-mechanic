@@ -1,9 +1,9 @@
 'use strict';
 
 const $ = (selector, root = document) => root.querySelector(selector);
-const main = $('#main'), dock = $('#dock'), topbar = $('#top'), manual = $('#manual');
+const main = $('#main'), dock = $('#dock'), topbar = $('#top'), manual = $('#manual'), languageDialog = $('#language-dialog');
 const api = '/api';
-const state = {route: {page: 'park'}, vehicles: null, fleet: null, cards: new Map(), sessions: new Map(), chats: new Map(), query: '', all: false, demo: false};
+const state = {route: {page: 'park'}, vehicles: null, fleetFilter: '', cards: new Map(), chats: new Map(), query: '', all: false, demo: false};
 const {languages, text} = mechanicI18n;
 const stored = (key, value) => {
   try { return value === undefined ? localStorage.getItem(key) : localStorage.setItem(key, value); }
@@ -14,21 +14,27 @@ let lang = Object.hasOwn(languages, savedLang) ? savedLang : 'ru';
 let large = stored('mechanic:large') === 'true';
 const t = (key, vars) => text(lang, key, vars);
 const displayText = value => String(value ?? '').replaceAll('\u2014', '–');
-const fleetStages = {ok: ['normal', 'green', 'check'], attention: ['attention', 'amber', 'warn'], quarantine: ['quarantine', 'red', 'cross']};
-const stages = {normal: fleetStages.ok, anomaly: ['anomaly', 'amber', 'warn'], check_failed: ['failed', 'red', 'cross']};
+const stages = {
+  quarantine: ['quarantine', 'red', 'cross'], anomaly: ['anomaly', 'amber', 'warn'],
+  check_failed: ['failed', 'violet', 'mic'], normal: ['normal', 'green', 'check'],
+  unknown: ['noCheck', 'neutral', 'clock'],
+};
 const priorities = ['low', 'medium', 'high'];
 const priorityLabel = code => priorities.includes(code) ? t(code) : null;
-const priorityStyles = {low: ['green', 'check'], medium: ['amber', 'warn'], high: ['red', 'warn']};
+const priorityLine = code => t('priorityLine', {level: priorityLabel(code)?.toLocaleLowerCase(lang)});
+const lowerStart = value => lang === 'ru' && value ? value[0].toLocaleLowerCase(lang) + value.slice(1) : value;
 const qualities = {good: 'good', warning: 'noisy', bad: 'poor'};
 const formatDate = options => new Intl.DateTimeFormat(lang, {timeZone: 'Europe/Moscow', ...options});
-let moscow, moscowTime, shortDate, number;
+let moscow, ruDay, ruTime, number;
+let routeSerial = 0;
+const routeScroll = new Map();
 function applySettings() {
   document.documentElement.lang = lang;
   document.documentElement.classList.toggle('large-type', large);
   document.title = t('brand');
-  moscow = formatDate({day: '2-digit', month: '2-digit', year: '2-digit'});
-  moscowTime = formatDate({hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
-  shortDate = formatDate({day: '2-digit', month: '2-digit'});
+  moscow = formatDate({day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
+  ruDay = formatDate({day: 'numeric', month: 'long', year: 'numeric'});
+  ruTime = formatDate({hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
   number = new Intl.NumberFormat(lang, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 applySettings();
@@ -40,7 +46,7 @@ const paths = {
   check: 'm5 12 4 4L19 6', cross: 'm8 8 8 8m0-8-8 8', warn: 'M12 8v5m0 3v.1M3 20l9-17 9 17Z',
   book: 'M4 4h11l4 4v12H4Zm10 0v5h5M8 12h7m-7 4h7', send: 'm3 3 18 9-18 9 4-9Zm4 9h14', chart: 'M4 4v16h16M7 15l4-5 4 2 5-6',
   mic: 'M9 6a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0ZM5 11a7 7 0 0 0 14 0m-7 7v4m-4 0h8',
-  stop: 'M5 5h14v14H5Z',
+  stop: 'M5 5h14v14H5Z', globe: 'M2 12h20M12 2a10 10 0 1 1 0 20 10 10 0 1 1 0-20Zm0 0c5 5 5 15 0 20-5-5-5-15 0-20Z',
   clock: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z', plus: 'M6 12h12m-6-6v12', minus: 'M6 12h12',
 };
 
@@ -72,18 +78,28 @@ const primary = (label, run, attrs = {}, ...extra) => action(label, run, {class:
 const iconButton = (label, name, run, attrs = {}) => action(icon(name), run, {class: 'icon-button', 'aria-label': label, title: label, ...attrs});
 const pill = (label, tone = '', symbol) => el('span', {class: `pill ${tone}`}, symbol && icon(symbol), label);
 const fromStage = ([key, ...style]) => pill(t(key), ...style);
-const stagePill = status => fromStage(stages[status] ?? ['noCheck', '', 'clock']);
-const fleetPill = status => fleetStages[status] ? fromStage(fleetStages[status]) : null;
+const stagePill = status => fromStage(stages[status] ?? stages.unknown);
 const box = (...children) => el('section', {class: 'box'}, children);
 const hint = (text, attrs = {}) => el('p', {class: 'muted', ...attrs}, text);
-const mono = text => el('span', {class: 'mono'}, text);
 const score = x => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1;
 const scoreText = x => score(x) ? number.format(x) : '–';
 const stageOf = d => d?.verdict || d?.status;
-const dateFor = (value, fmt) => {
+function vehicleStage(v, s = v.last_check, latest = s === v.last_check) {
+  const stage = stageOf(s);
+  // красный «Не выпускать» – только критичный класс (R4) или карантин; высокий приоритет значимой неисправности остаётся «Нужна проверка»
+  const critical = x => x?.severity === 'C' || x?.rule === 'R4-critical';
+  if (critical(s) || s?.fleet_status === 'quarantine' || stage === 'quarantine' || (latest && (v.fleet_status === 'quarantine' || v.last_severity === 'C'))) return 'quarantine';
+  if (stage === 'check_failed') return stage;
+  if (stage === 'anomaly' || (latest && stage === 'normal' && v.fleet_status === 'attention')) return 'anomaly';
+  return stage === 'normal' ? stage : 'unknown';
+}
+const dateFor = value => {
   const date = new Date(value);
-  return value && !isNaN(date) ? fmt ? fmt.format(date) : `${moscow.format(date)} ${moscowTime.format(date)}` : '–';
+  if (!value || Number.isNaN(+date)) return '–';
+  if (lang === 'ru') return `${ruDay.format(date).replace(/\s+г\.$/u, '')}, ${ruTime.format(date)}`;
+  return moscow.format(date);
 };
+const checkTime = value => el('time', {datetime: value}, dateFor(value));
 const endpoint = id => `${api}/vehicles/${encodeURIComponent(id)}`;
 const manualPath = (id, page) => `${api}/manuals/${encodeURIComponent(id)}/pages/${page}`;
 const jsonPost = body => ({method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -98,58 +114,84 @@ async function json(path, options) {
   }
   return body;
 }
+function openLanguage() {
+  languageDialog.replaceChildren(
+    el('div', {class: 'sheet-head'}, el('h2', {id: 'language-heading'}, t('language')),
+      iconButton(t('close'), 'cross', () => languageDialog.close())),
+    el('div', {class: 'language-list'}, Object.entries(languages).map(([code, name]) =>
+      action([el('span', {class: 'language-code', 'aria-hidden': 'true'}, code.toUpperCase()), name, code === lang && icon('check')], () => {
+        languageDialog.close();
+        if (lang === code) return;
+        lang = code;
+        stored('mechanic:lang', lang);
+        applySettings();
+        header();
+        if (main.hasAttribute('aria-busy')) { main.replaceChildren(hint(t('loading'), {role: 'status'})); return; }
+        if (state.loadFailed) { showRoute(state.route); return; }
+        const scroll = main.scrollTop;
+        render();
+        main.scrollTop = scroll;
+      }, {lang: code, 'data-lang': code, 'aria-pressed': String(lang === code), autofocus: lang === code}))),
+  );
+  languageDialog.showModal();
+}
 function header() {
   const {page, vid} = state.route;
   const isPark = page === 'park';
   let tools = $('#header-tools', topbar);
   if (!tools) {
-    const select = el('select', {id: 'language', onchange: e => {
-      lang = e.target.value;
-      stored('mechanic:lang', lang);
-      applySettings();
-      header();
-      if (main.hasAttribute('aria-busy') || !state.vehicles && state.route.page === 'park') return;
-      const scroll = main.scrollTop;
-      render();
-      main.scrollTop = scroll;
-    }}, Object.entries(languages).map(([code, name]) => el('option', {value: code, lang: code}, `${code.toUpperCase()} ${name}`)));
-    const size = action(el('span', {'aria-hidden': 'true'}, 'Aa+'), () => {
+    const picker = action(icon('globe'), openLanguage, {id: 'language', 'aria-haspopup': 'dialog'}, el('span', {'aria-hidden': 'true'}));
+    const size = action(el('span', {'aria-hidden': 'true'}, 'Aᴀ'), () => {
       large = !large;
       stored('mechanic:large', String(large));
       applySettings();
       size.setAttribute('aria-pressed', String(large));
+      if (state.route.page === 'chat') { resizeQuestion(); fitExcerpts(main); }
     }, {id: 'font-size'});
-    tools = el('div', {id: 'header-tools'}, select, size);
+    tools = el('div', {id: 'header-tools'}, picker, size);
     topbar.append(tools);
   }
   const picker = $('#language', tools), size = $('#font-size', tools);
-  picker.value = lang;
-  picker.setAttribute('aria-label', t('language'));
+  picker.lastElementChild.textContent = lang.toUpperCase();
+  picker.setAttribute('aria-label', `${t('language')}: ${languages[lang]}`);
   size.setAttribute('aria-label', t('large'));
   size.setAttribute('title', t('large'));
   size.setAttribute('aria-pressed', String(large));
-  const identity = el('div', {class: 'identity'}, isPark ? mark() : iconButton(t('back'), 'back', back),
-    el('strong', {class: page === 'chat' ? 'brand mono' : 'brand'}, page === 'chat' ? vid : t(isPark ? 'brand' : page)),
-    state.demo && el('span', {class: 'demo'}, t('demo')));
+  const identity = el('div', {class: 'identity'}, isPark ? mark() :
+    action([icon('back'), el('span', {}, t('back'))], back, {class: 'back-button', 'aria-label': t('back')}),
+    el(['draft', 'receipt'].includes(page) ? 'strong' : 'h1', {class: 'brand', tabindex: '-1'}, vid || t(isPark ? 'brand' : page)));
   if (topbar.firstElementChild === tools) topbar.prepend(identity);
   else topbar.firstElementChild.replaceWith(identity);
 }
 
 function navigate(route, replace = false) {
+  routeScroll.set(state.route.key, main.scrollTop);
+  route = {...route, key: ++routeSerial};
   history[replace ? 'replaceState' : 'pushState'](route, '', location.pathname);
   showRoute(route, true);
 }
 function back() { history.back(); }
-window.addEventListener('popstate', e => showRoute(e.state?.page ? e.state : {page: 'park'}, true));
-async function showRoute(route, focus = false) {
+window.addEventListener('popstate', e => {
+  const route = e.state?.page ? e.state : {page: 'park'};
+  if (manual.open && !route.manualCite) {
+    const samePage = ['page', 'vid', 'sid'].every(key => route[key] === state.route[key]);
+    closeManual();
+    if (samePage) return;
+  }
+  if (route.manualCite) { openManual(route.manualCite, false); return; }
+  if (languageDialog.open) languageDialog.close();
+  routeScroll.set(state.route.key, main.scrollTop);
+  showRoute(route, true, routeScroll.get(route.key));
+});
+async function showRoute(route, focus = false, scroll = 0) {
   if (state.route !== route) cancelRecording();
+  state.loadFailed = false;
   state.route = route;
   header();
   dock.replaceChildren();
   main.className = route.page;
   main.scrollTop = 0;
-  const load = route.page === 'park' && !state.vehicles ? async () => { state.vehicles = await json(`${api}/vehicles`); }
-    : route.page === 'fleet' ? async () => { state.fleet = await json(`${api}/fleet`); }
+  const load = ['park', 'fleet'].includes(route.page) && !state.vehicles ? async () => { state.vehicles = await json(`${api}/vehicles`); }
     : route.vid && !state.cards.has(route.vid) ? async () => { state.cards.set(route.vid, await json(endpoint(route.vid))); }
     : null;
   if (load) {
@@ -159,14 +201,16 @@ async function showRoute(route, focus = false) {
     catch (error) {
       if (state.route !== route) return;
       main.removeAttribute('aria-busy');
-      main.replaceChildren(el('h1', {}, t('loadFailed')), hint(error instanceof TypeError ? t('network') : error.message, {role: 'alert'}), action(t('retry'), () => showRoute(route, true)));
+      state.loadFailed = true;
+      main.replaceChildren(el('h2', {}, t('loadFailed')), hint(error instanceof TypeError ? t('network') : error.message, {role: 'alert'}), action(t('retry'), () => showRoute(route, true)));
       return;
     }
     if (state.route !== route) return;
   }
   main.removeAttribute('aria-busy');
   render();
-  if (focus) $('h1', main)?.focus({preventScroll: true});
+  main.scrollTop = scroll;
+  if (focus) ($('h1', main) || $('.brand', topbar))?.focus({preventScroll: true});
 }
 
 function title(text) { return el('h1', {tabindex: '-1'}, text); }
@@ -174,119 +218,95 @@ function searchKey(value) {
   const alphabet = {'А':'A', 'В':'B', 'Е':'E', 'К':'K', 'М':'M', 'Н':'H', 'О':'O', 'Р':'P', 'С':'C', 'Т':'T', 'У':'Y', 'Х':'X'};
   return String(value ?? '').toUpperCase().replace(/[АВЕКМНОРСТУХ]/g, s => alphabet[s]).replace(/[^\p{L}\p{N}]/gu, '');
 }
-const garage = v => v.garage_no ? t('garage', {no: v.garage_no}) : null;
+const garage = v => v.garage_no || null;
 const model = v => v.model || v.make;
+const modelText = v => model(v)?.replace(/([\p{L}\p{N}])-(?=[\p{L}\p{N}])/gu, '$1‑');
 const details = (label, ...body) => el('details', {class: 'fold'}, el('summary', {}, label), el('div', {class: 'fold-body'}, body));
-function vehicleRow(v, fromFleet = false) {
-  const s = v.last_check;
-  return action(el('span', {class: 'row-copy'},
-    el('strong', {class: 'plate mono'}, v.vehicle_id),
-    el('span', {class: 'row-model'}, [garage(v), model(v)].filter(Boolean).join(' · ')),
-    fromFleet || v.fleet_status === 'quarantine' || (s?.status === 'normal' && v.fleet_status === 'attention') ? fleetPill(v.fleet_status) : stagePill(s?.status),
-    fromFleet && s?.anomaly_title && hint(s.anomaly_title),
-  ), () => navigate({page: 'vehicle', vid: v.vehicle_id}), {class: 'vehicle-row'}, icon('next'));
+const stageRank = Object.keys(stages);
+const latestFirst = (a, b) => (Date.parse(b?.checked_at) || 0) - (Date.parse(a?.checked_at) || 0);
+const orderedVehicles = () => [...state.vehicles].sort((a, b) => stageRank.indexOf(vehicleStage(a)) - stageRank.indexOf(vehicleStage(b)) || latestFirst(a.last_check, b.last_check));
+function plate(value) {
+  const split = /^(.*\p{L})(\d{2,3})$/u.exec(value);
+  return el('strong', {class: 'plate', 'aria-label': value}, split ? [split[1], el('span', {class: 'plate-region'}, split[2])] : value);
+}
+function vehicleModel(v) {
+  return el('span', {class: 'row-model'}, garage(v) && el('strong', {class: 'garage'}, garage(v)), model(v) && el('span', {}, modelText(v)));
+}
+function statusLine(status, check) {
+  const cause = ['quarantine', 'anomaly'].includes(status) && (check?.anomaly_title || (stageOf(check) === 'normal' && t('unresolved')));
+  return el('span', {class: 'status-line'}, stagePill(status), cause && el('span', {class: 'cause'}, cause));
+}
+function vehicleRow(v) {
+  return action(el('span', {class: 'row-copy'}, plate(v.vehicle_id), vehicleModel(v), statusLine(vehicleStage(v), v.last_check), v.last_check?.checked_at && el('span', {class: 'row-date'}, `${t('checkedLabel')}: `, checkTime(v.last_check.checked_at))),
+    () => navigate({page: 'vehicle', vid: v.vehicle_id}), {class: 'vehicle-row', 'data-stage': vehicleStage(v), 'data-plate': v.vehicle_id}, icon('next'));
 }
 function renderPark() {
   const list = el('div', {class: 'vehicle-list'});
   const count = el('span', {class: 'count', 'aria-live': 'polite'});
-  const keyboardLabel = () => t(state.numeric ? 'textKeys' : 'numberKeys');
-  const input = el('input', {id: 'vehicle-search', type: 'text', enterkeyhint: 'search', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off', inputmode: state.numeric ? 'numeric' : 'search', placeholder: t('search'), 'aria-label': t('search'), oninput: e => { state.query = e.target.value; state.all = false; update(); }});
+  const input = el('input', {id: 'vehicle-search', type: 'text', enterkeyhint: 'search', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off', inputmode: 'search', oninput: e => { state.query = e.target.value; state.all = false; update(); }});
   const clear = iconButton(t('clear'), 'cross', () => { input.value = state.query = ''; state.all = false; update(); input.focus(); });
-  const keyboard = action(keyboardLabel(), () => {
-    state.numeric = !state.numeric;
-    keyboard.textContent = keyboardLabel();
-    input.blur();
-    input.inputMode = state.numeric ? 'numeric' : 'search';
-    input.focus();
-  }, {id: 'search-keyboard'});
-  const ordered = [...state.vehicles].sort((a, b) => (b.last_check?.checked_at || '').localeCompare(a.last_check?.checked_at || ''));
+  const ordered = orderedVehicles();
   const update = () => {
     const key = searchKey(state.query);
     const found = key ? ordered.filter(v => [v.vehicle_id, v.garage_no].some(x => searchKey(x).includes(key))) : ordered;
     const visible = state.all ? found : found.slice(0, 8);
-    count.textContent = t('count', {found: found.length, total: ordered.length});
+    count.textContent = t('count', {found: visible.length, total: found.length});
     clear.hidden = !state.query;
-    list.replaceChildren(...visible.map(v => vehicleRow(v)));
+    list.replaceChildren(...visible.map(vehicleRow));
     if (!found.length) list.append(box(el('strong', {}, t('noResults'))));
-    if (visible.length < found.length) list.append(action(t('showAll', {count: found.length}), () => { state.all = true; update(); list.children[8]?.focus(); }));
+    if (visible.length < found.length) list.append(action(t('showAll', {count: found.length - visible.length}), () => { state.all = true; update(); list.children[visible.length]?.focus(); }, {class: 'show-all'}));
   };
   input.value = state.query;
   update();
-  main.replaceChildren(title(t('choose')), el('div', {class: 'search-group'}, el('div', {class: 'search'}, icon('search'), input, clear), keyboard),
-    el('div', {class: 'between list-heading'}, el('h2', {}, t('vehicleList')), count), list,
-    action([icon('chart'), t('fleet'), icon('next')], () => navigate({page: 'fleet'}), {class: 'wide-link'}));
+  main.replaceChildren(el('div', {class: 'search-group'}, el('label', {for: 'vehicle-search'}, t('search')),
+    el('div', {class: 'search'}, icon('search'), input, clear)),
+    action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
+    el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo'))), list);
 }
 function renderFleet() {
-  const items = state.fleet.priority ?? [];
-  main.replaceChildren(title(t('fleet')),
-    el('div', {class: 'fleet-counts'}, Object.entries(fleetStages).map(([key, [label, tone, symbol]]) => el('div', {class: `fleet-count ${tone}`}, icon(symbol), el('strong', {class: 'mono'}, String(state.fleet.counts?.[key] ?? '–')), el('span', {}, t(label))))),
-    el('h2', {}, t('fleetPriority')),
-    items.length ? el('div', {class: 'vehicle-list'}, items.map(v => vehicleRow(v, true))) : box(hint(t('fleetEmpty'))));
+  const items = orderedVehicles();
+  const statuses = stageRank.filter(key => key !== 'unknown' || items.some(v => vehicleStage(v) === key));
+  const list = el('div', {class: 'vehicle-list'});
+  const update = () => {
+    const visible = state.fleetFilter ? items.filter(v => vehicleStage(v) === state.fleetFilter) : items;
+    list.replaceChildren(...visible.map(vehicleRow));
+    if (!visible.length) list.append(box(hint(t('fleetEmpty'))));
+    for (const btn of counts.children) btn.setAttribute('aria-pressed', String(btn.dataset.filter === state.fleetFilter));
+  };
+  const counts = el('div', {class: 'fleet-counts'}, statuses.map(key => {
+    const [label, tone, symbol] = stages[key];
+    return action([icon(symbol), el('span', {}, t(label)), el('strong', {}, String(items.filter(v => vehicleStage(v) === key).length))], () => {
+      state.fleetFilter = state.fleetFilter === key ? '' : key;
+      update();
+    }, {class: `fleet-count ${tone}`, 'data-filter': key});
+  }));
+  main.replaceChildren(counts, list);
+  update();
 }
-function context(v, s, chat = false) {
-  const label = chat ? garage(v) : v.vehicle_id;
-  return el('div', {class: 'context'}, icon('truck'), el('div', {class: 'context-copy'},
-    label && el('strong', {class: chat ? null : 'mono'}, label), model(v) && el('span', {}, model(v))),
-    s?.checked_at && el('time', {class: 'mono', datetime: s.checked_at}, dateFor(s.checked_at, moscow), el('br'), dateFor(s.checked_at, moscowTime)));
+function context(v, s) {
+  return el('div', {class: 'context'}, vehicleModel(v), s?.checked_at && checkTime(s.checked_at));
 }
-
-function graph(sessions) {
-  const recent = sessions.slice(-5);
-  if (!recent.length) return null;
-  const x = i => recent.length === 1 ? 168 : 40 + i * 254 / (recent.length - 1);
-  const y = d => 58 - 42 * d;
-  const desc = recent.map(s => `${dateFor(s.checked_at, shortDate)}: ${s.status === 'check_failed' ? t('failed') : score(s.anomaly_score) ? scoreText(s.anomaly_score) : t('noScore')}`).join('; ');
-  const canvas = svg('svg', {viewBox: '0 0 336 100', class: 'spark', role: 'img', 'aria-label': desc});
-  for (const [value, label] of [[1, '1'], [0.5, ''], [0, '0']]) {
-    canvas.append(svg('line', {x1: 30, x2: 306, y1: y(value), y2: y(value), class: 'gridline'}));
-    const text = svg('text', {x: 17, y: y(value) + 4, 'text-anchor': 'middle'});
-    text.textContent = label;
-    canvas.append(text);
-  }
-  recent.forEach((s, i) => {
-    const real = d => d && d.status !== 'check_failed' && score(d.anomaly_score);
-    if (real(s) && real(recent[i - 1])) canvas.append(svg('line', {x1: x(i-1), y1: y(recent[i-1].anomaly_score), x2: x(i), y2: y(s.anomaly_score), class: 'sparkline'}));
-  });
-  recent.forEach((s, i) => {
-    if (s.status === 'check_failed') canvas.append(svg('path', {d: `M${x(i)-4} 71l8 8m0-8-8 8`, class: 'failed-mark'}));
-    else if (score(s.anomaly_score)) canvas.append(svg('circle', {cx: x(i), cy: y(s.anomaly_score), r: 4, class: s.status === 'anomaly' ? 'point-anomaly' : 'point-normal'}));
-    const date = svg('text', {x: x(i), y: 95, 'text-anchor': 'middle'});
-    date.textContent = dateFor(s.checked_at, shortDate);
-    canvas.append(date);
-  });
-  return el('figure', {class: 'box trend'}, canvas, hint(t('trendNote')));
+function openCheck(v, s) {
+  const c = conversationFor(v.vehicle_id, s.session_id);
+  navigate({page: 'chat', vid: v.vehicle_id, sid: s.session_id});
+  if (!c.busy && !c.verdict) sendChat(c, 'diagnose');
 }
 function renderVehicle(v) {
-  const sessions = v.sessions ?? [];
-  const latest = sessions.at(-1);
-  const current = state.sessions.get(v.vehicle_id) ?? latest?.session_id;
-  const chosen = sessions.find(s => s.session_id === current);
-  const selection = el('div', {class: 'box selection'});
-  const updateSelection = s => selection.replaceChildren(
-    el('h2', {}, t(s === latest ? 'lastCheck' : 'check')),
-    el('div', {class: 'between check-copy'}, el('time', {class: 'mono', datetime: s.checked_at}, dateFor(s.checked_at)), stagePill(s.status)),
-  );
-  if (chosen) updateSelection(chosen);
-  const historyRows = [...sessions].reverse().map(s => el('label', {class: 'check-row'},
-    el('input', {type: 'radio', name: 'check', value: s.session_id, checked: current === s.session_id, onchange: () => { state.sessions.set(v.vehicle_id, s.session_id); updateSelection(s); }}),
-    el('span', {class: 'check-copy'}, el('time', {class: 'mono', datetime: s.checked_at}, dateFor(s.checked_at)), stagePill(s.status)),
-  ));
-  const tickets = [...(v.tickets ?? [])].reverse();
+  const sessions = [...(v.sessions ?? [])].sort(latestFirst);
+  const [latest, ...past] = sessions;
+  const tickets = [...(v.tickets ?? [])].sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
   main.replaceChildren(
-    el('section', {class: 'box vehicle-head'}, title(v.vehicle_id),
-      el('p', {class: 'vehicle-model'}, model(v)), garage(v) && hint(garage(v)), fleetPill(v.fleet_status),
+    el('section', {class: 'box vehicle-head'}, plate(v.vehicle_id), vehicleModel(v),
       v.engine_model && hint(`${t('engine')}: ${v.engine_model}`)),
-    chosen ? selection : box(hint(t('noChecks'))),
-    sessions.length > 0 && details(t('checks'), el('fieldset', {class: 'history'}, el('legend', {class: 'visually-hidden'}, t('chooseCheck')), el('div', {class: 'checks'}, historyRows)), graph(sessions)),
-    details(t('pastTickets'), tickets.length ? el('div', {class: 'tickets'}, tickets.map(ticket => el('div', {class: 'between'}, el('span', {}, el('strong', {class: 'mono'}, ticket.ticket_id), el('span', {class: 'muted ticket-meta'}, [ticket.anomaly_type, dateFor(ticket.created_at)].filter(Boolean).join(' · '))), priorityLabel(ticket.urgency) && pill(priorityLabel(ticket.urgency), ...priorityStyles[ticket.urgency])))) : hint(t('noTickets'))),
+    el('section', {class: 'box selection'}, el('h2', {}, t('lastCheck')),
+      latest ? [checkTime(latest.checked_at), statusLine(vehicleStage(v, latest, true), latest),
+        primary(t('diagnose'), () => openCheck(v, latest), {id: 'diagnose'})] : hint(t('noChecks'))),
+    details(t('checks'), past.length ? el('div', {class: 'checks'}, past.map(s =>
+      action(el('span', {class: 'check-copy'}, checkTime(s.checked_at), statusLine(vehicleStage(v, s, false), s)),
+        () => openCheck(v, s), {class: 'check-row', 'data-session': s.session_id}, icon('next')))) : hint(t('noPastChecks'))),
+    details(t('pastTickets'), tickets.length ? el('div', {class: 'tickets'}, tickets.map(ticket => el('div', {class: 'ticket-entry'},
+      el('strong', {}, ticket.ticket_id), checkTime(ticket.created_at), priorityLabel(ticket.urgency) && el('span', {}, priorityLine(ticket.urgency))))) : hint(t('noTickets'))),
   );
-  dock.replaceChildren(el('div', {class: 'dock'}, primary(t('diagnose'), () => {
-    const sid = state.sessions.get(v.vehicle_id) ?? current;
-    if (!sid) return;
-    const conversation = conversationFor(v.vehicle_id, sid);
-    navigate({page: 'chat', vid: v.vehicle_id, sid});
-    if (!conversation.busy && !conversation.verdict) sendChat(conversation, 'diagnose');
-  }, {id: 'diagnose', disabled: !sessions.length}, icon('next'))));
 }
 
 function conversationFor(vid, sid) {
@@ -314,21 +334,43 @@ function warnings(values) {
   return entries.length ? el('section', {class: 'box warnings'}, icon('warn'), el('div', {}, el('h3', {}, t('important')), reasons(entries))) : null;
 }
 const metric = (label, value) => el('div', {class: 'metric'}, el('dt', {}, label), el('dd', {}, el('strong', {}, value ?? t('noData'))));
-function verdict(d, id, opens) {
-  const status = stageOf(d);
+const cleanQuote = value => displayText(value).replace(/(\p{L})-\s+(\p{Ll})/gu, '$1$2').replace(/\s+/gu, ' ').trim();
+const cleanAssistant = value => displayText(value)
+  .replace(/(?<!\p{L})гипотеза(?!\p{L})/giu, word => word[0] === 'Г' ? 'Возможная причина' : 'возможная причина')
+  .replace(/(возможная причина:\s*)(\p{L}+)/giu, (_, prefix, word) => prefix + lowerStart(word));
+function resultStage(c, d) {
+  const v = state.cards.get(c.vid);
+  const latest = v?.last_check?.session_id === (d.session_id || c.sid);
+  const status = vehicleStage(v ?? {}, d, latest);
+  // A normal recording and an unresolved fleet warning are separate facts.
+  return status === 'anomaly' && stageOf(d) === 'normal' ? 'normal' : status;
+}
+function verdict(c, d, id, opens) {
+  const status = resultStage(c, d);
   const fail = status === 'check_failed', normal = status === 'normal';
   const incompatible = d.rule === 'R3-not-applicable';
-  const vTitle = normal ? t('normalTitle') : fail ? t('failedTitle') : incompatible ? t('notApplicable') : d.anomaly_title ? t('hypothesis', {name: d.anomaly_title}) : t('anomalyTitle');
-  const urgency = priorityLabel(d.urgency);
-  const next = el('div', {class: 'next-action'}, el('h3', {}, t('next')), el('p', {}, d.action || t(fail ? 'nextFail' : normal ? 'nextNormal' : 'nextAnomaly')));
-  const top = el('div', {class: `verdict-head ${stages[status][1]}`}, stagePill(status), el('h2', {}, vTitle), next,
-    urgency && pill(`${t('priority')}: ${urgency}`, ...priorityStyles[d.urgency]));
-  const metrics = !fail && el('dl', {class: 'metrics'}, metric(t('score'), score(d.anomaly_score) ? `${scoreText(d.anomaly_score)} / 1` : null), metric(t('confidence'), score(d.confidence) ? `${scoreText(d.confidence)} / 1` : null), metric(t('quality'), qualities[d.signal_quality] && t(qualities[d.signal_quality])));
+  const vTitle = t(status === 'quarantine' ? 'stopRelease' : fail ? 'failedTitle' : stages[status][0]);
+  const cause = !normal && !fail && !incompatible && d.anomaly_title;
+  const entries = Array.isArray(d.urgency_reasons) ? d.urgency_reasons.filter(Boolean) : [];
+  // The API sometimes sends a metrics readout as one of the reasons.
+  const isMetricsLine = line => /^(?:оценка отклонения|отклонение|(?:anomaly )?score)\s+\d/i.test(line) && /(?:уверенность|confidence)/i.test(line);
+  const whyLines = entries.map((line, index) => isMetricsLine(line) ? -1 : index).filter(index => index >= 0).slice(0, 2);
+  const otherReasons = entries.filter((_, index) => !whyLines.includes(index));
+  const card = el('div', {class: `verdict-head ${stages[status][1]}`}, el('h2', {}, vTitle),
+    cause && el('p', {class: 'verdict-cause'}, t('hypothesis', {name: lowerStart(cause)})),
+    incompatible && el('p', {}, t('notApplicable')),
+    fail && (d.description || d.reason) && el('p', {}, cleanQuote(d.description || d.reason)),
+    el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
+      el('p', {}, d.action || t(fail ? 'nextFail' : normal ? 'nextNormal' : 'nextAnomaly')),
+      fail && reasons(['recordTip1', 'recordTip2', 'recordTip3'].map(key => t(key)))),
+    whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t('why')), reasons(whyLines.map(index => entries[index]))) : null,
+    priorityLabel(d.urgency) && el('p', {class: 'priority-label'}, priorityLine(d.urgency)));
+  const metrics = el('dl', {class: 'metrics'}, metric(t('score'), score(d.anomaly_score) ? `${scoreText(d.anomaly_score)} / 1` : null),
+    metric(t('confidence'), score(d.confidence) ? `${scoreText(d.confidence)} / 1` : null), metric(t('quality'), qualities[d.signal_quality] && t(qualities[d.signal_quality])));
   const key = `priority-${id}`;
-  const hasReasons = Array.isArray(d.urgency_reasons) && d.urgency_reasons.length > 0;
-  const why = (metrics || hasReasons) && el('details', {class: 'fold', open: opens.has(key), 'data-trace': key},
-    el('summary', {}, t('metrics')), el('div', {class: 'fold-body'}, metrics, hasReasons && el('strong', {}, t(urgency ? 'whyPriority' : 'whyResult')), hasReasons && reasons(d.urgency_reasons)));
-  return el('article', {class: `verdict ${status}`}, top, warnings(d.warnings), why);
+  const more = el('details', {class: 'fold', open: opens.has(key), 'data-trace': key}, el('summary', {}, t('metrics')),
+    el('div', {class: 'fold-body'}, metrics, otherReasons.length && reasons(otherReasons)));
+  return el('article', {class: `verdict ${status}`}, card, warnings(d.warnings), more);
 }
 
 function citationLink(cite, label, attrs = {}) {
@@ -338,29 +380,61 @@ function citationLink(cite, label, attrs = {}) {
     openManual(cite);
   }}, label);
 }
-function markdown(text, citations) {
+// Keep common workshop measurements together without changing their values.
+const units = String.raw`мм рт\. ст\.|кгс(?:[·⋅]м|/см[²2])?|кПа|МПа|Па|бар|мм|см[²³23]?|км(?:/ч)?|мкм|м[²³23]?|об(?:/мин)?|мин|сек|ч|л(?:/мин)?|°[CFС]?|%|Н(?:[·⋅ ]м)?|кН|кг|мг|г|мл|В|А|Гц|кВт|mm|cm|km(?:/h)?|kg|kPa|MPa|Pa|bar|rpm|Nm|volts?|lit(?:er|re)s?|ms|Hz|kW|in|psi|s|m|h|V|A|L`;
+const decimal = '[−-]?\\d+(?:[.,]\\d+)?';
+const measurePattern = new RegExp(`(${decimal}\\s*[-–−]\\s*${decimal})(?:[ \u00a0]+(${units})(?![\\p{L}\\d]))?|(${decimal})[ \u00a0]+(${units})(?![\\p{L}\\d])`, 'giu');
+function measureNodes(value) {
+  const nodes = [];
+  let start = 0;
+  for (const match of value.matchAll(measurePattern)) {
+    nodes.push(value.slice(start, match.index));
+    const [, range, rangeUnit, amount, unit] = match;
+    const unitText = rangeUnit || unit;
+    nodes.push(el('span', {class: 'measure'}, `${range?.replace(/\s/g, '') || amount}${unitText ? '\u00a0' + unitText : ''}`));
+    start = match.index + match[0].length;
+  }
+  nodes.push(value.slice(start));
+  return nodes;
+}
+function sourceExcerpt(quote, key, opens) {
+  const text = cleanQuote(quote);
+  if (!text) return null;
+  const copy = el('p', {class: 'citation-excerpt'}, text);
+  const toggle = action(t('more'), () => {
+    container.classList.toggle('is-expanded');
+    const expanded = container.classList.contains('is-expanded');
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.textContent = t(expanded ? 'less' : 'more');
+    fitExcerpt(container);
+  }, {class: 'excerpt-toggle', 'aria-expanded': 'false'});
+  const container = el('div', {class: 'source-excerpt', 'data-excerpt': key}, copy, toggle);
+  container.fullQuote = text;
+  if (opens.has(key)) toggle.click();
+  return container;
+}
+function markdown(text, citations, id, opens) {
   const rendered = el('div', {class: 'markdown'});
   const sources = new Map((citations ?? []).filter(c => c.manual_id && Number.isInteger(c.page) && c.page > 0).map(c => [Number(c.n), c]));
   const inline = (value, allowBold = true) => {
-    const nodes = [], pattern = allowBold ? /\*\*([^*]+)\*\*|\[(\d+)\]/g : /\[(\d+)\]/g;
+    const nodes = [], pattern = allowBold ? /\*\*([^*]+)\*\*|\s*\[(\d+)\]/g : /\s*\[(\d+)\]/g;
     let start = 0;
     for (const match of value.matchAll(pattern)) {
-      nodes.push(value.slice(start, match.index));
+      nodes.push(...measureNodes(value.slice(start, match.index)));
       if (allowBold && match[1]) nodes.push(el('strong', {}, inline(match[1], false)));
       else {
         const n = Number(match[allowBold ? 2 : 1]);
         const cite = sources.get(n);
-        if (cite) {
-          nodes.push(citationLink(cite, match[0], {class: 'citation-chip inline-cite', 'aria-label': t('source', {n, name: cite.designation || cite.title, page: cite.page})}));
-        } else nodes.push(match[0]);
+        if (cite) nodes.push('\u00a0\u2060', citationLink(cite, `[${n}]`, {class: 'citation-chip inline-cite', 'aria-label': t('source', {n, name: cite.designation || cite.title, page: cite.page})}));
+        else nodes.push(match[0]);
       }
       start = match.index + match[0].length;
     }
-    nodes.push(value.slice(start));
+    nodes.push(...measureNodes(value.slice(start)));
     return nodes;
   };
   let paragraph = null, list = null;
-  for (const line of displayText(text).split(/\r?\n/)) {
+  for (const line of cleanAssistant(text).split(/\r?\n/)) {
     const heading = /^#{1,6}\s+(.+)$/.exec(line);
     const item = /^(?:([-+*])|(\d+)[.)])\s+(.+)$/.exec(line.trim());
     if (heading || item || !line.trim()) paragraph = null;
@@ -380,30 +454,67 @@ function markdown(text, citations) {
   }
   const references = [...sources].sort(([a], [b]) => a - b);
   const footer = references.length ? el('footer', {class: 'message-sources'}, el('strong', {}, t('sources')), el('ul', {}, references.map(([n, cite]) =>
-    el('li', {}, citationLink(cite, [el('span', {class: 'citation-chip'}, `[${n}]`), el('span', {class: 'citation-excerpt'},
-      el('strong', {}, t('pageRef', {name: cite.designation || cite.title, page: cite.page})), cite.quote && ` – «${cite.quote}»`)], {class: 'citation-row'}))))) : null;
+    el('li', {}, citationLink(cite, el('strong', {}, `[${n}] ${t('pageRef', {name: cite.designation || cite.title, page: cite.page})}`), {class: 'citation-row'}),
+      sourceExcerpt(cite.quote, `quote-${id}-${n}`, opens))))) : null;
   return [rendered, footer];
 }
+function fitExcerpt(quote) {
+  const copy = $('.citation-excerpt', quote), button = $('.excerpt-toggle', quote);
+  const full = quote.fullQuote;
+  if (!copy.clientHeight) return;
+  if (copy.textContent !== full) copy.textContent = full;
+  if (quote.classList.contains('is-expanded')) return;
+  const overflows = () => copy.scrollHeight > copy.clientHeight + 1;
+  button.hidden = !overflows();
+  if (button.hidden) return;
+  const words = full.split(' ');
+  let lo = 0, hi = words.length - 1;
+  const excerpt = count => `${words.slice(0, count).join(' ')}…`;
+  while (lo < hi) {
+    const middle = Math.ceil((lo + hi) / 2);
+    copy.textContent = excerpt(middle);
+    if (overflows()) hi = middle - 1;
+    else lo = middle;
+  }
+  copy.textContent = excerpt(lo);
+}
+function fitExcerpts(root) {
+  root.querySelectorAll('.source-excerpt').forEach(fitExcerpt);
+}
 function trace(turn, open) {
-  if (!turn.steps.length) return null;
+  if (!turn.steps.length || (turn.steps.length === 1 && !turn.diagnosis && turn.steps[0].status !== 'error')) return null;
   return el('details', {class: 'fold trace', open, 'data-trace': `steps-${turn.id}`}, el('summary', {}, t('steps')),
     el('ol', {class: 'fold-body'}, turn.steps.map(s => el('li', {}, el('div', {class: 'between'}, el('strong', {}, s.title),
-      s.status === 'running' ? pill(t('working'), 'amber', 'clock') : s.status === 'error' ? pill(t('error'), 'red', 'cross') : pill(t('done'), 'green', 'check')), s.detail ? hint(s.detail) : null))));
+      s.status === 'running' ? pill(t('working'), 'neutral', 'clock') : s.status === 'error' ? pill(t('error'), 'red', 'cross') : pill(t('done'), 'green', 'check')), s.detail ? hint(s.detail) : null))));
 }
-function renderTurn(turn, latestResult, opens) {
+function ticketCommand(c) {
+  if (c.receipt) return action(t('openReceipt'), () => navigate({page: 'receipt', vid: c.vid, sid: c.sid}), {class: 'full'});
+  if (!canDraft(c.verdict)) return null;
+  return action(t(c.draft ? 'openDraft' : 'createDraft'), () => {
+    if (c.draft) navigate({page: 'draft', vid: c.vid, sid: c.sid});
+    else sendChat(c, 'draft_ticket');
+  }, {class: 'full', 'data-command': 'draft', disabled: c.busy}, icon('next'));
+}
+function renderTurn(c, turn, latestResult, opens) {
   const block = el('section', {class: 'turn'});
   if (turn.question) block.append(el('div', {class: 'user-message'}, el('strong', {}, t('mechanic')), el('p', {}, turn.question)));
-  const answers = turn.messages.map(m => el('article', {class: 'box agent-message'}, markdown(m.text, m.citations)));
+  const answers = turn.messages.map((m, i) => el('article', {class: 'box agent-message'}, markdown(m.text, m.citations, `${turn.id}-${i}`, opens)));
   const log = trace(turn, opens.has(`steps-${turn.id}`));
-  const diagnosisResponse = turn.diagnosis ? el('details', {class: 'fold', open: opens.has(`answer-${turn.id}`), 'data-trace': `answer-${turn.id}`}, el('summary', {}, t('answer')), el('div', {class: 'fold-body'}, answers)) : null;
+  const diagnosisResponse = turn.diagnosis && answers.length ? el('details', {class: 'fold', open: opens.has(`answer-${turn.id}`), 'data-trace': `answer-${turn.id}`}, el('summary', {}, t('answer')), el('div', {class: 'fold-body'}, answers)) : null;
   if (turn.diagnosis && !latestResult) {
-    block.append(el('details', {class: 'fold previous', open: opens.has(`verdict-${turn.id}`), 'data-trace': `verdict-${turn.id}`}, el('summary', {}, t('result'), stagePill(stageOf(turn.diagnosis))), el('div', {class: 'fold-body'}, verdict(turn.diagnosis, turn.id, opens), answers.length > 0 && diagnosisResponse, log)));
+    block.append(el('details', {class: 'fold previous', open: opens.has(`verdict-${turn.id}`), 'data-trace': `verdict-${turn.id}`}, el('summary', {}, t('result'), stagePill(resultStage(c, turn.diagnosis))), el('div', {class: 'fold-body'}, verdict(c, turn.diagnosis, turn.id, opens), diagnosisResponse, log)));
   } else {
-    if (turn.diagnosis) block.append(verdict(turn.diagnosis, turn.id, opens));
+    if (turn.diagnosis) {
+      const card = verdict(c, turn.diagnosis, turn.id, opens);
+      const command = ticketCommand(c);
+      if (command) card.lastElementChild.before(command);
+      block.append(card);
+    }
     if (answers.length) block.append(...(diagnosisResponse ? [diagnosisResponse] : answers));
     if (log) block.append(log);
   }
   for (const error of turn.errors) block.append(el('p', {class: 'notice red', role: 'alert'}, error));
+  if (!c.busy && !c.verdict && turn === c.turns.at(-1) && turn.errors.length && turn.mode === 'diagnose') block.append(primary(t('retry'), () => sendChat(c, 'diagnose')));
   return block;
 }
 const spinner = () => el('span', {class: 'spinner', 'aria-hidden': 'true'});
@@ -416,45 +527,53 @@ function pendingText(turn) {
   return t(step?.status === 'running' ? runningSteps[step.tool] ?? 'pending' : 'pending');
 }
 
-const canDraft = d => stageOf(d) === 'anomaly' && d.ticket_allowed !== false;
+const canDraft = d => ['anomaly', 'quarantine'].includes(stageOf(d)) && d.ticket_allowed !== false;
 function updateChat(c, latestOnly = false, scrollTo = null) {
   if (!isCurrent(c)) return;
   const feed = $('#conversation');
   if (!feed) return;
   const turn = c.turns.at(-1);
   const result = c.turns.findLast(item => item.diagnosis);
-  const opens = new Set([...feed.querySelectorAll('details[open]')].map(d => d.dataset.trace));
-  if (latestOnly && turn && feed.lastElementChild) feed.lastElementChild.replaceWith(renderTurn(turn, turn === result, opens));
-  else feed.replaceChildren(...c.turns.map(item => renderTurn(item, item === result && item === turn, opens)));
+  const opens = new Set([...feed.querySelectorAll('details[open], .source-excerpt.is-expanded')].map(d => d.dataset.trace || d.dataset.excerpt));
+  const focus = document.activeElement;
+  if (latestOnly && turn && !turn.diagnosis && feed.lastElementChild) feed.lastElementChild.replaceWith(renderTurn(c, turn, false, opens));
+  else feed.replaceChildren(...c.turns.map(item => renderTurn(c, item, item === result, opens)));
+  const cmd = $('[data-command="draft"]', feed);
+  if (cmd) cmd.disabled = c.busy || recording?.c === c;
+  if (focus?.dataset.command && !cmd?.disabled) cmd?.focus({preventScroll: true});
+  fitExcerpts(feed);
   const progress = $('#chat-progress');
   $('#chat-progress-row').hidden = !c.busy;
   const statusText = c.busy ? pendingText(turn) : '';
   if (progress.textContent !== statusText) progress.textContent = statusText;
-  const controls = $('#chat-controls');
-  const commands = [];
-  if (c.receipt) commands.push(action(t('openReceipt'), () => navigate({page: 'receipt', vid: c.vid, sid: c.sid}), {class: 'full', disabled: c.busy}));
-  else if (canDraft(c.verdict)) commands.push(action(t(c.draft ? 'openDraft' : 'createDraft'), () => {
-    if (c.draft) navigate({page: 'draft', vid: c.vid, sid: c.sid});
-    else sendChat(c, 'draft_ticket');
-  }, {class: 'full', 'data-command': 'draft', disabled: c.busy}, icon('next')));
-  else if (!c.busy && !c.verdict) commands.push(primary(t('diagnose'), () => sendChat(c, 'diagnose')));
-  controls.replaceChildren(...commands);
   updateComposer(c);
   if (scrollTo) feed.lastElementChild?.querySelector(scrollTo)?.scrollIntoView({block: 'start'});
 }
 function renderChat(v, s, c) {
-  main.replaceChildren(el('h1', {tabindex: '-1', class: 'visually-hidden'}, v.vehicle_id), context(v, s, true),
-    el('div', {id: 'conversation', role: 'log', 'aria-label': t('chat'), 'aria-live': 'polite'}));
+  const feed = el('div', {id: 'conversation', role: 'log', 'aria-label': t('chat'), 'aria-live': 'polite'});
+  feed.addEventListener('toggle', () => fitExcerpts(feed), true);
+  main.replaceChildren(context(v, s), feed);
   const composer = el('form', {class: 'compose', onsubmit: e => { e.preventDefault(); ask(c, c.question); }},
-    el('div', {class: 'question-row'}, el('textarea', {id: 'question', name: 'question', rows: '2', placeholder: t('question'), 'aria-label': t('question'), autocomplete: 'off', maxlength: '2000', oninput: e => { c.question = e.target.value; if (c.voiceNotice === 'micReady') c.voiceNotice = ''; updateComposer(c); }}),
-      iconButton(t('mic'), 'mic', () => toggleRecording(c), {id: 'mic', 'aria-describedby': 'voice-status'})),
-    el('div', {class: 'voice-status', id: 'voice-status', role: 'status'}, el('span', {id: 'voice-label'}), el('span', {id: 'mic-timer', class: 'mono', 'aria-hidden': 'true'})),
-    el('button', {id: 'send-question', class: 'primary full', type: 'submit', 'aria-label': t('sendQuestion')}, t('send'), icon('send')),
+    el('div', {class: 'question-row'}, el('textarea', {id: 'question', name: 'question', rows: '1', placeholder: t('question'), 'aria-label': t('question'), autocomplete: 'off', maxlength: '2000', oninput: e => { c.question = e.target.value; if (c.voiceNotice === 'micReady') c.voiceNotice = ''; updateComposer(c); }}),
+      el('div', {class: 'voice-status', id: 'voice-live', role: 'status', hidden: true}, el('span', {id: 'voice-label'}), el('span', {id: 'mic-timer', 'aria-hidden': 'true'})),
+      iconButton(t('mic'), 'mic', () => toggleRecording(c), {id: 'mic'}),
+      el('button', {id: 'send-question', class: 'primary', type: 'submit', 'aria-label': t('sendQuestion'), hidden: true}, t('send'))),
+    el('p', {class: 'voice-status', id: 'voice-status', role: 'status', hidden: true}),
   );
-  dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {class: 'chat-status', id: 'chat-progress-row', hidden: true}, spinner(), el('span', {id: 'chat-progress', role: 'status'})), el('div', {id: 'chat-controls'}), composer));
+  dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {class: 'chat-status', id: 'chat-progress-row', hidden: true}, spinner(), el('span', {id: 'chat-progress', role: 'status'})), composer));
   $('#question').value = c.question;
   updateChat(c);
 }
+function resizeQuestion() {
+  const input = $('#question');
+  if (!input || input.hidden) return;
+  input.style.height = 'auto';
+  const css = getComputedStyle(input);
+  const borders = parseFloat(css.borderTopWidth) + parseFloat(css.borderBottomWidth);
+  const max = parseFloat(css.lineHeight) * 4 + parseFloat(css.paddingTop) + parseFloat(css.paddingBottom) + borders;
+  input.style.height = `${Math.min(input.scrollHeight + borders, max)}px`;
+}
+window.addEventListener('resize', () => { resizeQuestion(); fitExcerpts(main); });
 function ask(c, value) {
   const q = value.trim();
   if (!q || c.busy || recording?.c === c) return;
@@ -471,30 +590,35 @@ function updateComposer(c) {
   if (!isCurrent(c) || !$('#mic')) return;
   const active = recording?.c === c ? recording : null;
   const running = active?.phase === 'recording';
-  const mic = $('#mic'), label = running ? t('micStop') : `${t('micShort')}: ${t('mic')}`;
+  const mic = $('#mic'), label = running ? t('micStop') : t('mic');
+  const input = $('#question'), send = $('#send-question');
+  const hasText = Boolean(c.question.trim());
   mic.disabled = c.busy || Boolean(active && !running);
-  mic.hidden = active?.phase === 'sending';
+  mic.hidden = active ? active.phase === 'sending' : hasText;
   mic.setAttribute('aria-pressed', String(Boolean(running)));
-  if (mic.getAttribute('aria-label') !== label) {
+  if (mic.getAttribute('aria-label') !== label || running !== mic.classList.contains('recording')) {
     mic.setAttribute('aria-label', label);
     mic.title = label;
-    mic.replaceChildren(icon(running ? 'stop' : 'mic'), el('span', {'aria-hidden': 'true'}, t(running ? 'micStop' : 'micShort')));
+    mic.classList.toggle('recording', running);
+    mic.replaceChildren(icon(running ? 'stop' : 'mic'), running ? t('micStop') : null);
   }
-  const input = $('#question'), send = $('#send-question');
-  $('#chat-controls').hidden = Boolean(active) || c.busy;
+  const cmd = $('[data-command="draft"]');
+  if (cmd) cmd.disabled = c.busy || Boolean(active);
   $('.compose').hidden = c.busy;
-  input.hidden = send.hidden = Boolean(active);
-  $('.question-row').classList.toggle('dictating', Boolean(active));
+  input.hidden = Boolean(active);
   input.disabled = c.busy || Boolean(active);
-  send.disabled = c.busy || Boolean(active) || !c.question.trim();
-  const voice = $('#voice-status');
+  send.hidden = Boolean(active) || !hasText;
+  send.disabled = c.busy || send.hidden;
+  const live = $('#voice-live'), voice = $('#voice-status');
   const notice = active ? {asking: 'micAsk', recording: 'micRecording', sending: 'micTranscribe'}[active.phase] : c.voiceNotice;
-  voice.hidden = !notice;
-  voice.classList.toggle('red', running || Boolean(notice && !active && notice !== 'micReady'));
-  const message = $('#voice-label');
+  live.hidden = !active;
+  voice.hidden = Boolean(active) || !notice;
+  voice.classList.toggle('red', Boolean(notice && !active && notice !== 'micReady'));
+  const message = active ? $('#voice-label') : voice;
   if (message.textContent !== (notice ? t(notice) : '')) message.textContent = notice ? t(notice) : '';
   const timer = $('#mic-timer');
   timer.hidden = !running;
+  resizeQuestion();
   if (running) {
     const elapsed = Math.min(60, Math.floor((performance.now() - active.start) / 1000));
     timer.textContent = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
@@ -627,7 +751,7 @@ async function readEvents(response, visit) {
 async function sendChat(c, mode, question = '') {
   if (c.busy || recording?.c === c || (mode === 'draft_ticket' && !canDraft(c.verdict))) return;
   c.busy = true;
-  const turn = {id: c.turns.length + 1, question, pending: true, steps: [], messages: [], errors: []};
+  const turn = {id: c.turns.length + 1, question, mode, pending: true, steps: [], messages: [], errors: []};
   c.turns.push(turn);
   updateChat(c, false, question ? '.user-message' : null);
   if (mode === 'diagnose' && isCurrent(c)) main.scrollTop = 0;
@@ -648,7 +772,7 @@ async function sendChat(c, mode, question = '') {
       } else if (event.type === 'message') turn.messages.push(event);
       else if (event.type === 'draft' && mode === 'draft_ticket' && event.draft?.draft_id) {
         turn.draft = c.draft = event.draft;
-        c.edits = {conclusion: displayText(c.draft.conclusion), urgency: c.draft.urgency || '', operations: displayText((c.draft.operations || []).join('\n')), spare_parts: displayText((c.draft.spare_parts || []).join('\n'))};
+        c.edits = {conclusion: cleanAssistant(c.draft.conclusion), urgency: c.draft.urgency || '', operations: displayText((c.draft.operations || []).join('\n')), spare_parts: displayText((c.draft.spare_parts || []).join('\n'))};
       } else if (event.type === 'error') turn.errors.push(event.text || t('chatError'));
       else if (event.type === 'done') { done = true; return; }
       else return;
@@ -662,6 +786,10 @@ async function sendChat(c, mode, question = '') {
   } finally {
     c.busy = false;
     turn.pending = false;
+    if (turn.errors.length && question && !turn.messages.length) {
+      c.question = question;
+      if (isCurrent(c)) $('#question').value = question;
+    }
     updateChat(c, true, turn.errors.length ? '.notice' : null);
     if (turn.draft && isCurrent(c) && !turn.errors.length) navigate({page: 'draft', vid: c.vid, sid: c.sid});
   }
@@ -692,7 +820,7 @@ function renderDraft(v, s, c) {
     el('p', {id: 'ticket-error', role: 'alert', class: 'notice red', hidden: !c.confirmError}, c.confirmError || ''),
   );
   const warning = warnings(d.warnings);
-  main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill(t('unsent'), 'amber', 'clock'), title(t('draft'))), ...(warning ? [warning] : []), form);
+  main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill(t('unsent'), 'neutral', 'clock'), title(t('draft'))), ...(warning ? [warning] : []), form);
   dock.replaceChildren(el('div', {class: 'dock'}, el('button', {id: 'confirm-ticket', class: 'primary full', type: 'submit', form: 'draft-form', disabled: c.confirming || c.confirmUncertain}, c.confirming ? t('sending') : t('confirm'), icon('check')), hint(t('confirmNote'))));
 }
 async function confirmTicket(c) {
@@ -712,7 +840,7 @@ async function confirmTicket(c) {
   try {
     const data = await json(`${api}/tickets/confirm`, jsonPost(payload));
     if (data.status !== 'created' || !data.ticket_id) throw new Error(t('noTicketId'));
-    c.receipt = {id: data.ticket_id, payload};
+    c.receipt = {id: data.ticket_id, payload, conclusion, override};
     state.vehicles = null;
     if (isCurrent(c, 'draft')) navigate({page: 'receipt', vid: c.vid, sid: c.sid}, true);
     try {
@@ -730,8 +858,10 @@ async function confirmTicket(c) {
 function renderReceipt(v, s, c) {
   if (!c.receipt) { main.replaceChildren(title(t('noReceipt')), action(t('back'), back)); return; }
   const result = c.receipt;
-  const fields = [[t('machine'), [v.vehicle_id, v.garage_no].filter(Boolean).join(' / ')], [t('check'), dateFor(s?.checked_at)], [t('conclusion'), result.payload.conclusion], [t('priority'), priorityLabel(result.payload.urgency)]];
-  main.replaceChildren(el('section', {class: 'receipt green'}, pill(t('accepted'), 'green', 'check'), title(t('receipt')), el('strong', {class: 'receipt-id mono'}, result.id)), el('section', {class: 'box stack'}, el('h2', {}, t('sentDetails')), el('dl', {class: 'receipt-fields'}, fields.map(([label, value]) => el('div', {}, el('dt', {}, label), el('dd', {}, value))))));
+  const fields = [[t('machine'), [v.vehicle_id, v.garage_no].filter(Boolean).join(' / ')], [t('checkedAt'), dateFor(s?.checked_at)],
+    [t('conclusion'), result.conclusion, 'receipt-prose'], [t('priority'), priorityLabel(result.payload.urgency)],
+    ...(result.override ? [[t('overrideLabel'), result.override, 'receipt-prose']] : [])];
+  main.replaceChildren(el('section', {class: 'receipt green'}, title(t('receipt')), el('strong', {class: 'receipt-id mono'}, result.id)), el('section', {class: 'box stack'}, el('h2', {}, t('sentDetails')), el('dl', {class: 'receipt-fields'}, fields.map(([label, value, style]) => el('div', {}, el('dt', {}, label), el('dd', {class: style}, value))))));
   dock.replaceChildren(el('div', {class: 'dock'}, primary(t('backPark'), () => navigate({page: 'park'}))));
 }
 function render() {
@@ -750,20 +880,25 @@ function render() {
 }
 
 let viewer;
-function openManual(cite) {
+function openManual(cite, push = true) {
+  if (push) history.pushState({...state.route, manualCite: cite}, '', location.pathname);
   viewer = {cite, serial: 0, trigger: document.activeElement};
   manual.replaceChildren();
   if (!manual.open) manual.showModal();
   document.body.classList.add('viewing-page');
   loadManual(cite.page);
 }
-manual.addEventListener('close', () => {
-  document.body.classList.remove('viewing-page');
-  viewer?.trigger?.focus({preventScroll: true});
+manual.addEventListener('cancel', event => { event.preventDefault(); back(); });
+function closeManual() {
+  const trigger = viewer?.trigger;
   viewer = null;
-});
+  manual.close();
+  document.body.classList.remove('viewing-page');
+  trigger?.focus({preventScroll: true});
+}
 function pageText(text, quote) {
-  const needle = String(quote ?? '').trim().replace(/^…|…$/g, '').trim();
+  const needle = cleanQuote(quote).replace(/^…|…$/g, '').trim();
+  text = text.replace(/(\p{L})-\s+(\p{Ll})/gu, '$1$2');
   // The API collapses PDF line breaks when creating some excerpts.
   const pattern = needle.split(/\s+/).map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
   const match = pattern && new RegExp(pattern, 'u').exec(text);
@@ -776,14 +911,15 @@ async function loadManual(page) {
   const active = viewer, seq = ++active.serial;
   const cite = active.cite;
   const initialFocus = document.activeElement?.id;
-  const head = el('header', {class: 'top manual-top'}, iconButton(t('closeManual'), 'back', () => manual.close(), {id: 'close-manual'}), el('strong', {}, t('manual')), state.demo ? el('span', {class: 'demo'}, t('demo')) : null);
+  const head = el('header', {class: 'top manual-top'}, iconButton(t('closeManual'), 'back', back, {id: 'close-manual'}), el('strong', {}, t('manual')));
   const body = el('div', {class: 'manual-body'}, el('h2', {id: 'manual-heading'}, cite.title || cite.designation || t('manual')), hint(t('openPage', {page}), {role: 'status'}));
   manual.replaceChildren(head, body);
   manual.scrollTop = 0;
+  $('#close-manual').focus({preventScroll: true});
   try {
     const meta = await json(manualPath(cite.manual_id, page));
     if (viewer !== active || seq !== active.serial) return;
-    const quote = page === cite.page && cite.quote;
+    const quote = page === cite.page ? cleanQuote(cite.quote) : '';
     const {copy, found} = pageText(meta.text || '', quote);
     const loading = el('p', {class: 'image-status', role: 'status'}, spinner(), t('imageLoading'));
     const image = el('img', {id: 'manual-image', alt: t('pageRef', {name: meta.title, page: meta.page}), hidden: true});
@@ -793,17 +929,35 @@ async function loadManual(page) {
     image.addEventListener('load', () => { loading.remove(); image.hidden = false; zoomIn.disabled = false; });
     image.addEventListener('error', () => { loading.replaceWith(hint(t('imageFailed'), {role: 'status'})); });
     let zoom = 1;
+    const zoomLevel = el('output', {'aria-live': 'polite'}, '100%');
     const changeZoom = delta => {
       zoom = Math.max(1, Math.min(3, zoom + delta));
       image.style.width = `${zoom * 100}%`;
+      zoomLevel.textContent = `${zoom * 100}%`;
       zoomOut.disabled = zoom === 1;
       zoomIn.disabled = zoom === 3;
     };
-    body.replaceChildren(...[el('div', {class: 'intro'}, el('h2', {id: 'manual-heading'}, meta.title || cite.title), hint(meta.designation || cite.designation || '')),
-      el('div', {class: 'manual-controls'}, iconButton(t('prevPage'), 'prev', () => loadManual(page - 1), {id: 'manual-prev', disabled: page <= 1}), el('strong', {class: 'mono', 'aria-live': 'polite'}, t('pageNumber', {page: meta.page, total: meta.pages_total})), iconButton(t('nextPage'), 'next', () => loadManual(page + 1), {id: 'manual-next', disabled: page >= meta.pages_total}), el('span', {class: 'camera-gap'}), zoomOut, zoomIn),
+    const toggleZoom = () => changeZoom(zoom === 1 ? 1 : -2);
+    let lastTap;
+    let suppressDoubleClickUntil = 0;
+    image.addEventListener('pointerup', e => {
+      if (e.pointerType !== 'touch' || !e.isPrimary) return;
+      const now = performance.now();
+      if (lastTap && now - lastTap.at < 330 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24) {
+        toggleZoom();
+        lastTap = null;
+        suppressDoubleClickUntil = now + 500;
+      } else lastTap = {at: now, x: e.clientX, y: e.clientY};
+    });
+    image.addEventListener('dblclick', () => { if (performance.now() > suppressDoubleClickUntil) toggleZoom(); });
+    body.replaceChildren(...[el('div', {class: 'intro'}, el('h2', {id: 'manual-heading'}, meta.title || cite.title)),
+      el('div', {class: 'manual-controls'}, el('div', {class: 'page-navigation'},
+        iconButton(t('prevPage'), 'prev', () => loadManual(page - 1), {id: 'manual-prev', disabled: page <= 1}), el('strong', {'aria-live': 'polite'}, t('pageNumber', {page: meta.page, total: meta.pages_total})),
+        iconButton(t('nextPage'), 'next', () => loadManual(page + 1), {id: 'manual-next', disabled: page >= meta.pages_total})),
+        el('div', {class: 'zoom-group', role: 'group', 'aria-label': t('zoom')}, el('span', {}, t('zoom')), zoomOut, zoomLevel, zoomIn)),
       quote ? el('section', {class: 'box manual-text'}, el('h3', {}, t('quote')), el('blockquote', {class: found ? 'matched-quote' : null}, `«${quote}»`)) : null,
-      meta.text ? details(t('pageText'), copy) : null,
       viewport,
+      meta.text ? details(t('pageText'), copy) : null,
     ].filter(Boolean));
     image.src = `${manualPath(cite.manual_id, page)}.png`;
     const target = initialFocus && document.getElementById(initialFocus);
@@ -815,6 +969,8 @@ async function loadManual(page) {
   }
 }
 
+history.scrollRestoration = 'manual';
+state.route.key = routeSerial;
 history.replaceState(state.route, '', location.pathname);
 showRoute(state.route);
-json(`${api}/health`).then(health => { if (health.mode === 'demo') { state.demo = true; header(); } }).catch(() => {});
+json(`${api}/health`).then(health => { if (health.mode === 'demo') { state.demo = true; if (state.route.page === 'park' && !main.hasAttribute('aria-busy') && !state.loadFailed) { const heading = $('.list-heading'); if (heading && !$('.demo', heading)) heading.append(el('span', {class: 'demo'}, t('demo'))); } } }).catch(() => {});
