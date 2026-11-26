@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import pymupdf
 import uvicorn
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -37,12 +37,36 @@ CONFIRMED = {}
 app = FastAPI(title='Цифровой механик — учебный сервер')
 
 
+Lang = Literal['ru', 'uz', 'tg', 'ky', 'kk', 'hi', 'en']
+VOICE_FIXTURES = {
+    'ru': 'Как проверить тепловой зазор клапанов?',
+    'uz': 'Klapanlarning issiqlik tirqishini qanday tekshiraman?',
+    'tg': 'Фосилаи гармии клапанҳоро чӣ тавр санҷам?',
+    'ky': 'Клапандардын жылуулук боштугун кантип текшерем?',
+    'kk': 'Клапандардың жылу саңылауын қалай тексеремін?',
+    'hi': 'वाल्व का क्लीयरेंस कैसे जाँचें?',
+    'en': 'How do I check the valve clearance?',
+}
+
+
 class Chat(BaseModel):
     conversation_id: str
     vehicle_id: str
     session_id: str | None = None
     message: str = ''
     action: Literal['diagnose', 'draft_ticket'] | None = None
+    lang: Lang = 'ru'
+
+
+@app.post('/api/transcribe')
+async def transcribe(audio: UploadFile = File(...), lang: Lang = Form('ru')):
+    """Exercise the upload contract without running speech recognition."""
+    try:
+        if not await audio.read(1):
+            raise HTTPException(422, 'Пустая запись')
+        return {'text': VOICE_FIXTURES[lang], 'lang': lang}
+    finally:
+        await audio.close()
 
 
 class Confirm(BaseModel):
@@ -247,7 +271,7 @@ def index():
 
 @app.get('/{asset}', include_in_schema=False)
 def static(asset: str):
-    if asset not in {'app.js', 'styles.css'}:
+    if asset not in {'app.js', 'styles.css', 'i18n.js'}:
         raise HTTPException(404)
     return FileResponse(WEB / asset)
 
