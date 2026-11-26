@@ -123,7 +123,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if appl == "no":
         note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
         warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
-                        "Вероятна ошибка ML-модели или карточки машины – нужен очный осмотр, диагноз по этой записи не подтвержден.")
+                        "Карточка машины верна – это ошибка ML-модели, а не диагноз: неисправность по этому классу не ставится.")
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
             warnings.append(_doubt_text(quality, conf))   # #101: при warning предупреждение показывается всегда
         # в руководстве на этот двигатель нет инструкции по такому узлу – продукт заявку не отправляет (разъяснение #103)
@@ -131,9 +131,9 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
                   f"проверка {result.get('session_id')}: ML-сервис указал {code} «{result.get('anomaly_title')}» "
                   f"(оценка {fmt(score)}, уверенность {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}). "
                   f"Класс не подходит к двигателю {engine}, инструкции по этому узлу в руководстве нет. "
-                  "Нужен очный осмотр двигателя и дефектовка по его результату.")
-        return Verdict("anomaly", None, "Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины. "
-                       "Заявку продукт не отправляет – оформите дефектовку по порядку парка.", False,
+                  "Нужна повторная проверка или дефектовка двигателя.")
+        return Verdict("anomaly", None, "Тип отклонения не подходит к двигателю этой машины – это ошибка модели. "
+                       "Повторите проверку или проведите дефектовку; заявку продукт не отправляет.", False,
                        [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но класс {code} неприменим к {engine}.",
                         f"В руководстве на {engine} нет инструкции по узлу «{result.get('anomaly_title')}», поэтому заявка не отправляется."],
                        warnings, "R3-not-applicable", sev, appl, defect_note=defect)

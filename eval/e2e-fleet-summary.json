@@ -11,9 +11,10 @@
   },
   "inspect_first": 6,
   "tickets_created": 23,
-  "diagnose_p50_seconds": 6.8,
-  "diagnose_max_seconds": 15.1,
-  "draft_p50_seconds": 4.0
+  "defect_notes_without_ticket": 0,
+  "diagnose_p50_seconds": 7.5,
+  "diagnose_max_seconds": 24.2,
+  "draft_p50_seconds": 4.8
  },
  "rules_checked": [
   "сбой записи: вердикт check_failed, без приоритета и заявки, без ссылок на нормы",
@@ -22,5 +23,7 @@
   "черновик по контракту Mock ТОиР: код из /diagnose, непустые заключение и работы, приоритет равен рассчитанному программой, ссылки manual + pdf_page от 1",
   "подтверждение -> ticket_id TKT-…; повторное подтверждение возвращает ту же заявку; заявка видна в истории машины",
   "где заявка запрещена – черновик не создается, подтверждение несуществующего черновика отклоняется"
- ]
+ ],
+ "code": "75a48a4",
+ "model": "deepseek-flash"
 }

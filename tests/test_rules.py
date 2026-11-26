@@ -43,6 +43,9 @@ def test_not_applicable_class_flagged(code, engine):
     # инструкции по такому узлу в руководстве нет: заявку продукт не отправляет, механик получает текст рекомендации
     assert v.rule == "R3-not-applicable" and v.urgency is None and not v.ticket_allowed and v.warnings
     assert v.defect_note and code in v.defect_note and "дефектовк" in v.defect_note
+    # разъяснение заказчика: карточка машины главнее – это ошибка модели, а не диагноз; повторить проверку или дефектовка
+    assert "ошибка модели" in v.action and "Повторите проверку" in v.action and "дефектовк" in v.action
+    assert any("ошибка ML-модели, а не диагноз" in w for w in v.warnings)
 
 
 def test_normal_after_unresolved_critical_warns():
