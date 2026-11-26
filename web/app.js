@@ -33,7 +33,12 @@ const priorityLabel = code => priorities.includes(code) ? t(code) : null;
 const priorityLine = code => t('priorityLine', {level: priorityLabel(code)?.toLocaleLowerCase(lang)});
 const lowerStart = value => lang === 'ru' && value ? value[0].toLocaleLowerCase(lang) + value.slice(1) : value;
 const qualities = {good: 'good', warning: 'noisy', bad: 'poor'};
-const formatDate = options => new Intl.DateTimeFormat(lang, {timeZone: 'Europe/Moscow', ...options});
+// в браузере может не быть названий месяцев для узбекского, таджикского и т. п. – тогда дата цифрами: 19.11.2026, 17:50
+const formatDate = options => {
+  if (Intl.DateTimeFormat.supportedLocalesOf(lang).length) return new Intl.DateTimeFormat(lang, {timeZone: 'Europe/Moscow', ...options});
+  const numeric = {...options}; if (numeric.month) numeric.month = '2-digit'; if (numeric.day) numeric.day = '2-digit';
+  return new Intl.DateTimeFormat('ru-RU', {timeZone: 'Europe/Moscow', ...numeric});
+};
 let moscow, ruDay, ruTime, number;
 let routeSerial = 0;
 const routeScroll = new Map();
@@ -203,7 +208,7 @@ const sampleSearch = () => el('span', {class: 'replica search-replica'}, icon('s
 const sampleCar = () => el('span', {class: 'sample-car'}, plate('T792HO98'), el('span', {class: 'row-model'}, el('strong', {class: 'garage'}, 'Г-112'), el('span', {}, 'Урал‑5557‑10')), stagePill('quarantine'));
 const guideSteps = [
   () => el('ul', {class: 'guide-points'}, ['guide1a', 'guide1b', 'guide1c'].map(key => el('li', {}, icon('check'), el('span', {}, t(key))))),
-  () => el('div', {class: 'guide-stack'}, sampleSearch(), el('ul', {class: 'guide-legend'}, [['quarantine', 'guideRed'], ['anomaly', 'guideAmber'], ['check_failed', 'guideViolet'], ['normal', 'guideGreen']]
+  () => el('div', {class: 'guide-stack'}, sampleSearch(), el('p', {class: 'guide-caption'}, t('guideLabels')), el('ul', {class: 'guide-legend'}, [['quarantine', 'guideRed'], ['anomaly', 'guideAmber'], ['check_failed', 'guideViolet'], ['normal', 'guideGreen']]
     .map(([stage, key]) => el('li', {}, stagePill(stage), el('span', {}, t(key)))))),
   () => el('div', {class: 'guide-stack'}, sampleCar(), replica(t('diagnose'))),
   () => el('ol', {class: 'guide-flow'}, guideRow(replica(null, 'mic', 'mic'), t('guide4a'), true), guideRow(replica(t('micStop'), 'stop', 'stop'), t('guide4b'), true),
@@ -347,7 +352,7 @@ function vehicleModel(v) {
   return el('span', {class: 'row-model'}, garage(v) && el('strong', {class: 'garage'}, garage(v)), model(v) && el('span', {}, modelText(v)));
 }
 function statusLine(status, check) {
-  const cause = ['quarantine', 'anomaly'].includes(status) && (check?.anomaly_title || (stageOf(check) === 'normal' && t('unresolved')));
+  const cause = ['quarantine', 'anomaly'].includes(status) && (faultName(check) || (stageOf(check) === 'normal' && t('unresolved')));
   return el('span', {class: 'status-line'}, stagePill(status), cause && el('span', {class: 'cause'}, cause));
 }
 function vehicleRow(v) {
@@ -504,7 +509,7 @@ function verdict(c, d, id, opens) {
   const fail = status === 'check_failed', normal = status === 'normal';
   const incompatible = d.rule === 'R3-not-applicable';
   const vTitle = t(status === 'quarantine' ? 'stopRelease' : fail ? 'failedTitle' : stages[status][0]);
-  const cause = !normal && !fail && !incompatible && d.anomaly_title;
+  const cause = !normal && !fail && !incompatible && faultName(d);
   const entries = Array.isArray(d.urgency_reasons) ? d.urgency_reasons.filter(Boolean) : [];
   // The API sometimes sends a metrics readout as one of the reasons.
   const isMetricsLine = line => (/^(?:оценка отклонения|отклонение|(?:anomaly )?score)\s+\d/i.test(line) && /(?:уверенность|confidence)/i.test(line)) || /^код по справочнику/i.test(line);
@@ -512,18 +517,21 @@ function verdict(c, d, id, opens) {
   const otherReasons = entries.filter((_, index) => !whyLines.includes(index));
   const card = el('div', {class: `verdict-head ${stages[status][1]}`}, el('h2', {}, vTitle),
     cause && el('p', {class: 'verdict-cause'}, t('hypothesis', {name: lowerStart(cause)})),
-    // те же слова и шкала, что у графика в карточке машины: отличие звука от нормы и уверенность программы – два разных числа
-    !fail && !incompatible && !normal && score(d.anomaly_score) && el('p', {class: 'verdict-facts'}, `${t('scoreShort')}: ${scoreText(d.anomaly_score)} / 1`),
-    !fail && score(d.confidence) && el('p', {class: 'verdict-facts'}, `${t('confidence')}: ${scoreText(d.confidence)} / 1`,
-      score(d.conf_threshold) ? [' ', el('span', {class: 'nowrap'}, `(${t('confThreshold', {v: scoreText(d.conf_threshold)})})`)] : ''),
     incompatible && el('p', {}, t('notApplicable')),
     fail && (d.description || d.reason) && el('p', {}, t('rejectReason', {reason: lowerStart(cleanQuote(d.description || d.reason).replace(/^запись отбракована:\s*/iu, ''))})),
+    // сначала что делать и насколько срочно, потом цифры и причины
     el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
       el('p', {}, d.action || t(fail ? 'nextFail' : normal ? 'nextNormal' : 'nextAnomaly')),
+      priorityLabel(d.urgency) && el('p', {class: 'priority-label'}, priorityLine(d.urgency)),
       fail && reasons(recordTips(d.description || d.reason).map(key => t(key))),
       fail && hint(t('rerecordWhere'))),
-    !fail && whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t(normal ? 'note' : 'why')), reasons(whyLines.map(index => entries[index]))) : null,
-    priorityLabel(d.urgency) && el('p', {class: 'priority-label'}, priorityLine(d.urgency)));
+    // те же слова и шкала, что у графика в карточке машины: отличие звука от нормы и уверенность программы – два разных числа;
+    // порог заявки показываем только там, где заявка вообще возможна
+    !fail && score(d.confidence) && el('div', {class: 'verdict-facts'},
+      !incompatible && !normal && score(d.anomaly_score) && el('p', {}, `${t('scoreShort')}: ${scoreText(d.anomaly_score)} / 1`),
+      el('p', {}, `${t('confidence')}: ${scoreText(d.confidence)} / 1`,
+        !normal && !incompatible && score(d.conf_threshold) ? [' ', el('span', {class: 'nowrap'}, `(${t('confThreshold', {v: scoreText(d.conf_threshold)})})`)] : '')),
+    !fail && whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t(normal ? 'note' : 'why')), reasons(whyLines.map(index => entries[index]))) : null);
   const metrics = el('dl', {class: 'metrics'}, metric(t('score'), score(d.anomaly_score) ? `${scoreText(d.anomaly_score)} / 1` : null),
     metric(t('confidence'), score(d.confidence) ? `${scoreText(d.confidence)} / 1` : null), metric(t('quality'), qualities[d.signal_quality] && t(qualities[d.signal_quality])));
   const key = `priority-${id}`;
@@ -534,6 +542,14 @@ function verdict(c, d, id, opens) {
     d.defect_note && defectNote(d.defect_note), more);
 }
 // Нет инструкции по узлу в руководстве этого двигателя: заявку продукт не отправляет, механик берет готовый текст рекомендации.
+function copyButton(value) {
+  const button = action(t('copyNumber'), async () => {
+    try { await navigator.clipboard.writeText(value); } catch { /* без доступа к буферу номер все равно виден крупно */ }
+    button.textContent = t('copiedNumber');
+    setTimeout(() => { button.textContent = t('copyNumber'); }, 4000);
+  }, {class: 'copy-id', 'data-command': 'copy-ticket'});
+  return button;
+}
 function defectNote(text) {
   const plain = displayText(text);
   // номера машин, проверок и коды не переносим посередине: S-0021 должно читаться целиком
@@ -543,6 +559,7 @@ function defectNote(text) {
     try { await navigator.clipboard.writeText(plain); }
     catch { const range = document.createRange(); range.selectNodeContents(body); getSelection().removeAllRanges(); getSelection().addRange(range); document.execCommand('copy'); }
     copy.textContent = t('copiedText');
+    setTimeout(() => { copy.textContent = t('copyText'); }, 4000);
   }, {class: 'secondary full', 'data-command': 'copy-defect-note'});
   return el('section', {class: 'box defect-note', 'aria-label': t('defectNote')},
     el('h3', {}, t('noTicketTitle')), hint(t('noTicketWhy')),
@@ -692,7 +709,7 @@ function renderTurn(c, turn, latestResult, opens) {
   const answers = turn.messages.map((m, i) => el('article', {class: 'box agent-message'}, markdown(m.text, m.citations, `${turn.id}-${i}`, opens)));
   // коротко – по умолчанию; кто только начинает, просит подробнее одной кнопкой под ответом, без переключателей
   if (answers.length && turn.detail !== 'detailed' && turn.mode !== 'draft_ticket' && turn === c.turns.at(-1) && !turn.pending && !c.busy)
-    answers.push(action([t('moreDetail'), icon('down')], () => sendChat(c, null, t('moreDetailQ'), 'detailed'), {class: 'more-detail', 'data-command': 'more-detail'}));
+    answers.push(action(t('moreDetail'), () => sendChat(c, null, t('moreDetailQ'), 'detailed'), {class: 'more-detail', 'data-command': 'more-detail'}));
   const log = trace(turn, opens.has(`steps-${turn.id}`));
   const diagnosisResponse = turn.diagnosis && answers.length ? el('details', {class: 'fold', open: opens.has(`answer-${turn.id}`), 'data-trace': `answer-${turn.id}`}, el('summary', {}, t('answer')), el('div', {class: 'fold-body'}, answers)) : null;
   // последний результат: объяснение помощника сразу видно под карточкой, пока его нет – место ответа с индикатором
@@ -726,6 +743,7 @@ function pendingText(turn) {
   return t(step?.status === 'running' ? runningSteps[step.tool] ?? 'pending' : 'pending');
 }
 
+const faultName = d => (lang !== 'ru' && /^F\d\d$/.test(d?.anomaly_type ?? '') && t(`fault${d.anomaly_type}`)) || d?.anomaly_title;
 const canDraft = d => ['anomaly', 'quarantine'].includes(stageOf(d)) && d.ticket_allowed !== false;
 function updateChat(c, latestOnly = false, scrollTo = null) {
   if (!isCurrent(c)) { updateComposer(c); return; }
@@ -1146,7 +1164,7 @@ function renderReceipt(v, s, c) {
   const fields = [[t('machine'), [v.vehicle_id, v.garage_no].filter(Boolean).join(' / ')], [t('checkedAt'), dateFor(s?.checked_at)],
     [t('conclusion'), result.conclusion, 'receipt-prose'], [t('priority'), priorityLabel(result.payload.urgency)],
     ...(result.override ? [[t('overrideLabel'), result.override, 'receipt-prose']] : [])];
-  main.replaceChildren(el('section', {class: 'receipt green'}, title(t('receipt')), el('strong', {class: 'receipt-id mono'}, result.id), hint(t('receiptHint'))), el('section', {class: 'box stack'}, el('h2', {}, t('sentDetails')), el('dl', {class: 'receipt-fields'}, fields.map(([label, value, style]) => el('div', {}, el('dt', {}, label), el('dd', {class: style}, value))))));
+  main.replaceChildren(el('section', {class: 'receipt green'}, title(t('receipt')), el('div', {class: 'receipt-row'}, el('strong', {class: 'receipt-id mono'}, result.id), copyButton(result.id)), hint(t('receiptHint'))), el('section', {class: 'box stack'}, el('h2', {}, t('sentDetails')), el('dl', {class: 'receipt-fields'}, fields.map(([label, value, style]) => el('div', {}, el('dt', {}, label), el('dd', {class: style}, value))))));
   dock.replaceChildren(el('div', {class: 'dock'}, primary(t('backPark'), () => navigate({page: 'park'}))));
 }
 function render() {

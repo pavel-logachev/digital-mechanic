@@ -138,7 +138,7 @@ def locales(page):
     with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
         open_chat(page)
     assert request.value.post_data_json['lang'] == 'hi'
-    expect(page.locator('.next-action p')).to_contain_text('Дефектовка на ближайшем ТО')
+    expect(page.locator('.next-action p').first).to_contain_text('Дефектовка на ближайшем ТО')
     no_overflow(page)
     expect(page.locator('html')).to_have_attribute('lang', 'hi')
 
@@ -560,6 +560,7 @@ def screens(page):
     expect(page.locator('.verdict-head')).to_contain_text('Программа ошиблась')
     expect(page.locator('.defect-note')).to_contain_text('Заявку по этой проверке не создаем')
     expect(page.locator('[data-command="draft"]')).to_have_count(0)
+    expect(page.locator('.explain-pending')).to_have_count(0)   # объяснение пришло, карточка больше не перерисуется
     page.context.grant_permissions(['clipboard-read', 'clipboard-write'])
     page.locator('[data-command="copy-defect-note"]').click()
     expect(page.locator('[data-command="copy-defect-note"]')).to_have_text('Текст скопирован')
@@ -730,7 +731,7 @@ def interactions(page):
     page.locator('select[name="urgency"]').select_option('low')
     expect(page.locator('[name="urgency_reason"]')).to_have_attribute('required', '')
     page.locator('[name="urgency_reason"]').fill('Очный осмотр')
-    page.get_by_text('Почему такой приоритет', exact=True).click()
+    page.get_by_text('Почему помощник предложил такой приоритет', exact=True).click()
     page.locator('.page-chip').first.click()
     expect(page.locator('#manual-image')).to_be_visible()
     page.locator('#close-manual').click()
@@ -881,7 +882,8 @@ def main():
             f'--use-file-for-fake-audio-capture={wav}',
         ])
         for name in selected:
-            context = browser.new_context(viewport=SIZES, is_mobile=True, has_touch=True, permissions=['microphone'])
+            desktop = os.getenv('MECHANIC_DESKTOP') == '1'   # съемка экранов в окне ноутбука, как увидит жюри
+            context = browser.new_context(viewport={'width': 1440, 'height': 900} if desktop else SIZES, is_mobile=not desktop, has_touch=not desktop, permissions=['microphone'])
             if name != 'onboarding':   # инструкция первого запуска проверяется отдельным сценарием
                 context.add_init_script("try { localStorage.setItem('mechanic:onboarded', '1'); } catch {}")
             page = context.new_page()

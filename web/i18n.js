@@ -10,12 +10,14 @@ language|Язык|Til|Забон|Тил|Тіл|भाषा|Language
 large|Крупный шрифт|Yirik yozuv|Ҳарфи калон|Чоң арип|Ірі қаріп|बड़े अक्षर|Large text
 back|Назад|Orqaga|Бозгашт|Артка|Артқа|वापस|Back
 demo|Демо|Demo|Намоиш|Демо|Демо|डेमो|Demo
-fleet|Сводка парка для главного механика|Bosh mexanik uchun park holati|Ҳолати парк барои механики калон|Башкы механик үчүн парктын абалы|Бас механикке арналған парк жағдайы|मुख्य मैकेनिक के लिए पार्क सारांश|Fleet overview for the chief mechanic
+fleet|Сводка парка для главного механика|Bosh mexanik uchun park holati|Ҳолати парк барои механики калон|Башкы механик үчүн парктын абалы|Бас механикке арналған парк жағдайы|वाहन बेड़े का सारांश (मुख्य मैकेनिक के लिए)|Fleet overview for the chief mechanic
 vehicle|Карточка машины|Mashina kartasi|Маълумоти мошин|Унаа тууралуу|Көлік картасы|गाड़ी की जानकारी|Vehicle details
 chat|Диагностика|Diagnostika|Ташхис|Диагностика|Диагностика|जाँच का नतीजा|Diagnosis
 draft|Черновик заявки|Buyurtma qoralamasi|Пешнависи дархост|Өтүнмөнүн долбоору|Өтінім жобасы|वर्क ऑर्डर का मसौदा|Work order draft
 receipt|Заявка создана|Buyurtma ochildi|Дархост сабт шуд|Өтүнмө түзүлдү|Өтінім жасалды|वर्क ऑर्डर बन गया|Work order created
 receiptHint|Это номер заявки в системе ремонта (ТОиР). По нему ее найдет диспетчер.|Bu ta’mirlash tizimidagi buyurtma raqami. Dispetcher uni shu raqam bo‘yicha topadi.|Ин рақами дархост дар низоми таъмир аст. Диспетчер онро бо ҳамин рақам меёбад.|Бул оңдоо системасындагы өтүнмөнүн номери. Диспетчер аны ушул номер менен табат.|Бұл жөндеу жүйесіндегі өтінім нөмірі. Диспетчер оны осы нөмір бойынша табады.|यह मरम्मत सिस्टम में वर्क ऑर्डर का नंबर है। डिस्पैचर इसी से उसे ढूँढेगा।|This is the work order number in the repair system. The dispatcher will find it by this number.
+copyNumber|Скопировать номер|Raqamni nusxalash|Нусхабардории рақам|Номерди көчүрүү|Нөмірді көшіру|नंबर कॉपी करें|Copy number
+copiedNumber|Номер скопирован|Raqam nusxalandi|Рақам нусхабардорӣ шуд|Номер көчүрүлдү|Нөмір көшірілді|नंबर कॉपी हो गया|Number copied
 help|Как пользоваться|Qanday foydalanish|Чӣ тавр истифода бурдан|Кантип колдонуу|Қалай пайдалану|इस्तेमाल कैसे करें|How to use
 guideStep|Шаг {n} из {total}|{total} qadamdan {n}|Қадами {n} аз {total}|{total} кадамдын {n}|{total} қадамның {n}|चरण {n} / {total}|Step {n} of {total}
 guideSkip|Пропустить|O‘tkazib yuborish|Гузаштан|Өткөрүп жиберүү|Өткізу|छोड़ें|Skip
@@ -27,9 +29,10 @@ guide1Title|Цифровой механик – помощник у машины
 guide1a|Слушает запись звука двигателя|Dvigatel ovozi yozuvini tinglaydi|Сабти садои муҳаррикро гӯш мекунад|Кыймылдаткычтын үн жазуусун угат|Қозғалтқыш дыбысының жазбасын тыңдайды|इंजन की आवाज़ की रिकॉर्डिंग सुनता है|Listens to the engine sound recording
 guide1b|Подсказывает по заводскому руководству, что проверить|Zavod qo‘llanmasi bo‘yicha nimani tekshirishni aytadi|Аз рӯи дастури завод мегӯяд, ки чиро санҷидан лозим|Заводдук колдонмо боюнча эмнени текшерүүнү айтат|Зауыт нұсқаулығы бойынша нені тексеру керегін айтады|फ़ैक्ट्री पुस्तिका के अनुसार बताता है कि क्या जाँचना है|Uses the factory manual to tell you what to check
 guide1c|Решаете вы: что делать с машиной и отправлять ли заявку в ремонт|Qarorni siz qilasiz: mashina bilan nima qilish va ta’mirga ariza yuborish-yubormaslik|Шумо ҳал мекунед: бо мошин чӣ кор кардан ва дархост ба таъмир фиристодан ё не|Сиз чечесиз: унаа менен эмне кылуу жана оңдоого арыз жөнөтүү керекпи|Сіз шешесіз: көлікпен не істеу және жөндеуге өтінім жіберу керек пе|फ़ैसला आप करते हैं: गाड़ी का क्या करना है और मरम्मत का वर्क ऑर्डर भेजना है या नहीं|You decide: what to do with the vehicle and whether to send a repair request
-guide1Text|Покажем за минуту, как им пользоваться. Листайте шаги кнопкой «Дальше» или нажмите «Пропустить».|Bir daqiqada qanday foydalanishni ko‘rsatamiz. «Keyingi» tugmasini bosing yoki «O‘tkazib yuborish»ni tanlang.|Дар як дақиқа нишон медиҳем, ки чӣ тавр истифода баред. «Минбаъд»-ро пахш кунед ё «Гузаштан»-ро интихоб кунед.|Бир мүнөттө кантип колдонууну көрсөтөбүз. «Андан ары» баскычын басыңыз же «Өткөрүп жиберүү» тандаңыз.|Бір минутта қалай пайдалану керегін көрсетеміз. «Әрі қарай» түймесін басыңыз немесе «Өткізу» таңдаңыз.|एक मिनट में दिखाते हैं कि इसे कैसे इस्तेमाल करें। «आगे» दबाएँ या «छोड़ें» चुनें।|We will show you how to use it in a minute. Press «Next» or choose «Skip».
+guide1Text|Покажем за минуту, с чего начать.|Bir daqiqada nimadan boshlashni ko‘rsatamiz.|Дар як дақиқа нишон медиҳем, ки аз чӣ сар кардан лозим.|Бир мүнөттө эмнеден баштоону көрсөтөбүз.|Бір минутта неден бастау керегін көрсетеміз.|एक मिनट में दिखाएँगे कि शुरुआत कैसे करें।|A one-minute tour of where to start.
 guide2Title|Найдите машину|Mashinani toping|Мошинро ёбед|Унааны табыңыз|Көлікті табыңыз|गाड़ी ढूँढें|Find the vehicle
 guide2Text|На главном экране наберите госномер или гаражный номер, например Т792 или Г-112. Метка у машины подскажет, что с ней делать.|Bosh ekranda davlat yoki garaj raqamini yozing, masalan Т792 yoki Г-112. Mashina belgisi nima qilishni aytadi.|Дар экрани асосӣ рақами давлатӣ ё гаражиро нависед, масалан Т792 ё Г-112. Нишони мошин мегӯяд, ки чӣ бояд кард.|Башкы экранда мамлекеттик же гараж номерин териңиз, мисалы Т792 же Г-112. Унаанын белгиси эмне кылууну айтат.|Басты экранда мемлекеттік не гараж нөмірін теріңіз, мысалы Т792 не Г-112. Көліктің белгісі не істеу керегін айтады.|मुख्य स्क्रीन पर रजिस्ट्रेशन या गैराज नंबर लिखें, जैसे Т792 या Г-112। गाड़ी का निशान बताएगा कि क्या करना है।|On the main screen type the plate or garage number, for example T792 or G-112. The label tells you what to do with the vehicle.
+guideLabels|Метки у машин в списке:|Ro‘yxatdagi mashina belgilari:|Тамғаҳои мошинҳо дар рӯйхат:|Тизмедеги унаалардын белгилери:|Тізімдегі көліктердің белгілері:|सूची में गाड़ियों के निशान:|Vehicle labels in the list:
 guideRed|не выпускать в рейс, пока не осмотрите|ko‘rikdan o‘tkazmaguncha reysga chiqarmang|то аз назар нагузаронед, ба рейс набароред|карап чыкмайынча рейске чыгарбаңыз|қарап шықпайынша рейске шығармаңыз|जाँच से पहले लाइन पर न भेजें|do not release until inspected
 guideAmber|осмотреть на ближайшем ТО|eng yaqin texnik xizmatda ko‘rikdan o‘tkazing|дар хизматрасонии наздиктарин аз назар гузаронед|жакынкы техтейлөөдө карап чыгыңыз|жақын техникалық қызметте қарап шығыңыз|अगली सर्विस पर जाँचें|inspect at the next service
 guideViolet|запись плохая – записать звук еще раз|yozuv yomon – ovozni qayta yozing|сабт бад аст – садоро аз нав сабт кунед|жазуу начар – үндү кайра жазыңыз|жазба нашар – дыбысты қайта жазыңыз|रिकॉर्डिंग खराब है – आवाज़ फिर रिकॉर्ड करें|bad recording – record the sound again
@@ -93,7 +96,7 @@ low|Низкий|Past|Паст|Төмөн|Төмен|कम|Low
 medium|Средний|O‘rta|Миёна|Орточо|Орташа|मध्यम|Medium
 high|Высокий|Yuqori|Баланд|Жогору|Жоғары|ज़्यादा|High
 priority|Приоритет|Ustuvorlik|Афзалият|Артыкчылык|Басымдық|प्राथमिकता|Priority
-whyPriority|Почему такой приоритет|Nega bunday ustuvorlik|Чаро ин афзалият|Эмне үчүн мындай артыкчылык|Неге осындай басымдық|यह प्राथमिकता क्यों|Why this priority
+whyPriority|Почему помощник предложил такой приоритет|Nega bunday ustuvorlik|Чаро ин афзалият|Эмне үчүн мындай артыкчылык|Неге осындай басымдық|यह प्राथमिकता क्यों|Why the assistant suggested this priority
 whyResult|Почему такой результат|Nega bunday natija|Чаро чунин натиҷа|Эмне үчүн мындай жыйынтык|Неге осындай нәтиже|यह नतीजा क्यों|Why this result
 noReasons|Причины не указаны|Sabablar ko‘rsatilmagan|Сабабҳо нишон дода нашудаанд|Себептери көрсөтүлгөн эмес|Себептері көрсетілмеген|वजह नहीं बताई गई|No reasons given
 important|Важно|Muhim|Муҳим|Маанилүү|Маңызды|ज़रूरी|Important
@@ -129,6 +132,20 @@ createDraft|Создать заявку|Ta’mirlash buyurtmasini tayyorlash|Д�
 openDraft|Открыть черновик|Qoralamani ochish|Кушодани пешнавис|Долбоорду ачуу|Жобаны ашу|मसौदा खोलें|Open draft
 question|Вопрос текстом или голосом|Savolni yozing yoki ayting|Саволро нависед ё гӯед|Суроону жазыңыз же айтыңыз|Сұрақты жазыңыз не айтыңыз|सवाल लिखें या बोलें|Type or say your question
 questionShort|Ваш вопрос|Savolingiz|Саволи шумо|Сурооңуз|Сұрағыңыз|आपका सवाल|Your question
+faultF01|Клапанный механизм|Klapan mexanizmi|Механизми клапан|Клапан механизми|Клапан механизмі|वाल्व तंत्र|Valve train
+faultF02|Низкое давление масла|Moy bosimi past|Фишори пасти равған|Майдын басымы төмөн|Май қысымы төмен|तेल का कम दबाव|Low oil pressure
+faultF03|Перегрев, охлаждающая жидкость в масле|Qizib ketish, moyda sovutish suyuqligi|Тафсидан, моеъи хунуккунанда дар равған|Ысып кетүү, майда муздатуучу суюктук|Қызып кету, майда салқындатқыш сұйықтық|ज़्यादा गरम होना, तेल में कूलेंट|Overheating, coolant in oil
+faultF04|Ременный привод агрегатов|Agregatlar tasmali uzatmasi|Интиқоли тасмавии агрегатҳо|Агрегаттардын кайыш жетеги|Агрегаттардың белдік жетегі|सहायक बेल्ट ड्राइव|Accessory belt drive
+faultF05|Генератор|Generator|Генератор|Генератор|Генератор|अल्टरनेटर|Alternator
+faultF06|Сцепление|Ilashish muftasi|Муфтаи пайвастшавӣ|Илешме|Ілініс|क्लच|Clutch
+faultF07|Коробка передач|Uzatmalar qutisi|Қуттии суръатҳо|Берүү кутусу|Беріліс қорабы|गियरबॉक्स|Gearbox
+faultF08|Дизельная топливоподача|Dizel yonilg‘i berish|Додани сӯзишвории дизелӣ|Дизелдик күйүүчү май берүү|Дизель отынын беру|डीज़ल ईंधन आपूर्ति|Diesel fuel injection
+faultF09|Турбокомпрессор, наддув|Turbokompressor, havo haydash|Турбокомпрессор, пуркунӣ|Турбокомпрессор, үйлөө|Турбокомпрессор, үрлеу|टर्बोचार्जर, बूस्ट|Turbocharger, boost
+faultF10|Компрессор пневмотормозов, насос ГУР|Pnevmotormoz kompressori, GUR nasosi|Компрессори тормози пневматикӣ, насоси ГУР|Пневмотормоз компрессору, ГУР насосу|Пневмотежегіш компрессоры, ГУР сорғысы|एयर ब्रेक कंप्रेसर, पावर स्टीयरिंग पंप|Air brake compressor, power steering pump
+faultF11|Рециркуляция отработавших газов|Ishlatilgan gazlar resirkulyatsiyasi (EGR)|Рециркулятсияи газҳои партов (EGR)|Иштетилген газдардын рециркуляциясы (EGR)|Пайдаланылған газдар рециркуляциясы (EGR)|एग्ज़ॉस्ट गैस रीसर्कुलेशन (EGR)|Exhaust gas recirculation (EGR)
+faultF12|Зажигание|O‘t oldirish tizimi|Системаи оташгиронӣ|От алдыруу|От алдыру|इग्निशन|Ignition
+faultF13|Подача бензина|Benzin berish|Додани бензин|Бензин берүү|Бензин беру|पेट्रोल आपूर्ति|Petrol supply
+faultF14|Цепь ГРМ, гидронатяжитель|GTM zanjiri, gidrotaranglagich|Занҷири ГРМ, гидрокашанда|ГРМ чынжыры, гидрокерүүчү|ГРМ шынжыры, гидрокерігіш|टाइमिंग चेन, हाइड्रोलिक टेंशनर|Timing chain, hydraulic tensioner
 send|Отправить|Yuborish|Фиристодан|Жөнөтүү|Жіберу|भेजें|Send
 sendQuestion|Отправить вопрос|Savolni yuborish|Фиристодани савол|Суроону жөнөтүү|Сұрақты жіберу|सवाल भेजें|Send question
 mic|Вопрос голосом|Ovozli savol|Саволи овозӣ|Үн менен суроо|Дауыспен сұрау|आवाज़ से सवाल पूछें|Ask by voice
@@ -154,7 +171,7 @@ priorityReason|Почему меняете приоритет?|Nega ustuvorlikni
 choosePriority|Выберите приоритет|Ustuvorlikni tanlang|Афзалиятро интихоб кунед|Артыкчылыкты тандаңыз|Басымдықты таңдаңыз|प्राथमिकता चुनें|Select priority
 faultType|Возможная неисправность|Ehtimoliy nosozlik|Носозии эҳтимолӣ|Мүмкүн болгон бузулуу|Ықтимал ақау|संभावित खराबी|Possible fault
 conclusion|Заключение|Xulosa|Хулоса|Корутунду|Қорытынды|निष्कर्ष|Conclusion
-work|Что сделать (работы)|Ishlar|Корҳо|Жумуштар|Жұмыстар|करने के काम|Work to do
+work|Рекомендуемые работы|Ishlar|Корҳо|Жумуштар|Жұмыстар|करने के काम|Recommended work
 parts|Запчасти|Ehtiyot qismlar|Қисмҳои эҳтиётӣ|Тетиктер|Қосалқы бөлшектер|स्पेयर पार्ट्स|Spare parts
 newLine|Каждый пункт с новой строки|Har bir band yangi satrda|Ҳар банд дар сатри нав|Ар бир пункт жаңы сапта|Әр тармақ жаңа жолда|हर चीज़ नई लाइन में लिखें|One item per line
 unsent|Еще не отправлена|Yuborilmagan|Фиристода нашудааст|Жөнөтүлө элек|Жіберілмеген|अभी नहीं भेजा गया|Not sent
@@ -203,7 +220,7 @@ more|Показать выдержку полностью|Ko‘proq|Бештар
 less|Свернуть|Yig‘ish|Пинҳон кардан|Жыйноо|Жию|कम दिखाएँ|Show less
 zoom|Масштаб|Masshtab|Миқёс|Масштаб|Масштаб|ज़ूम|Zoom
 note|Учтите|E’tibor bering|Диққат кунед|Эске алыңыз|Ескеріңіз|ध्यान दें|Keep in mind
-scoreChart|Насколько звук отличается от нормы|Ovoz me’yordan qanchalik farq qiladi|Садо аз меъёр чӣ қадар фарқ мекунад|Үн нормадан канчалык айырмаланат|Дыбыс қалыптыдан қаншалық ерекшеленеді|आवाज़ सामान्य से कितनी अलग है|How far the sound is from normal
+scoreChart|Отличие звука от нормы|Ovoz me’yordan qanchalik farq qiladi|Садо аз меъёр чӣ қадар фарқ мекунад|Үн нормадан канчалык айырмаланат|Дыбыс қалыптыдан қаншалық ерекшеленеді|आवाज़ सामान्य से कितनी अलग है|How far the sound is from normal
 scoreShort|Отличие звука от нормы|Ovozning me’yordan farqi|Фарқи садо аз меъёр|Үндүн нормадан айырмасы|Дыбыстың қалыптыдан айырмасы|आवाज़ में सामान्य से अंतर|Difference from normal sound
 scoreScale|0 – звук как у исправного двигателя, 1 – сильное отличие. Цвет столбика – вывод по проверке.|0 – soz dvigatel ovozi, 1 – kuchli farq. Ustun rangi – tekshiruv xulosasi.|0 – садои муҳаррики солим, 1 – фарқи калон. Ранги сутун – хулосаи санҷиш.|0 – соо кыймылдаткычтын үнү, 1 – катуу айырма. Мамычанын түсү – текшерүүнүн жыйынтыгы.|0 – дұрыс қозғалтқыштың дыбысы, 1 – қатты айырма. Бағанның түсі – тексеру қорытындысы.|0 – ठीक इंजन जैसी आवाज़, 1 – बहुत अलग। स्तंभ का रंग – जाँच का नतीजा।|0 – sounds like a healthy engine, 1 – very different. Bar color shows the check result.
 noScore|нет оценки|baho yo‘q|баҳо нест|баа жок|баға жоқ|स्कोर नहीं|no score

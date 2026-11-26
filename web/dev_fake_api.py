@@ -99,7 +99,7 @@ def diagnosis(v, s):
         elif repeats > 1 or s['anomaly_score'] >= .65:
             urgency = 'medium'
             reasons.append('Отклонение есть, но признаков, требующих дефектовки до выпуска, нет.' if repeats < 2
-                           else f'Такое же отклонение уже было в прошлых проверках ({repeats - 1}).')
+                           else ('Такое же отклонение уже было в прошлой проверке.' if repeats == 2 else f'Такое же отклонение уже было в {repeats - 1} прошлых проверках.'))
         else:
             urgency = 'low'
             reasons.append('Неисправность несерьезная: отклонение умеренное и пока разовое.')
@@ -295,7 +295,7 @@ def index():
 
 @app.get('/{asset}', include_in_schema=False)
 def static(asset: str):
-    if asset not in {'app.js', 'styles.css', 'i18n.js'}:
+    if asset not in {'app.js', 'styles.css', 'i18n.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'}:
         raise HTTPException(404)
     return FileResponse(WEB / asset)
 
