@@ -23,7 +23,7 @@ INDEX_VERSION = 1
 POOL = ThreadPoolExecutor(max_workers=20, thread_name_prefix="jev")
 JEV_URL = "https://openrouter.ai/api/alpha/decisions"
 JEV_TIMEOUT = 4.0
-TOP_N = 100
+TOP_N = int(config.env("RERANK_TOP_N", "100"))  # сколько кандидатов отдаём Jev
 BATCH_SIZE = 10
 RRF_K = 60
 LOG = logging.getLogger(__name__)

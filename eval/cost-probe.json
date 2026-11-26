@@ -1,0 +1,132 @@
+{
+ "summary": {
+  "calls": 3.5,
+  "prompt_tokens": 12138.7,
+  "cached_tokens": 7360,
+  "completion_tokens": 658.9,
+  "searches": 0.6,
+  "seconds": 8.12
+ },
+ "runs": [
+  {
+   "vehicle": "E549YT198",
+   "session": "S-0011",
+   "verdict": "anomaly",
+   "seconds": 28.0,
+   "searches": 2,
+   "calls": 4,
+   "prompt_tokens": 21213,
+   "cached_tokens": 12928,
+   "completion_tokens": 1030,
+   "llm_seconds": 19.66
+  },
+  {
+   "vehicle": "P854BT78",
+   "session": "S-0021",
+   "verdict": "anomaly",
+   "seconds": 7.6,
+   "searches": 1,
+   "calls": 3,
+   "prompt_tokens": 10785,
+   "cached_tokens": 6272,
+   "completion_tokens": 842,
+   "llm_seconds": 6.91
+  },
+  {
+   "vehicle": "P456AT178",
+   "session": "S-0003",
+   "verdict": "check_failed",
+   "seconds": 3.3,
+   "searches": 0,
+   "calls": 2,
+   "prompt_tokens": 4299,
+   "cached_tokens": 3712,
+   "completion_tokens": 204,
+   "llm_seconds": 3.16
+  },
+  {
+   "vehicle": "E549YT198",
+   "session": "S-0012",
+   "verdict": "normal",
+   "seconds": 13.0,
+   "searches": 2,
+   "calls": 5,
+   "prompt_tokens": 22060,
+   "cached_tokens": 13184,
+   "completion_tokens": 883,
+   "llm_seconds": 10.13
+  },
+  {
+   "vehicle": "P456AT178",
+   "session": "S-0003",
+   "verdict": "check_failed",
+   "seconds": 3.1,
+   "searches": 0,
+   "calls": 4,
+   "prompt_tokens": 8605,
+   "cached_tokens": 7552,
+   "completion_tokens": 447,
+   "llm_seconds": 6.12
+  },
+  {
+   "vehicle": "M333YK47",
+   "session": "S-0006",
+   "verdict": "normal",
+   "seconds": 3.2,
+   "searches": 0,
+   "calls": 2,
+   "prompt_tokens": 4337,
+   "cached_tokens": 1920,
+   "completion_tokens": 195,
+   "llm_seconds": 3.0
+  },
+  {
+   "vehicle": "B418HK98",
+   "session": "S-0009",
+   "verdict": "anomaly",
+   "seconds": 7.0,
+   "searches": 1,
+   "calls": 3,
+   "prompt_tokens": 11571,
+   "cached_tokens": 4480,
+   "completion_tokens": 696,
+   "llm_seconds": 5.94
+  },
+  {
+   "vehicle": "E549YT198",
+   "session": "S-0012",
+   "verdict": "normal",
+   "seconds": 3.8,
+   "searches": 0,
+   "calls": 7,
+   "prompt_tokens": 26485,
+   "cached_tokens": 17024,
+   "completion_tokens": 1298,
+   "llm_seconds": 13.81
+  },
+  {
+   "vehicle": "O710HH78",
+   "session": "S-0017",
+   "verdict": "normal",
+   "seconds": 7.2,
+   "searches": 0,
+   "calls": 3,
+   "prompt_tokens": 7586,
+   "cached_tokens": 4480,
+   "completion_tokens": 594,
+   "llm_seconds": 7.03
+  },
+  {
+   "vehicle": "P854BT78",
+   "session": "S-0022",
+   "verdict": "normal",
+   "seconds": 5.0,
+   "searches": 0,
+   "calls": 2,
+   "prompt_tokens": 4446,
+   "cached_tokens": 2048,
+   "completion_tokens": 400,
+   "llm_seconds": 4.81
+  }
+ ]
+}
