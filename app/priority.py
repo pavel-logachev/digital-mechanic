@@ -1,0 +1,192 @@
+"""Приоритет (urgency) заявки и рекомендуемое действие — детерминированно, в коде.
+
+Модель приоритет не выбирает: она только объясняет механику результат этой функции.
+Пороги — политика команды (версия PRIO-1), не норматив заказчика.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from decimal import Decimal
+
+from .faults import ENGINE_DRIVE_NOTE, FAULTS, SEVERITY_RU, applicability
+
+POLICY_VERSION = "PRIO-1"
+SCORE_HIGH = Decimal("0.70")
+CONF_HIGH = Decimal("0.80")
+CONF_MIN = Decimal("0.60")
+TREND_DELTA = Decimal("0.15")
+HISTORY_LIMIT = 5
+
+QUALITY_RU = {"good": "хорошая", "warning": "с помехами", "bad": "непригодна"}
+
+
+def d(x) -> Decimal:
+    return Decimal(str(x))
+
+
+def fmt(x) -> str:
+    return "нет" if x is None else f"{x:.2f}".replace(".", ",")
+
+
+@dataclass
+class Verdict:
+    verdict: str                 # normal | anomaly | check_failed
+    urgency: str | None          # low | medium | high | None (заявка не нужна/запрещена)
+    action: str                  # что делать механику сейчас, одной фразой
+    ticket_allowed: bool
+    reasons: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    rule: str = ""
+    severity: str | None = None
+    applicable: str | None = None
+    policy: str = POLICY_VERSION
+
+    def as_dict(self) -> dict:
+        return {
+            "verdict": self.verdict, "urgency": self.urgency, "action": self.action,
+            "ticket_allowed": self.ticket_allowed, "urgency_reasons": self.reasons,
+            "warnings": self.warnings, "rule": self.rule, "severity": self.severity,
+            "applicable": self.applicable, "policy": self.policy,
+        }
+
+
+def _history_window(sessions: list[dict], session_id: str) -> list[dict]:
+    """Проверки до выбранной включительно, последние HISTORY_LIMIT. Будущие не учитываем."""
+    idx = next((i for i, s in enumerate(sessions) if s["session_id"] == session_id), None)
+    if idx is None:
+        return []
+    return sessions[max(0, idx - HISTORY_LIMIT + 1): idx + 1]
+
+
+def _usable(s: dict) -> bool:
+    return (s["status"] in ("normal", "anomaly") and s.get("signal_quality") in ("good", "warning")
+            and s.get("confidence") is not None and d(s["confidence"]) >= CONF_MIN)
+
+
+def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict] | None = None) -> Verdict:
+    """result — ответ /diagnose; sessions — история этой машины по времени; tickets — уже созданные заявки."""
+    tickets = tickets or []
+    status, quality = result["status"], result.get("signal_quality")
+    window = _history_window(sessions, result["session_id"]) or [result]
+    past = [s for s in window if s["session_id"] != result["session_id"]]
+
+    # 1. Плохая запись — абсолютный приоритет: никаких выводов о двигателе и заявки.
+    if status == "check_failed" or quality == "bad":
+        return Verdict("check_failed", None, "Повторите запись звука: по этой записи выводов о двигателе нет.",
+                       False, ["Запись непригодна для анализа, оценка и уверенность не используются.",
+                               "Заявка по этой проверке не создаётся."], rule="R1-bad")
+
+    score, conf = result.get("anomaly_score"), result.get("confidence")
+    hist_note = _history_note(past)
+
+    if status == "normal":
+        v = Verdict("normal", None, "Можно продолжать эксплуатацию: эта проверка отклонений не выявила.", False,
+                    [f"Оценка отклонения {fmt(score)} из 1 — низкая, уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
+                     "Это результат одной акустической проверки, а не акт технического состояния."], rule="R2-normal")
+        if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
+            v.action = "Результат «норма» под сомнением: запись с помехами или низкая уверенность. Лучше повторить запись."
+            v.rule = "R2-normal-doubt"
+        unresolved = _unresolved_critical(past, tickets)
+        if unresolved:
+            s = unresolved[-1]
+            v.warnings.append(
+                f"Раньше ({_date(s)}, {s['session_id']}) было критичное отклонение {s['anomaly_type']} «{s['anomaly_title']}», "
+                "заявки по нему нет. Текущая «норма» не подтверждает, что неисправность устранена — нужен осмотр.")
+            v.action = "Проверка в норме, но прошлое критичное отклонение не закрыто: осмотрите машину перед выпуском."
+            v.rule = "R2-normal-unresolved"
+        if hist_note:
+            v.reasons.append(hist_note)
+        return v
+
+    # status == anomaly
+    code = result.get("anomaly_type")
+    f = FAULTS.get(code)
+    appl = applicability(code, engine) if code else "no"
+    sev = f["severity"] if f else None
+    reasons: list[str] = []
+    warnings: list[str] = []
+
+    if appl == "no":
+        note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
+        warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
+                        "Вероятна ошибка ML-модели или карточки машины — нужен очный осмотр, диагноз по этой записи не подтверждён.")
+        return Verdict("anomaly", "medium", "Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины.", True,
+                       [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но класс {code} неприменим к {engine}.",
+                        "Средний приоритет: машину стоит осмотреть, но конкретную неисправность по записи назвать нельзя."],
+                       warnings, "R3-not-applicable", sev, appl)
+
+    repeated = [s for s in past if s["status"] == "anomaly" and s.get("anomaly_type") == code and _usable(s)]
+    growing = _growing(past + [result], code)
+    strong = score is not None and conf is not None and d(score) >= SCORE_HIGH and d(conf) >= CONF_HIGH and quality == "good"
+    doubtful = quality == "warning" or (conf is not None and d(conf) < CONF_MIN)
+
+    reasons.append(f"Тип: {code} «{result.get('anomaly_title')}» — {SEVERITY_RU.get(sev, 'не определена')} неисправность.")
+    reasons.append(f"Оценка отклонения {fmt(score)} из 1 ({_band(score)}), уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.")
+    if repeated:
+        reasons.append(f"Повторяется: то же отклонение было {len(repeated)} раз(а) в последних проверках ({', '.join(_date(s) for s in repeated)}).")
+    if growing:
+        reasons.append("Оценка отклонения растёт от проверки к проверке.")
+    if appl == "check":
+        warnings.append(f"Убедитесь, что на этой машине есть узел «{result.get('anomaly_title')}»: для {engine} это зависит от комплектации.")
+    if doubtful:
+        warnings.append("Запись с помехами или уверенность модели низкая — подтвердите повторной записью или осмотром.")
+
+    if sev == "C":
+        urg, rule = "high", "R4-critical"
+        action = "Снять с линии до дефектовки: возможна тяжёлая поломка."
+        reasons.append("Высокий приоритет: класс критичный, при таких неисправностях продолжение работы рискованно.")
+    elif sev == "S" and (strong or growing or (repeated and not doubtful)):
+        urg, rule = "high", "R5-significant-strong"
+        action = "Поставить на дефектовку в ближайшее время, в дальние рейсы не выпускать."
+        why = "сильный и уверенный сигнал" if strong else ("рост отклонения" if growing else "повторяющееся отклонение")
+        reasons.append(f"Высокий приоритет: значимая неисправность и {why}.")
+    elif sev == "L" and not repeated and not growing and not doubtful and conf is not None and d(conf) >= CONF_HIGH \
+            and score is not None and d(score) < SCORE_HIGH:
+        urg, rule = "low", "R7-minor"
+        action = "Запланировать проверку на ближайшее ТО."
+        reasons.append("Низкий приоритет: малозначимая неисправность, отклонение умеренное, сигнал уверенный и не повторяется.")
+    else:
+        urg, rule = "medium", "R6-planned"
+        action = "Запланировать дефектовку в плановом порядке, следить за признаками."
+        reasons.append("Средний приоритет: отклонение есть, но оснований для срочного снятия с линии нет.")
+    if hist_note and not repeated:
+        reasons.append(hist_note)
+    return Verdict("anomaly", urg, action, True, reasons, warnings, rule, sev, appl)
+
+
+def _band(score) -> str:
+    if score is None:
+        return "нет данных"
+    s = d(score)
+    return "высокая" if s >= SCORE_HIGH else ("средняя" if s >= Decimal("0.5") else "низкая")
+
+
+def _date(s: dict) -> str:
+    c = s.get("checked_at", "")
+    return f"{c[8:10]}.{c[5:7]}" if len(c) >= 10 else s["session_id"]
+
+
+def _history_note(past: list[dict]) -> str:
+    if not past:
+        return "Предыдущих проверок в системе нет."
+    parts = []
+    for s in past[-4:]:
+        st = {"normal": "норма", "anomaly": f"отклонение {s.get('anomaly_type')}", "check_failed": "сбой записи"}[s["status"]]
+        parts.append(f"{_date(s)} — {st}")
+    return "Прошлые проверки: " + "; ".join(parts) + "."
+
+
+def _growing(seq: list[dict], code: str) -> bool:
+    pts = [s for s in seq if s["status"] == "anomaly" and s.get("anomaly_type") == code
+           and s.get("signal_quality") == "good" and s.get("anomaly_score") is not None]
+    if len(pts) < 3:
+        return False
+    pts = pts[-HISTORY_LIMIT:]
+    inc = all(d(b["anomaly_score"]) > d(a["anomaly_score"]) for a, b in zip(pts, pts[1:]))
+    return inc and d(pts[-1]["anomaly_score"]) - d(pts[0]["anomaly_score"]) >= TREND_DELTA
+
+
+def _unresolved_critical(past: list[dict], tickets: list[dict]) -> list[dict]:
+    ticketed = {t["session_id"] for t in tickets}
+    return [s for s in past if s["status"] == "anomaly" and FAULTS.get(s.get("anomaly_type"), {}).get("severity") == "C"
+            and s["session_id"] not in ticketed and _usable(s)]

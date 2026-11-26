@@ -1,0 +1,9 @@
+data/manuals/*.pdf
+data/index/
+data/pages/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+logs/
