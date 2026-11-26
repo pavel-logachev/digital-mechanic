@@ -3,12 +3,18 @@ services:
   mock-ml:
     image: digital-mechanic:latest
     command: uvicorn mock_ml.app:app --host 0.0.0.0 --port 8001
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8001/health',timeout=4)"]
+      interval: 30s
     working_dir: /app/mocks
     restart: unless-stopped
     mem_limit: 256m
   mock-toir:
     image: digital-mechanic:latest
     command: uvicorn mock_toir.app:app --host 0.0.0.0 --port 8002
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8002/health',timeout=4)"]
+      interval: 30s
     working_dir: /app/mocks
     restart: unless-stopped
     mem_limit: 256m

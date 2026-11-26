@@ -179,7 +179,10 @@ class Agent:
             self.c.seen.add((h["manual_id"], int(h["page"])))
             pages.append({"ref": f"{{{h['manual_id']}#{h['page']}}}", "manual": BY_ID[h["manual_id"]].title,
                           "page": h["page"], "text": (h.get("text") or h.get("snippet") or "")[:2200]})
+        rr = getattr(searcher(), "rerank_stats", {}) or {}
+        self._last_rerank = rr.get("status")
         return {"engine": self.engine, "pages": pages,
+                "reranked": rr.get("status") == "applied",
                 "note": "Ссылайся только на эти страницы в формате ref. Если ответа нет — переформулируй или скажи, что в руководстве этого нет."}
 
     def t_read_page(self, manual_id: str, page: int) -> dict:
@@ -322,7 +325,8 @@ class Agent:
 
 def _summary(name: str, out: dict) -> str:
     if name == "search_manual":
-        return "найдено: " + ", ".join(f"стр. {p['page']}" for p in out.get("pages", [])) if out.get("pages") else "ничего не найдено"
+        found = "найдено: " + ", ".join(f"стр. {p['page']}" for p in out.get("pages", [])) if out.get("pages") else "ничего не найдено"
+        return found + (" · ранжирование Jev" if out.get("reranked") else "")
     if name == "get_diagnosis":
         r, v = out["ml_result"], out["program_verdict"]
         return {"normal": "норма", "anomaly": f"отклонение {r.get('anomaly_type')}", "check_failed": "сбой записи"}[r["status"]] + \
