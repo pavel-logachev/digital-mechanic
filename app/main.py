@@ -33,6 +33,8 @@ async def security_headers(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "same-origin")
     response.headers.setdefault("Permissions-Policy", "microphone=(self), camera=(), geolocation=()")
+    # интерфейс всегда сверяется с сервером (по ETag): после выкладки телефон не показывает старую версию
+    response.headers.setdefault("Cache-Control", "no-cache")
     return response
 
 
