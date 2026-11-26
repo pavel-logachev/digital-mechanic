@@ -1,0 +1,10 @@
+fastapi==0.165.0
+uvicorn==0.54.0
+httpx==0.28.1
+openai==3.57.0
+pydantic==2.14.4
+pymupdf==2.1
+rank-bm25==0.2.2
+numpy==2.5.5
+sentence-transformers==6.3.0
+pytest==9.2.0

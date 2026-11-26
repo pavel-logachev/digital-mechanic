@@ -1,0 +1,35 @@
+# Запуск: docker compose up -d --build  (перед первым запуском: .env и python -m app.ingest, см. README)
+services:
+  mock-ml:
+    image: digital-mechanic:latest
+    command: uvicorn mock_ml.app:app --host 0.0.0.0 --port 8001
+    working_dir: /app/mocks
+    restart: unless-stopped
+    mem_limit: 256m
+  mock-toir:
+    image: digital-mechanic:latest
+    command: uvicorn mock_toir.app:app --host 0.0.0.0 --port 8002
+    working_dir: /app/mocks
+    restart: unless-stopped
+    mem_limit: 256m
+  app:
+    image: digital-mechanic:latest
+    build:
+      context: .
+      args: { BASE: "${BASE_IMAGE:-python:3.12-slim}" }
+    env_file: .env
+    environment:
+      ML_SERVICE_URL: http://mock-ml:8001
+      TOIR_SERVICE_URL: http://mock-toir:8002
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ./data/manuals:/app/data/manuals:ro
+      - ./data/index:/app/data/index
+      - ./data/pages:/app/data/pages
+      - ./data/state:/app/data/state
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on: [mock-ml, mock-toir]
+    restart: unless-stopped
+    mem_limit: 1500m
+    cpus: 1.5
