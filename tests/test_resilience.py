@@ -182,3 +182,17 @@ def test_doubtful_signal_ticket_needs_confirmed_inspection(monkeypatch):
         agent.confirm_ticket("D-3", {})  # без отметки об осмотре сервер заявку не пропускает, даже в обход интерфейса
     assert agent.confirm_ticket("D-3", {"inspection_confirmed": True})["ticket_id"] == "TKT-9"
     assert saved[0]["inspection_confirmed"] is True
+
+
+def test_demo_video_open_even_with_login(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import config, main, users
+    monkeypatch.setattr(config, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(users, "enabled", lambda: True)
+    c = TestClient(main.app)
+    assert c.get("/demo.mp4").status_code == 404
+    (tmp_path / "public").mkdir()
+    (tmp_path / "public" / "demo.mp4").write_bytes(b"\x00\x00\x00\x18ftypmp42")
+    r = c.get("/demo.mp4")
+    assert r.status_code == 200 and r.headers["content-type"] == "video/mp4"
+    assert c.get("/api/vehicles").status_code == 401  # остальное по-прежнему за входом

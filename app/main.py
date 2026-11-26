@@ -40,7 +40,7 @@ async def security_headers(request: Request, call_next):
 
 # --- вход: учетные записи с ролями (users.json), общий пароль стенда или открытый доступ ---
 COOKIE = "dm_access"
-OPEN_PATHS = ("/api/health", "/login", "/api/login", "/privacy.html", "/favicon.svg")
+OPEN_PATHS = ("/api/health", "/login", "/api/login", "/privacy.html", "/favicon.svg", "/demo.mp4")
 
 
 def current_user(request: Request) -> users.User | None:
@@ -134,6 +134,15 @@ p{margin:0;color:#4d5b68;font-size:15px}#m{color:#a1261b;min-height:1.2em}</styl
 
 def _client_ip(request: Request) -> str:
     return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+
+
+@app.get("/demo.mp4")
+def demo_video():
+    """Демо-видео для жюри (STATE_DIR/public/demo.mp4, в Git не входит). Открыто и при включенных учетных записях."""
+    f = config.STATE_DIR / "public" / "demo.mp4"
+    if not f.is_file():
+        raise HTTPException(404, "Видео еще не загружено")
+    return FileResponse(f, media_type="video/mp4", headers={"Cache-Control": "public, max-age=300"})
 
 
 # --- данные ---
