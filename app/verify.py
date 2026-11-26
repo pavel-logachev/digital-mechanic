@@ -16,8 +16,11 @@ from .manuals import BY_ID
 TAG = re.compile(r"\{([a-z0-9\-_]+)#(\d{1,4})\}")
 NUM = re.compile(r"(?<![\w.,])(\d+(?:[.,]\d+)?)(?![\w])")
 LIST_MARK = re.compile(r"^\s*(?:\d+[.)]|[-*•])\s+", re.M)
-# даты, коды проверок и классов, номера заявок — не нормативы
-NOT_NORM = re.compile(r"\b\d{1,2}\.\d{1,2}(?:\.\d{2,4})?\b|\b[SF]-?\d{2,4}\b|TKT-\d+|\b(?:19|20)\d{2}\b(?:\s*г)?", re.I)
+# даты, коды проверок и классов, номера заявок, обозначения двигателей и машин — не нормативы
+NOT_NORM = re.compile(r"\b\d{1,2}\.\d{1,2}(?:\.\d{2,4})?\b|\b[SF]-?\d{2,4}\b|TKT-\d+|\b(?:19|20)\d{2}\b(?:\s*г)?"
+                      r"|(?:ЯМЗ|ЗМЗ|УАЗ|МАЗ|ПАЗ|Урал|ЛиАЗ|КамАЗ)[-\s]?\d[\d.\-]*[МM]?\d*"
+                      r"|\b(?:236|238|536|5234|409|40904|40905|5361|5363)(?:[-.]?\d+)*(?:[МM]2)?(?:-?(?:й|го|му|м|ой))?\b"
+                      r"|(?:рис(?:унок|унке|\.)?|табл(?:ица|ице|\.)?|стр(?:аница|\.)?|раздел|пункт|п\.)\s*\d[\d.]*", re.I)
 
 
 @dataclass
@@ -69,23 +72,38 @@ def check(answer: str, allowed: set[str], seen: set[tuple[str, int]], page_text,
             order[key] = len(order) + 1
         return f"[{order[key]}]"
 
-    # проверка чисел по предложениям/строкам
-    for line in re.split(r"(?<=[.!?])\s+|\n", answer):
-        tags = [(m, int(p)) for m, p in TAG.findall(line)]
-        body = LIST_MARK.sub("", TAG.sub(" ", line))
-        body_n = NOT_NORM.sub(" ", body)
-        nums = [n for n in NUM.findall(body_n) if _significant(n)]
-        nums = [n for n in nums if _norm_num(n) not in context_numbers]
-        if not nums:
-            continue
-        valid = [(m, p) for m, p in tags if m in allowed and (m, p) in seen]
-        if not valid:
-            problems.append(f"цифры без ссылки на страницу руководства: «{body.strip()[:120]}»")
-            continue
-        on_pages = set().union(*(page_numbers(page_text(m, p)) for m, p in valid))
-        missing = [n for n in nums if _norm_num(n) not in on_pages]
-        if missing:
-            problems.append(f"числа {', '.join(missing)} не найдены на указанных страницах: «{body.strip()[:120]}»")
+    # проверка чисел: предложение → его строка → соседние строки того же абзаца.
+    # Число принимается, если оно есть на процитированной странице или на другой странице руководства,
+    # которую агент получил инструментом в этом диалоге (ссылка тогда неточная, но цифра не выдумана).
+    lines = answer.split("\n")
+    seen_ok = [(m, p) for m, p in seen if m in allowed]
+    seen_nums: set[str] | None = None
+    for li, line in enumerate(lines):
+        near = []
+        for j in (li, li - 1, li + 1, li + 2):
+            if 0 <= j < len(lines) and (j == li or lines[j].strip()):
+                near += [(m, int(p)) for m, p in TAG.findall(lines[j])]
+        for sent in re.split(r"(?<=[.!?])\s+", line):
+            tags = [(m, int(p)) for m, p in TAG.findall(sent)] or near
+            body = LIST_MARK.sub("", TAG.sub(" ", sent))
+            body_n = NOT_NORM.sub(" ", body)
+            nums = [n for n in NUM.findall(body_n) if _significant(n)]
+            nums = [n for n in nums if _norm_num(n) not in context_numbers]
+            if not nums:
+                continue
+            valid = [(m, p) for m, p in tags if m in allowed and (m, p) in seen]
+            on_pages = set().union(*(page_numbers(page_text(m, p)) for m, p in valid)) if valid else set()
+            missing = [n for n in nums if _norm_num(n) not in on_pages]
+            if missing:
+                if seen_nums is None:
+                    seen_nums = set().union(*(page_numbers(page_text(m, p)) for m, p in seen_ok)) if seen_ok else set()
+                missing = [n for n in missing if _norm_num(n) not in seen_nums]
+            if not missing:
+                continue
+            if not valid:
+                problems.append(f"цифры {', '.join(missing)} без ссылки на страницу руководства: «{body.strip()[:120]}»")
+            else:
+                problems.append(f"числа {', '.join(missing)} не найдены на указанных страницах: «{body.strip()[:120]}»")
 
     text = TAG.sub(lambda m: ref(m.group(1), int(m.group(2))), answer)
     text = re.sub(r"(\[\d+\])(?:\s*\1)+", r"\1", text)

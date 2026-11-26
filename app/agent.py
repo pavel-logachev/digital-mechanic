@@ -266,6 +266,7 @@ class Agent:
                 msgs.append(self._system())
             msgs.append({"role": "user", "content": user_text})
             retried = False
+            first_problems: list[str] = []
             for _ in range(MAX_STEPS):
                 m = llm.chat(msgs, TOOLS, self.c.usage)
                 if m.tool_calls:
@@ -275,9 +276,14 @@ class Agent:
                         msgs.append({"role": "tool", "tool_call_id": tc.id, "content": self._call(tc)})
                     continue
                 answer = (m.content or "").strip()
-                checked = verify.check(answer, self.allowed, self.c.seen, searcher().page_text, self._context_numbers())
+                # цифры из вопросов механика — его данные, а не нормативы: их не требуем подтверждать страницей
+                asked = " ".join(m["content"] for m in msgs if m["role"] == "user" and isinstance(m.get("content"), str)
+                                 and not m["content"].startswith("[Проверка программы]"))
+                checked = verify.check(answer, self.allowed, self.c.seen, searcher().page_text,
+                                       self._context_numbers() | verify.page_numbers(asked))
                 if checked.problems and not retried:
                     retried = True
+                    first_problems = checked.problems
                     msgs.append({"role": "assistant", "content": answer})
                     self.emit({"type": "step", "tool": "verify", "title": "Проверка цифр и ссылок", "status": "error",
                                "detail": "; ".join(checked.problems)[:400]})
@@ -285,7 +291,7 @@ class Agent:
                                  + "; ".join(checked.problems)
                                  + ". Исправь ответ: каждую цифру подтверди страницей, которую получил инструментом "
                                    "(при необходимости поищи ещё), или убери её и честно скажи, что в руководстве этого нет. "
-                                   "Пришли исправленный ответ целиком."})
+                                   "Пришли исправленный ответ целиком, как будто пишешь впервые — без слов «исправленный ответ», «перепроверил» и т. п."})
                     continue
                 if checked.problems:
                     checked.text += "\n\n_Часть сведений не удалось подтвердить по руководству: проверьте по ссылкам перед работой._"
@@ -293,7 +299,8 @@ class Agent:
                 self.emit({"type": "step", "tool": "verify", "title": "Проверка цифр и ссылок", "status": "done",
                            "detail": f"ссылок: {len(checked.citations)}" + (f", замечаний: {len(checked.problems)}" if checked.problems else ", всё подтверждено")})
                 self.emit({"type": "message", "text": checked.text, "citations": checked.citations,
-                           "usage": self.c.usage.as_dict()})
+                           "usage": self.c.usage.as_dict(), "unverified": checked.problems,
+                           "first_pass_problems": first_problems})
                 return
             self.emit({"type": "message", "text": "Не успел собрать ответ, уточните вопрос.", "citations": []})
 

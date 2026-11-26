@@ -50,6 +50,7 @@ def run_case(q: dict) -> dict:
         "refused": bool(REFUSAL.search(text)),
         "verify_retry": any(e["type"] == "step" and e.get("tool") == "verify" and e["status"] == "error" for e in events),
         "unconfirmed_note": "не удалось подтвердить" in text,
+        "unverified": msg.get("unverified", []), "first_pass_problems": msg.get("first_pass_problems", []),
         "steps": [e["title"] for e in events if e["type"] == "step" and e["status"] != "running"],
         "usage": conv.usage.as_dict(), "calls": conv.usage.log,
     })
