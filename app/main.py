@@ -108,6 +108,25 @@ def _check_page(manual_id: str, page: int):
 
 
 # --- агент ---
+# Стенд открыт для жюри без пароля, поэтому ограничиваем частоту запросов к LLM: с одного адреса и суммарно.
+_hits: dict[str, list[float]] = {}
+_all: list[float] = []
+PER_IP_10MIN = int(config.env("RATE_PER_IP_10MIN", "40"))
+GLOBAL_PER_HOUR = int(config.env("RATE_GLOBAL_PER_HOUR", "600"))
+
+
+def _rate_limit(request: Request) -> None:
+    now = time.time()
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    h = [t for t in _hits.get(ip, []) if now - t < 600]
+    _all[:] = [t for t in _all if now - t < 3600]
+    if len(h) >= PER_IP_10MIN or len(_all) >= GLOBAL_PER_HOUR:
+        raise HTTPException(429, "Слишком много запросов, подождите несколько минут.")
+    h.append(now)
+    _hits[ip] = h
+    _all.append(now)
+
+
 class ChatIn(BaseModel):
     conversation_id: str
     vehicle_id: str
@@ -123,7 +142,8 @@ ACTION_TEXT = {
 
 
 @app.post("/api/chat")
-def chat(body: ChatIn):
+def chat(body: ChatIn, request: Request):
+    _rate_limit(request)
     if not data.vehicle(body.vehicle_id):
         raise HTTPException(404, "Машина не найдена")
     if body.session_id and not data.session(body.vehicle_id, body.session_id):
