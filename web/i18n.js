@@ -10,7 +10,7 @@ language|Язык|Til|Забон|Тил|Тіл|भाषा|Language
 large|Крупный шрифт|Yirik yozuv|Ҳарфи калон|Чоң арип|Ірі қаріп|बड़े अक्षर|Large text
 back|Назад|Orqaga|Бозгашт|Артка|Артқа|वापस|Back
 demo|Демо|Demo|Намоиш|Демо|Демо|डेमो|Demo
-fleet|Режим главного механика|Avtopark holati|Ҳолати автопарк|Автопарктын абалы|Автопарк күйі|बेड़े की स्थिति|Fleet overview
+fleet|Сводка парка для главного механика|Bosh mexanik uchun park holati|Ҳолати парк барои механики калон|Башкы механик үчүн парктын абалы|Бас механикке арналған парк жағдайы|मुख्य मैकेनिक के लिए पार्क सारांश|Fleet overview for the chief mechanic
 vehicle|Карточка машины|Mashina kartasi|Маълумоти мошин|Унаа тууралуу|Көлік картасы|गाड़ी की जानकारी|Vehicle details
 chat|Диагностика|Diagnostika|Ташхис|Диагностика|Диагностика|जाँच का नतीजा|Diagnosis
 draft|Черновик заявки|Buyurtma qoralamasi|Пешнависи дархост|Өтүнмөнүн долбоору|Өтінім жобасы|वर्क ऑर्डर का मसौदा|Work order draft
@@ -91,7 +91,7 @@ stepDraft|Готовлю черновик…|Qoralama tayyorlayapman…|Пешн
 openReceipt|Открыть квитанцию|Kvitansiyani ochish|Кушодани расид|Дүмүрчөктү ачуу|Түбіртекті ашу|रसीद खोलें|Open receipt
 createDraft|Создать заявку|Ta’mirlash buyurtmasini tayyorlash|Дархости таъмирро омода кардан|Оңдоо өтүнмөсүн даярдоо|Жөндеуге өтінім дайындау|मरम्मत का वर्क ऑर्डर तैयार करें|Prepare a repair work order
 openDraft|Открыть черновик|Qoralamani ochish|Кушодани пешнавис|Долбоорду ачуу|Жобаны ашу|मसौदा खोलें|Open draft
-question|Спросите про эту машину…|Shu mashina haqida so‘rang…|Дар бораи ин мошин пурсед…|Бул унаа жөнүндө сураңыз…|Осы көлік туралы сұраңыз…|इस गाड़ी के बारे में पूछें…|Ask about this vehicle…
+question|Вопрос о машине|Mashina haqida savol|Савол дар бораи мошин|Унаа боюнча суроо|Көлік туралы сұрақ|गाड़ी पर सवाल|Question about the vehicle
 send|Отправить|Yuborish|Фиристодан|Жөнөтүү|Жіберу|भेजें|Send
 sendQuestion|Отправить вопрос|Savolni yuborish|Фиристодани савол|Суроону жөнөтүү|Сұрақты жіберу|सवाल भेजें|Send question
 mic|Вопрос голосом|Ovozli savol|Саволи овозӣ|Үн менен суроо|Дауыспен сұрау|आवाज़ से सवाल पूछें|Ask by voice
@@ -169,6 +169,16 @@ scoreScale|0 – норма, 1 – сильное отклонение|0 – me�
 noScore|нет оценки|baho yo‘q|баҳо нест|баа жок|баға жоқ|स्कोर नहीं|no score
 pageShort|стр. {page}|{page}-bet|саҳ. {page}|{page}-бет|{page}-бет|पृष्ठ {page}|p. {page}
 logout|Выйти|Chiqish|Баромадан|Чыгуу|Шығу|लॉग आउट|Log out
+fleetTitle|Главный механик|Bosh mexanik|Механики калон|Башкы механик|Бас механик|मुख्य मैकेनिक|Chief mechanic
+fleetTotal|Машин в парке: {n}|Parkdagi mashinalar: {n}|Мошинҳо дар парк: {n}|Парктагы машиналар: {n}|Парктегі көліктер: {n}|पार्क में वाहन: {n}|Vehicles in the fleet: {n}
+fleetQueue|Очередь на дефектовку|Nosozlikni aniqlash navbati|Навбат ба ташхиси нуқсон|Дефектовка кезеги|Ақау анықтау кезегі|जाँच की कतार|Inspection queue
+fleetFirst|Кого ставить на дефектовку первым|Birinchi navbatda nosozlikni aniqlashga|Аввал ба ташхиси нуқсон кадом мошин|Биринчи кезекте дефектовкага|Бірінші кезекте ақау анықтауға|सबसे पहले जाँच के लिए|Send for inspection first
+fleetGroup|Группа: {name}|Guruh: {name}|Гурӯҳ: {name}|Топ: {name}|Топ: {name}|समूह: {name}|Group: {name}
+showNormal|Показать машины в норме ({count})|Me’yordagi mashinalarni ko‘rsatish ({count})|Мошинҳои дар меъёрро нишон додан ({count})|Нормадагы машиналарды көрсөтүү ({count})|Қалыпты көліктерді көрсету ({count})|सामान्य वाहन दिखाएँ ({count})|Show vehicles in normal state ({count})
+fleetBriefStop|Не выпускать на линию: {n}|Yo‘lga chiqarmaslik: {n}|Ба роҳ набаровардан: {n}|Линияга чыгарбоо: {n}|Желіге шығармау: {n}|लाइन पर न भेजें: {n}|Keep off the line: {n}
+fleetBriefAttention|Требуют внимания: {n}.|E’tibor talab qiladi: {n}.|Диққатро талаб мекунанд: {n}.|Көңүл бурууну талап кылат: {n}.|Назар аударуды қажет етеді: {n}.|ध्यान चाहिए: {n}.|Need attention: {n}.
+fleetBriefFailed|Нужна перезапись звука: {n}|Ovozni qayta yozish kerak: {n}|Садо бояд аз нав сабт шавад: {n}|Үндү кайра жазуу керек: {n}|Дыбысты қайта жазу керек: {n}|आवाज़ फिर से रिकॉर्ड करनी है: {n}|Sound must be recorded again: {n}
+fleetBriefTickets|Заявок в работе: {n}.|Ishdagi buyurtmalar: {n}.|Дархостҳои дар иҷро: {n}.|Аткарылып жаткан өтүнмөлөр: {n}.|Жұмыстағы өтінімдер: {n}.|प्रगति में अनुरोध: {n}.|Requests in progress: {n}.
 checkedLabel|Проверка|Tekshiruv|Санҷиш|Текшерүү|Тексеру|जाँच|Check
 checkedAt|Дата и время проверки|Tekshiruv sanasi va vaqti|Сана ва вақти санҷиш|Текшерүүнүн күнү жана убактысы|Тексерілген күн мен уақыт|जाँच की तारीख और समय|Check date and time
 overrideLabel|Причина изменения приоритета|Ustuvorlikni o‘zgartirish sababi|Сабаби иваз кардани афзалият|Артыкчылыкты өзгөртүүнүн себеби|Басымдықты өзгерту себебі|प्राथमिकता बदलने की वजह|Reason for changing priority

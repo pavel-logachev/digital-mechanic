@@ -26,7 +26,13 @@ def choose_language(page, lang):
 def no_overflow(page):
     assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
     assert page.locator('main').evaluate('e => e.scrollWidth <= e.clientWidth')
-    assert page.locator('#top').evaluate('e => [...e.querySelectorAll(".brand, #header-tools, .back-button")].every(n => n.getBoundingClientRect().right <= e.getBoundingClientRect().right) && e.querySelector(".brand").getBoundingClientRect().right < e.querySelector("#header-tools").getBoundingClientRect().left')
+    # шапка и каждый элемент страницы – в пределах ширины экрана, заголовок не наезжает на кнопки
+    assert page.locator('#top').evaluate('''e => e.getBoundingClientRect().right <= innerWidth
+        && [...e.querySelectorAll('.brand, #header-tools, .back-button')].every(n => n.getBoundingClientRect().right <= innerWidth)
+        && (!e.querySelector('.brand') || e.querySelector('.brand').getBoundingClientRect().right < e.querySelector('#header-tools').getBoundingClientRect().left)''')
+    wide = page.evaluate('''[...document.querySelectorAll('main *, .dock *')].filter(n => { const r = n.getBoundingClientRect();
+        return r.width && (r.right > innerWidth + 0.5 || r.left < -0.5); }).map(n => n.tagName + '.' + n.className).slice(0, 5)''')
+    assert not wide, f'элементы шире экрана: {wide}'
 
 
 def last_item_clears_dock(page):
@@ -155,7 +161,7 @@ def voice(page):
 
 def vehicle_voice(page):
     open_vehicle(page)
-    question = page.get_by_role('textbox', name='Спросите про эту машину…')
+    question = page.get_by_role('textbox', name='Вопрос о машине')
     expect(question).to_be_visible(timeout=1500)
     # Keep the browser upload and fixture validation, substitute only the recognized phrase.
     page.evaluate('''() => {
@@ -285,10 +291,10 @@ def data_consent(page):
 def fleet_tickets(page):
     vehicles = page.request.get(f'{BASE}/api/vehicles').json()
     open_tickets = {v['vehicle_id']: v['open_ticket'] for v in vehicles if v['open_ticket']}
-    page.get_by_role('button', name='Режим главного механика').click()
+    page.get_by_role('button', name='Сводка парка для главного механика').click()
     counter = page.get_by_role('button', name=re.compile('Заявок в работе'))
     expect(counter.locator('strong')).to_have_text(str(len(open_tickets)), timeout=1500)
-    rows = page.locator('.vehicle-row')
+    rows = page.locator('.fleet-row')
     counter.click()
     expect(counter).to_have_attribute('aria-pressed', 'true')
     expect(rows).to_have_count(len(open_tickets))
@@ -299,7 +305,7 @@ def fleet_tickets(page):
     page.go_back()
     expect(counter).to_have_attribute('aria-pressed', 'true')
     counter.click()
-    expect(rows).to_have_count(len(vehicles))
+    expect(rows).to_have_count(sum(v['fleet_status'] != 'ok' for v in vehicles))  # без фильтра – очередь без машин в норме
 
 
 def voice_errors(page):
@@ -419,7 +425,7 @@ def screens(page):
     screenshot(page, '09-receipt')
     page.get_by_role('button', name='К списку машин').click()
     page.locator('.wide-link').click()
-    expect(page.locator('.fleet-count')).to_have_count(5)
+    expect(page.locator('.tile')).to_have_count(3)
     screenshot(page, '10-fleet')
     page.locator('[data-filter="open_ticket"]').click()
     page.locator('[data-plate="T792HO98"]').click()
@@ -507,21 +513,28 @@ def interactions(page):
     expect(search).to_have_value('')
     expect(search).to_be_focused()
     page.locator('.wide-link').click()
-    statuses = ['quarantine', 'anomaly', 'check_failed', 'normal']
-    rows = page.locator('.vehicle-row')
+    # B3/С4: сводка норма / требует внимания / карантин, очередь без машин в норме, карантин первым
+    rows = page.locator('.fleet-row')
+    group = {'quarantine': 'quarantine', 'anomaly': 'attention', 'check_failed': 'attention', 'normal': 'normal'}
     entries = rows.evaluate_all('els => els.map(e => e.dataset.stage)')
-    assert len(entries) == 50 and entries == sorted(entries, key=statuses.index), entries
-    assert page.locator('.vehicle-row').evaluate_all('rows => rows.every((row, i) => !i || row.dataset.stage !== rows[i-1].dataset.stage || Date.parse(row.querySelector("time").dateTime) <= Date.parse(rows[i-1].querySelector("time").dateTime))')
-    assert page.locator('.vehicle-row').evaluate_all('rows => rows.every(row => row.querySelectorAll(".pill").length === 1)')
-    for status in statuses:
-        button = page.locator(f'[data-filter="{status}"]')
-        count = int(button.locator('strong').inner_text())
+    tiles = {k: int(page.locator(f'[data-filter="{k}"] .tile-number').inner_text()) for k in ('quarantine', 'attention', 'normal')}
+    assert sum(tiles.values()) == 50, tiles
+    assert len(entries) == tiles['quarantine'] + tiles['attention'] and 'normal' not in entries, entries
+    assert entries[:tiles['quarantine']] == ['quarantine'] * tiles['quarantine'], entries
+    assert rows.evaluate_all('rows => rows.every((row, i) => row.querySelector(".rank").textContent === String(i + 1))')
+    for key in ('quarantine', 'attention', 'normal'):
+        button = page.locator(f'[data-filter="{key}"]')
         button.click()
         expect(button).to_have_attribute('aria-pressed', 'true')
-        expect(rows).to_have_count(count)
-        assert all(x == status for x in rows.evaluate_all('els => els.map(e => e.dataset.stage)'))
+        expect(rows).to_have_count(tiles[key])
+        assert all(group[x] == key for x in rows.evaluate_all('els => els.map(e => e.dataset.stage)'))
         button.click()
-        expect(rows).to_have_count(50)
+    failed = page.locator('[data-filter="check_failed"]')
+    failed.click()
+    assert set(rows.evaluate_all('els => els.map(e => e.dataset.stage)')) == {'check_failed'}
+    failed.click()
+    page.get_by_role('button', name=re.compile('Показать машины в норме')).click()
+    expect(rows).to_have_count(50)
     page.locator('.back-button').click()
     expect(search).to_be_visible()
     open_vehicle(page)

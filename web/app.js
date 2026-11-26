@@ -1,6 +1,7 @@
 'use strict';
 
 const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const main = $('#main'), dock = $('#dock'), topbar = $('#top'), manual = $('#manual'), languageDialog = $('#language-dialog'), dataDialog = $('#data-dialog');
 const api = '/api';
 const state = {route: {page: 'park'}, vehicles: null, fleetFilter: '', cards: new Map(), chats: new Map(), query: '', all: false, demo: false};
@@ -211,7 +212,7 @@ function header() {
   size.setAttribute('aria-pressed', String(large));
   const identity = el('div', {class: 'identity'}, isPark ? mark() :
     action([icon('back'), el('span', {}, t('back'))], back, {class: 'back-button', 'aria-label': t('back')}),
-    el(['draft', 'receipt'].includes(page) ? 'strong' : 'h1', {class: 'brand', tabindex: '-1'}, vid || t(isPark ? 'brand' : page)));
+    page === 'fleet' ? null : el(['draft', 'receipt'].includes(page) ? 'strong' : 'h1', {class: 'brand', tabindex: '-1'}, vid || t(isPark ? 'brand' : page)));
   if (topbar.firstElementChild === tools) topbar.prepend(identity);
   else topbar.firstElementChild.replaceWith(identity);
 }
@@ -247,7 +248,8 @@ async function showRoute(route, focus = false, scroll = 0) {
   main.className = route.page;
   main.scrollTop = 0;
   if (state.me === undefined) state.me = await json(`${api}/me`).catch(() => null);
-  const load = ['park', 'fleet'].includes(route.page) && !state.vehicles ? async () => { state.vehicles = await json(`${api}/vehicles`); }
+  const load = route.page === 'fleet' ? async () => { [state.fleet, state.vehicles] = await Promise.all([json(`${api}/fleet`), state.vehicles || json(`${api}/vehicles`)]); }
+    : route.page === 'park' && !state.vehicles ? async () => { state.vehicles = await json(`${api}/vehicles`); }
     : route.vid && !state.cards.has(route.vid) ? async () => { state.cards.set(route.vid, await json(endpoint(route.vid))); }
     : null;
   if (load) {
@@ -316,32 +318,59 @@ function renderPark() {
   update();
   main.replaceChildren(el('div', {class: 'search-group'}, el('label', {for: 'vehicle-search'}, t('search')),
     el('div', {class: 'search'}, icon('search'), input, clear)),
-    state.me?.user?.role !== 'mechanic' && action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
+    state.me?.user?.role !== 'mechanic' && action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; state.fleetNormal = false; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
     el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo'))), list,
     el('a', {class: 'data-link', href: '#data-dialog', 'aria-haspopup': 'dialog', onclick: e => { e.preventDefault(); openDataDialog(); }}, t('dataPolicy')),
     state.me?.user && el('p', {class: 'account'}, `${state.me.user.name} – ${state.me.user.role_name.toLocaleLowerCase('ru')}`, ' ',
       action(t('logout'), async () => { await fetch(`${api}/logout`, {method: 'POST'}); location.reload(); }, {class: 'link-button'})));
 }
 function renderFleet() {
-  const items = orderedVehicles();
-  const statuses = stageRank.filter(key => key !== 'unknown' || items.some(v => vehicleStage(v) === key));
-  const filters = [...statuses.map(key => [key, ...stages[key]]), ['open_ticket', 'openTickets', 'neutral', 'book']];
-  const matches = (v, key) => key === 'open_ticket' ? Boolean(v.open_ticket) : vehicleStage(v) === key;
-  const list = el('div', {class: 'vehicle-list'});
+  // B3 / С4 ТЗ: сводка по парку (норма / требует внимания / карантин), приоритетный список, история по клику
+  const group = v => { const s = vehicleStage(v); return s === 'quarantine' ? 'quarantine' : s === 'normal' ? 'normal' : 'attention'; };
+  // очередь – в порядке сервера (тяжесть, приоритет, оценка отклонения); машины, которых нет в очереди, – в конце
+  const queue = state.fleet?.priority ?? [];
+  const known = new Set(queue.map(v => v.vehicle_id));
+  const order = ['quarantine', 'attention', 'normal'];
+  const items = [...queue, ...orderedVehicles().filter(v => !known.has(v.vehicle_id))]
+    .map((v, i) => [v, i]).sort(([a, i], [b, j]) => order.indexOf(group(a)) - order.indexOf(group(b)) || i - j).map(([v]) => v);
+  const by = key => items.filter(v => group(v) === key);
+  const failed = items.filter(v => vehicleStage(v) === 'check_failed').length;
+  const tickets = items.filter(v => v.open_ticket).length;
+  const tiles = [['quarantine', 'quarantine', 'red', 'ban'], ['attention', 'anomaly', 'amber', 'warn'], ['normal', 'normal', 'green', 'check']];
+  const list = el('ol', {class: 'priority-list'});
+  const more = el('div', {});
   const update = () => {
-    const visible = state.fleetFilter ? items.filter(v => matches(v, state.fleetFilter)) : items;
-    list.replaceChildren(...visible.map(vehicleRow));
-    if (!visible.length) list.append(box(hint(t('fleetEmpty'))));
-    for (const btn of counts.children) btn.setAttribute('aria-pressed', String(btn.dataset.filter === state.fleetFilter));
+    const f = state.fleetFilter;
+    const visible = f === 'open_ticket' ? items.filter(v => v.open_ticket) : f === 'check_failed' ? items.filter(v => vehicleStage(v) === 'check_failed') : f ? by(f)
+      : items.filter(v => group(v) !== 'normal' || state.fleetNormal);
+    list.replaceChildren(...visible.map((v, i) => el('li', {}, fleetRow(v, i + 1))));
+    if (!visible.length) list.append(el('li', {}, box(hint(t('fleetEmpty')))));
+    const normals = by('normal').length;
+    more.replaceChildren(!f && !state.fleetNormal && normals ? action(t('showNormal', {count: normals}), () => { state.fleetNormal = true; update(); }, {class: 'wide-link center'}) : '');
+    for (const btn of $$('[data-filter]', main)) btn.setAttribute('aria-pressed', String(btn.dataset.filter === f));
+    heading.textContent = t(f ? 'fleetGroup' : 'fleetQueue', {name: f === 'open_ticket' ? t('openTickets').toLocaleLowerCase(lang) : f === 'check_failed' ? t('failed').toLocaleLowerCase(lang) : f ? t(tiles.find(x => x[0] === f)[1]).toLocaleLowerCase(lang) : ''});
   };
-  const counts = el('div', {class: 'fleet-counts'}, filters.map(([key, label, tone, symbol]) => {
-    return action([icon(symbol), el('span', {}, t(label)), el('strong', {}, String(items.filter(v => matches(v, key)).length))], () => {
-      state.fleetFilter = state.fleetFilter === key ? '' : key;
-      update();
-    }, {class: `fleet-count ${tone}`, 'data-filter': key});
-  }));
-  main.replaceChildren(counts, list);
+  const pick = key => () => { state.fleetFilter = state.fleetFilter === key ? '' : key; update(); };
+  const heading = el('h2', {class: 'list-title'});
+  main.replaceChildren(
+    el('div', {class: 'page-head'}, el('h1', {tabindex: '-1'}, t('fleetTitle')), hint(t('fleetTotal', {n: items.length}))),
+    el('section', {class: 'box fleet-summary'},
+      el('div', {class: 'tiles'}, tiles.map(([key, label, tone, symbol]) => action(
+        [el('span', {class: 'tile-top'}, el('strong', {class: 'tile-number'}, String(by(key).length)), icon(symbol)), el('span', {class: 'tile-label'}, t(label))],
+        pick(key), {class: `tile ${tone}`, 'data-filter': key}))),
+      action([icon('book'), el('span', {}, t('openTickets')), el('strong', {}, String(tickets))], pick('open_ticket'), {class: 'tickets-filter', 'data-filter': 'open_ticket'}),
+      failed ? action([icon('mic'), el('span', {}, t('fleetBriefFailed', {n: ''}).replace(/:\s*$/u, '')), el('strong', {}, String(failed))], pick('check_failed'), {class: 'tickets-filter violet', 'data-filter': 'check_failed'}) : null),
+    heading, list, more);
   update();
+}
+function fleetRow(v, rank) {
+  const stage = vehicleStage(v);
+  return action([el('span', {class: 'rank', 'aria-hidden': 'true'}, String(rank)),
+    el('span', {class: 'row-copy'}, plate(v.vehicle_id), vehicleModel(v), statusLine(stage, v.last_check),
+      priorityLabel(v.last_urgency) && stage !== 'normal' ? el('span', {class: `row-priority ${v.last_urgency}`}, priorityLine(v.last_urgency)) : null,
+      el('span', {class: 'row-meta'}, v.open_ticket ? el('span', {class: 'ticket-note'}, t('ticketOpen', {id: v.open_ticket})) : null,
+        v.last_check?.checked_at ? el('span', {class: 'row-date'}, `${t('checkedLabel')}: `, checkTime(v.last_check.checked_at)) : null)),
+    icon('next')], () => navigate({page: 'vehicle', vid: v.vehicle_id}), {class: 'vehicle-row fleet-row', 'data-stage': stage, 'data-plate': v.vehicle_id});
 }
 function context(v, s) {
   return el('div', {class: 'context'}, vehicleModel(v), s?.checked_at && checkTime(s.checked_at));
@@ -667,6 +696,7 @@ function renderComposer(c) {
 function resizeQuestion() {
   const input = $('#question');
   if (!input || input.hidden) return;
+  if (!input.value) { input.style.height = ''; return; }  // пустое поле – ровно по высоте кнопки, подсказка не растягивает
   input.style.height = 'auto';
   const css = getComputedStyle(input);
   const borders = parseFloat(css.borderTopWidth) + parseFloat(css.borderBottomWidth);

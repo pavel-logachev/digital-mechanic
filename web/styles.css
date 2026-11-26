@@ -55,8 +55,8 @@ p, li, dd, h1, h2, h3, strong, .brand, .pill, button { overflow-wrap: anywhere; 
 #language { gap: 4px; font-size: 15px; }
 #language .icon { width: 19px; height: 19px; }
 #font-size { font-size: 21px; }
-#font-size[aria-pressed=true] { background: var(--white); border-color: var(--white); color: var(--dark); box-shadow: inset 0 -4px 0 #8cacc9; }
-.back-button { font-size: 15px; white-space: nowrap; }
+#font-size[aria-pressed=true] { background: var(--white); border-color: var(--white); color: var(--dark); }
+.back-button { font-size: 15px; white-space: nowrap; margin-inline-start: -10px; }
 .back-button .icon { width: 18px; height: 18px; }
 @media (max-width: 470px) { .back-button .icon { display: none; } }
 @media (max-width: 375px) { .brand { font-size: 16px; } }
@@ -208,15 +208,13 @@ ol.fold-body { padding-inline-start: 30px; }
 .detail-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .detail-switch button:first-child { border-start-end-radius: 0; border-end-end-radius: 0; border-inline-end: 0; }
 .detail-switch button:last-child { border-start-start-radius: 0; border-end-start-radius: 0; }
-.detail-switch button[aria-pressed=true] { background: var(--active); color: var(--action); box-shadow: inset 0 -3px var(--action); }
+.detail-switch button[aria-pressed=true] { background: var(--action); border-color: var(--action); color: var(--white); }
 .detail-switch button:focus-visible { z-index: 1; }
 .dock-hint { font-size: .77rem; line-height: 1.25; letter-spacing: -.015em; }
 .question-row { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
 .question-row:has(#mic[hidden]):has(#send-question[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .compose textarea, .field textarea, .field select, .field input { border: 1px solid var(--edge-line); border-radius: 8px; padding: 12px; width: 100%; min-width: 0; min-height: var(--target); background: var(--white); font-weight: 400; line-height: 1.35; }
 .compose textarea { resize: none; max-height: calc(5.4em + 26px); }
-@media (max-width: 375px) { .compose textarea:placeholder-shown { min-height: calc(2.7em + 26px); } }
-.large-type .compose textarea:placeholder-shown { min-height: calc(2.7em + 26px); }
 #send-question { max-width: 10ch; min-width: 94px; padding-inline: 8px; font-size: .94rem; }
 #voice-live { align-self: stretch; }
 .field { display: grid; font-weight: 700; gap: 8px; min-width: 0; }
@@ -280,3 +278,45 @@ dialog::backdrop { background: #172326b3; }
 /* кто вошел: внизу списка машин, рядом со ссылкой об обработке данных */
 .account { margin: -12px 0 0; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .link-button { min-height: var(--target); padding-inline: 0; border-color: transparent; background: none; color: var(--action); font-weight: 400; text-decoration: underline; }
+
+/* Главный механик: сводка плитками и приоритетный список */
+.fleet-summary { display: grid; gap: 12px; }
+.fleet-summary h2 { margin: 0; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tile { display: grid; justify-content: stretch; justify-items: start; align-content: start; gap: 6px; min-height: 96px; padding: 12px; text-align: left; border-color: transparent; }
+.tile-number { font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.tile-top { display: flex; align-items: center; gap: 6px; }
+.tile-top .icon { width: 18px; height: 18px; }
+.tile-label { font-size: .86rem; line-height: 1.2; overflow-wrap: normal; word-break: normal; min-width: 0; }
+.tile-label .icon { flex: none; width: 16px; height: 16px; margin-top: .05em; }
+.tile.red { background: var(--red-bg); color: var(--red); }
+.tile.amber { background: var(--amber-bg); color: var(--amber); }
+.tile.green { background: var(--green-bg); color: var(--green); }
+.tile[aria-pressed=true], .tickets-filter[aria-pressed=true] { box-shadow: inset 0 0 0 3px currentColor; }
+.tickets-filter { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; width: 100%; text-align: left; border-color: var(--line); color: var(--ink); }
+.tickets-filter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.tickets-filter.violet { color: var(--violet); background: var(--violet-bg); border-color: transparent; }
+.list-title { margin: 4px 0 0; font-size: 1.08rem; }
+.priority-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.fleet-row { grid-template-columns: 22px minmax(0, 1fr) 20px; column-gap: 8px; }
+.rank { font-weight: 750; font-size: 1.15rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.4; }
+.row-meta { display: grid; gap: 4px; color: var(--muted); font-size: .92rem; }
+.row-meta .ticket-note { color: var(--action); font-weight: 650; }
+.wide-link.center { justify-content: center; }
+/* узкий экран или крупный шрифт: плитки в столбик, число слева от подписи */
+@media (max-width: 359px) { .tiles { grid-template-columns: 1fr; } .tile { min-height: 0; grid-template-columns: minmax(4.2rem, auto) minmax(0, 1fr); align-items: center; gap: 12px; } }
+@media (max-width: 440px) { .large-type .tiles { grid-template-columns: 1fr; } .large-type .tile { min-height: 0; grid-template-columns: minmax(4.6rem, auto) minmax(0, 1fr); align-items: center; gap: 12px; } .large-type .tile-label { font-size: 1rem; } }
+.tile-number { white-space: nowrap; }
+.page-head { display: grid; gap: 2px; }
+.page-head h1 { margin: 0; font-size: 1.45rem; }
+.row-priority { font-weight: 700; color: var(--ink); }
+.row-priority.high { color: var(--ink); }
+
+/* поле вопроса: в пустом виде ровно высоты кнопки микрофона, подсказка в одну строку */
+.compose textarea { height: var(--target); min-height: var(--target); }
+.compose textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.question-row > button { height: var(--target); }
+/* заголовок в шапке никогда не раздвигает экран */
+.identity { overflow: hidden; }
+.brand { overflow: hidden; text-overflow: ellipsis; }
+.row-date time { white-space: nowrap; }
