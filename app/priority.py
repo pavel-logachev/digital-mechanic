@@ -133,7 +133,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     if sev == "C":
         urg, rule = "high", "R4-critical"
-        action = "Снять с линии до дефектовки: возможна тяжёлая поломка."
+        action = "Снять с линии сейчас и не выпускать до дефектовки: возможна тяжёлая поломка."
         reasons.append("Высокий приоритет: класс критичный, при таких неисправностях продолжение работы рискованно.")
     elif sev == "S" and (strong or growing or (repeated and not doubtful)):
         urg, rule = "high", "R5-significant-strong"

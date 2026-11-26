@@ -119,15 +119,26 @@ def quote_for(answer: str, mid: str, page: int, ptext: str) -> str:
     tag = f"{{{mid}#{page}}}"
     sents = [s for s in re.split(r"(?<=[.!?])\s+|\n", answer) if tag in s]
     flat = re.sub(r"\s+", " ", ptext)
+    nums = []
     for s in sents:
-        for n in NUM.findall(TAG.sub(" ", s)):
-            if not _significant(n):
-                continue
-            for variant in {n, n.replace(".", ","), n.replace(",", ".")}:
-                i = flat.find(variant)
-                if i >= 0:
-                    a, b = max(0, i - 140), min(len(flat), i + 120)
-                    return ("…" if a else "") + flat[a:b].strip() + ("…" if b < len(flat) else "")
+        nums += [n for n in NUM.findall(NOT_NORM.sub(" ", TAG.sub(" ", s))) if _significant(n)]
+    # окно страницы, где рядом встречается больше всего чисел из ответа (а не первое совпадение «10»)
+    positions = []
+    for n in dict.fromkeys(nums):
+        for variant in {n, n.replace(".", ","), n.replace(",", ".")}:
+            for m in re.finditer(r"(?<![\d,.])" + re.escape(variant) + r"(?![\d])", flat):
+                positions.append((m.start(), n))
+    if positions:
+        def score(p):
+            near = {n for q, n in positions if abs(q - p[0]) <= 220}
+            return (len(near), len(p[1]))
+        i = max(positions, key=score)[0]
+        a, b = max(0, i - 120), min(len(flat), i + 160)
+        while a > 0 and flat[a - 1] not in " ":
+            a -= 1
+        while b < len(flat) and flat[b] not in " ":
+            b += 1
+        return ("…" if a else "") + flat[a:b].strip() + ("…" if b < len(flat) else "")
     words = {w for s in sents for w in re.findall(r"[а-яёa-z]{5,}", s.lower())}
     best, score = "", 0
     for line in re.split(r"(?<=[.;:])\s+|\n", ptext):
