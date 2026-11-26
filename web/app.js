@@ -994,7 +994,8 @@ async function confirmTicket(c) {
   const lines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const conclusion = c.edits.conclusion.trim();
   const override = c.edits.urgency !== c.draft.urgency ? (c.edits.urgencyReason || '').trim() : '';
-  const payload = {draft_id: c.draft.draft_id, conclusion: override ? `${conclusion}\n${t('reasonLine', {reason: override})}` : conclusion, urgency: c.edits.urgency, operations: lines(c.edits.operations), spare_parts: lines(c.edits.spare_parts)};
+  const payload = {draft_id: c.draft.draft_id, conclusion: override ? `${conclusion}\n${t('reasonLine', {reason: override})}` : conclusion, urgency: c.edits.urgency, operations: lines(c.edits.operations), spare_parts: lines(c.edits.spare_parts),
+    ...(c.draftNeedsInspection ? {inspection_confirmed: Boolean(c.edits.inspectionConfirmed)} : {})};
   const invalid = !conclusion ? t('needConclusion') : c.edits.urgency !== c.draft.urgency && !override ? t('needReason') : '';
   if (invalid) { $('#ticket-error').hidden = false; $('#ticket-error').textContent = invalid; return; }
   c.confirming = true;

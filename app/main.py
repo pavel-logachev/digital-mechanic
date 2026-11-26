@@ -309,6 +309,7 @@ class ConfirmIn(BaseModel):
     urgency: str | None = None
     operations: list[str] | None = None
     spare_parts: list[str] | None = None
+    inspection_confirmed: bool | None = None
 
 
 @app.post("/api/tickets/confirm")

@@ -165,3 +165,20 @@ def test_users_roles_and_sessions(tmp_path, monkeypatch):
     assert chief.get("/api/fleet").json() == {"ok": True}
     assert users.from_session("подделка.abc") is None
     assert "секрет" not in (tmp_path / "users.json").read_text(encoding="utf-8")
+
+
+def test_doubtful_signal_ticket_needs_confirmed_inspection(monkeypatch):
+    from app import agent, clients, data
+    conv = agent.Conversation("conv-3", "A", "S")
+    conv.drafts["D-3"] = {"vehicle_id": "A", "session_id": "S", "anomaly_type": "F01", "conclusion": "x", "urgency": "medium",
+                          "operations": ["осмотр"], "spare_parts": [], "references": [{"manual": "m", "pdf_page": 1}],
+                          "needs_inspection": True}
+    monkeypatch.setattr(agent, "_convs", {"conv-3": conv})
+    monkeypatch.setattr(agent, "save_conversation", lambda c: None)
+    saved = []
+    monkeypatch.setattr(data, "add_ticket", saved.append)
+    monkeypatch.setattr(clients, "create_ticket", lambda p: {"ticket_id": "TKT-9", "status": "created"})
+    with pytest.raises(ValueError):
+        agent.confirm_ticket("D-3", {})  # без отметки об осмотре сервер заявку не пропускает, даже в обход интерфейса
+    assert agent.confirm_ticket("D-3", {"inspection_confirmed": True})["ticket_id"] == "TKT-9"
+    assert saved[0]["inspection_confirmed"] is True

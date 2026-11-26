@@ -1,0 +1,27 @@
+{
+ "date": "2026-11-26",
+ "dataset": "control-questions-v2 (72 вопроса: 63 с ответом в руководствах, 9 без данных)",
+ "model": "deepseek-flash",
+ "judge": "google/gemini-3.1-pro-preview",
+ "n": 72,
+ "n_answerable": 63,
+ "n_absent": 9,
+ "verdicts": {
+  "correct": 61,
+  "refused_ok": 9,
+  "partially": 1,
+  "wrong": 1
+ },
+ "correct_pct": 96.83,
+ "correct_plus_partially_pct": 98.41,
+ "strict_task_success_pct": 97.22,
+ "citation_supported_pct": 100.0,
+ "displayed_quote_supported_pct": 100.0,
+ "p50_seconds": 5.88,
+ "agent_mean_usd": 0.00634352,
+ "failures": {
+  "search": 1,
+  "possible_gold_issue": 1
+ },
+ "rerank_mean_usd": 0.00503
+}

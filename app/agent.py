@@ -291,7 +291,9 @@ class Agent:
                  "anomaly_type": res["anomaly_type"], "conclusion": conclusion.strip(), "urgency": verdict["urgency"],
                  "urgency_reasons": verdict["urgency_reasons"], "warnings": verdict.get("warnings", []),
                  "operations": ops, "spare_parts": [p.strip() for p in spare_parts or [] if p and p.strip()],
-                 "references": refs, "engine_model": self.engine}
+                 "references": refs, "engine_model": self.engine,
+                 # сомнительный сигнал: заявка уходит только с отметкой механика, что осмотр подтвердил признак
+                 "needs_inspection": bool(verdict.get("inspect_first"))}
         self.c.drafts[draft["draft_id"]] = draft
         self.emit({"type": "draft", "draft": draft})
         out = {"draft_id": draft["draft_id"], "status": "черновик показан механику, ждет его подтверждения кнопкой",
@@ -435,6 +437,8 @@ def _confirm(draft_id: str, edits: dict, author: str | None = None) -> dict:
         "spare_parts": [p for p in (edits.get("spare_parts") if edits.get("spare_parts") is not None else d["spare_parts"]) if str(p).strip()],
         "references": [{"manual": r["manual"], "pdf_page": r["pdf_page"]} for r in d["references"]],
     }
+    if d.get("needs_inspection") and edits.get("inspection_confirmed") is not True:
+        raise ValueError("Сигнал сомнительный: сначала осмотрите узел и отметьте, что осмотр подтвердил признак.")
     if payload["urgency"] not in ("low", "medium", "high"):
         raise ValueError("Приоритет должен быть low, medium или high.")
     if not payload["operations"] or not payload["conclusion"]:
@@ -444,7 +448,8 @@ def _confirm(draft_id: str, edits: dict, author: str | None = None) -> dict:
     manual_change = payload["urgency"] != d["urgency"]
     data.add_ticket({"ticket_id": d["ticket_id"], "vehicle_id": d["vehicle_id"], "session_id": d["session_id"],
                      "anomaly_type": d["anomaly_type"], "urgency": payload["urgency"], "conclusion": payload["conclusion"],
-                     "urgency_changed_by_mechanic": manual_change, "created_by": author})
+                     "urgency_changed_by_mechanic": manual_change, "created_by": author,
+                     "inspection_confirmed": bool(edits.get("inspection_confirmed"))})
     conv.messages.append({"role": "user", "content": f"[Система] Механик подтвердил черновик {draft_id}. "
                           f"ТОиР создал заявку {d['ticket_id']} (приоритет {URGENCY_RU.get(payload['urgency'], payload['urgency'])})."})
     save_conversation(conv)
