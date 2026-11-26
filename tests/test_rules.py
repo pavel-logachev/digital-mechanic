@@ -45,7 +45,7 @@ def test_not_applicable_class_flagged(code, engine):
     assert v.defect_note and code in v.defect_note and "дефектовк" in v.defect_note
     # разъяснение заказчика: карточка машины главнее – это ошибка модели, а не диагноз; повторить проверку или дефектовка
     assert "ошибка модели" in v.action and "Повторите проверку" in v.action and "дефектовк" in v.action
-    assert any("ошибка ML-модели, а не диагноз" in w for w in v.warnings)
+    assert any("ошибка программы оценки звука, а не диагноз" in w for w in v.warnings)
 
 
 def test_normal_after_unresolved_critical_warns():

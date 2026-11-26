@@ -94,10 +94,10 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     if status == "normal":
         v = Verdict("normal", None, "По звуку двигателя отклонений нет. Работайте по обычному графику ТО.", False,
-                    [f"Оценка отклонения {fmt(score)} из 1 – низкая, уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
-                     "Это результат одной акустической проверки, а не акт технического состояния."], rule="R2-normal")
+                    [f"Оценка отклонения {fmt(score)} из 1 – низкая, уверенность программы {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
+                     "Это вывод по одной записи звука, а не осмотр машины."], rule="R2-normal")
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
-            v.action = "Результат «норма» под сомнением: запись с помехами или низкая уверенность. Лучше повторить запись."
+            v.action = "Результат «норма» под сомнением: запись с помехами или программа не уверена. Лучше записать звук еще раз."
             v.rule = "R2-normal-doubt"
             v.warnings.append(_doubt_text(quality, conf))
         unresolved = _unresolved_critical(past, tickets)
@@ -122,19 +122,19 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     if appl == "no":
         note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
-        warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
-                        "Карточка машины верна – это ошибка ML-модели, а не диагноз: неисправность по этому классу не ставится.")
+        warnings.append(f"Программа указала {code} «{result.get('anomaly_title')}», но у двигателя {engine} такого узла нет. {note} "
+                        "Данные машины верны – это ошибка программы оценки звука, а не диагноз: неисправность по ней не ставится.")
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
             warnings.append(_doubt_text(quality, conf))   # #101: при warning предупреждение показывается всегда
         # в руководстве на этот двигатель нет инструкции по такому узлу – продукт заявку не отправляет (разъяснение #103)
         defect = (f"Рекомендация на дефектовку. Машина {result.get('vehicle_id')}, двигатель {engine}, "
-                  f"проверка {result.get('session_id')}: ML-сервис указал {code} «{result.get('anomaly_title')}» "
+                  f"проверка {result.get('session_id')}: программа оценки звука указала {code} «{result.get('anomaly_title')}» "
                   f"(оценка {fmt(score)}, уверенность {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}). "
-                  f"Класс не подходит к двигателю {engine}, инструкции по этому узлу в руководстве нет. "
+                  f"Такого узла у двигателя {engine} нет, инструкции по нему в руководстве нет. "
                   "Нужна повторная проверка или дефектовка двигателя.")
-        return Verdict("anomaly", None, "Тип отклонения не подходит к двигателю этой машины – это ошибка модели. "
-                       "Повторите проверку или проведите дефектовку; заявку продукт не отправляет.", False,
-                       [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но класс {code} неприменим к {engine}.",
+        return Verdict("anomaly", None, "Программа назвала узел, которого нет у этого двигателя, – это ошибка модели оценки звука, а не неисправность. "
+                       "Повторите проверку или проведите дефектовку; заявку по этой проверке не создаем.", False,
+                       [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но {code} не бывает у двигателя {engine}.",
                         f"В руководстве на {engine} нет инструкции по узлу «{result.get('anomaly_title')}», поэтому заявка не отправляется."],
                        warnings, "R3-not-applicable", sev, appl, defect_note=defect)
 
@@ -143,8 +143,8 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     strong = score is not None and conf is not None and d(score) >= SCORE_HIGH and d(conf) >= CONF_HIGH and quality == "good"
     doubtful = quality == "warning" or (conf is not None and d(conf) < CONF_MIN)
 
-    reasons.append(f"Код по справочнику: {code}.")
-    reasons.append(f"Оценка отклонения {fmt(score)} из 1 ({_band(score)}), уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.")
+    reasons.append(f"Код неисправности по справочнику: {code}.")
+    reasons.append(f"Оценка отклонения {fmt(score)} из 1 ({_band(score)}), уверенность программы {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.")
     if repeated:
         reasons.insert(0, f"Такое же отклонение уже было: {', '.join(_date(s) for s in repeated)}.")
     if growing:
@@ -163,13 +163,13 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     elif sev == "S" and (strong or growing or (repeated and not doubtful)):
         urg, rule = "high", "R5-significant-strong"
         action = "Рекомендация: дефектовка до выпуска в рейс."
-        why = "сильный и уверенный сигнал" if strong else ("рост отклонения" if growing else "повторяющееся отклонение")
-        reasons.insert(0, f"Значимая неисправность и {why}.")
+        why = "сигнал сильный и программа в нем уверена" if strong else ("отклонение растет" if growing else "отклонение повторяется")
+        reasons.insert(0, f"Неисправность серьезная, и {why}.")
     elif sev == "L" and not repeated and not growing and not doubtful and conf is not None and d(conf) >= CONF_HIGH \
             and score is not None and d(score) < SCORE_HIGH:
         urg, rule = "low", "R7-minor"
         action = "Машина работает, узел проверить на следующей проверке."
-        reasons.insert(0, "Малозначимая неисправность: отклонение умеренное, сигнал уверенный и разовый.")
+        reasons.insert(0, "Неисправность несерьезная: отклонение умеренное и пока разовое.")
     else:
         urg, rule = "medium", "R6-planned"
         action = "Дефектовка на ближайшем ТО, машина работает под наблюдением."
@@ -184,7 +184,7 @@ def _doubt_text(quality, conf) -> str:
     if quality == "warning":
         parts.append("запись с помехами")
     if conf is not None and d(conf) < CONF_MIN:
-        parts.append(f"уверенность модели {fmt(conf)} – ниже порога {fmt(CONF_MIN)}")
+        parts.append(f"уверенность программы {fmt(conf)} – ниже порога {fmt(CONF_MIN)}, нужного для заявки")
     return "Сигнал сомнительный: " + " и ".join(parts) + "."
 
 

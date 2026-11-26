@@ -97,9 +97,9 @@ const scoreText = x => score(x) ? number.format(x) : '–';
 const stageOf = d => d?.verdict || d?.status;
 function vehicleStage(v, s = v.last_check, latest = s === v.last_check) {
   const stage = stageOf(s);
-  // красный «Дефектовка до выпуска» – только критичный класс (R4) или карантин; высокий приоритет значимой неисправности остаётся «Нужна проверка»
-  const critical = x => x?.severity === 'C' || x?.rule === 'R4-critical';
-  if (critical(s) || s?.fleet_status === 'quarantine' || stage === 'quarantine' || (latest && (v.fleet_status === 'quarantine' || v.last_severity === 'C'))) return 'quarantine';
+  // красный «Дефектовка до рейса» – любой высокий приоритет (#102: дефектовка до выпуска), чтобы заголовок не спорил с «Что делать»
+  const critical = x => x?.severity === 'C' || x?.rule === 'R4-critical' || x?.urgency === 'high';
+  if (critical(s) || s?.fleet_status === 'quarantine' || stage === 'quarantine' || (latest && (v.fleet_status === 'quarantine' || v.last_severity === 'C' || v.last_urgency === 'high'))) return 'quarantine';
   if (stage === 'check_failed') return stage;
   if (stage === 'anomaly' || (latest && stage === 'normal' && v.fleet_status === 'attention')) return 'anomaly';
   return stage === 'normal' ? stage : 'unknown';
@@ -192,20 +192,70 @@ function openDataDialog(c) {
   dataDialog.showModal();
   dataDialog.scrollTop = 0;
 }
+// Вводная инструкция для механика: сама при первом запуске, потом – кнопкой «?» на главном экране.
+// Картинки шагов собраны из настоящих элементов интерфейса (неактивных), чтобы механик узнал их на экране.
+const guide = $('#guide');
+const replica = (label, cls = 'primary', symbol = null) => el('span', {class: `replica ${cls}`}, symbol && icon(symbol), label);
+// stacked – широкая кнопка над пояснением, чтобы на узком экране текст не вылезал за край
+const guideRow = (control, text, stacked = false) => el('li', {class: stacked ? 'stacked' : null},
+  el('span', {class: 'guide-step'}, el('span', {class: 'guide-control'}, control), el('span', {}, text)));
+const sampleSearch = () => el('span', {class: 'replica search-replica'}, icon('search'), el('span', {}, 'Т792'));
+const sampleCar = () => el('span', {class: 'sample-car'}, plate('T792HO98'), el('span', {class: 'row-model'}, el('strong', {class: 'garage'}, 'Г-112'), el('span', {}, 'Урал‑5557‑10')), stagePill('quarantine'));
+const guideSteps = [
+  () => el('ul', {class: 'guide-points'}, ['guide1a', 'guide1b', 'guide1c'].map(key => el('li', {}, icon('check'), el('span', {}, t(key))))),
+  () => el('div', {class: 'guide-stack'}, sampleSearch(), el('ul', {class: 'guide-legend'}, [['quarantine', 'guideRed'], ['anomaly', 'guideAmber'], ['check_failed', 'guideViolet'], ['normal', 'guideGreen']]
+    .map(([stage, key]) => el('li', {}, stagePill(stage), el('span', {}, t(key)))))),
+  () => el('div', {class: 'guide-stack'}, sampleCar(), replica(t('diagnose'))),
+  () => el('ol', {class: 'guide-flow'}, guideRow(replica(null, 'mic', 'mic'), t('guide4a'), true), guideRow(replica(t('micStop'), 'stop', 'stop'), t('guide4b'), true),
+    guideRow(replica(t('send')), t('guide4c'), true)),
+  () => el('ol', {class: 'guide-flow wide'}, guideRow(replica(t('createDraft'), 'plain', 'next'), t('guide5a'), true), guideRow(replica(t('confirm'), 'primary', 'send'), t('guide5b'), true)),
+  () => el('div', {class: 'guide-stack'}, el('ul', {class: 'guide-tools'}, [[[icon('globe'), 'RU'], 'language'], ['Aᴀ', 'large']]
+    .map(([face, key]) => el('li', {}, el('span', {class: 'replica top-replica'}, face), el('span', {}, t(key))))),
+    el('span', {class: 'replica help-replica'}, el('span', {class: 'help-mark'}, '?'), t('help'))),
+];
+function openGuide(step = 0) {
+  const total = guideSteps.length;
+  const show = n => {
+    step = n;
+    const last = step === total - 1;
+    const next = primary([t(last ? 'guideDone' : 'guideNext'), last ? null : icon('next')], () => last ? closeGuide() : show(step + 1), {id: 'guide-next'});
+    guide.replaceChildren(
+      el('div', {class: 'guide-head'}, el('span', {class: 'guide-count', 'aria-live': 'polite'}, t('guideStep', {n: step + 1, total})),
+        last ? null : action(t('guideSkip'), closeGuide, {class: 'link-button', id: 'guide-skip'})),
+      el('div', {class: 'guide-body'}, el('h2', {id: 'guide-heading'}, t(`guide${step + 1}Title`)),
+        el('div', {class: 'guide-visual', 'aria-hidden': 'true', inert: true}, guideSteps[step]()),
+        el('p', {class: 'guide-text', id: 'guide-text'}, t(`guide${step + 1}Text`)),
+        // крупный шрифт – сразу на первом шаге, а не только в конце инструкции
+        step === 0 ? action([el('span', {class: 'size-face', 'aria-hidden': 'true'}, 'Aᴀ'), t(large ? 'guideSmaller' : 'guideBigger')],
+          () => { toggleLarge(); show(0); $('#guide-size', guide).focus(); }, {id: 'guide-size', 'aria-pressed': String(large)}) : null),
+      el('div', {class: 'guide-dots', 'aria-hidden': 'true'}, Array.from({length: total}, (_, i) => el('span', {class: i === step ? 'is-current' : null}))),
+      el('div', {class: `guide-actions${step ? '' : ' single'}`}, step ? action([icon('prev'), t('back')], () => show(step - 1), {id: 'guide-prev'}) : null, next));
+    $('.guide-body', guide).scrollTop = 0;
+    if (guide.open) next.focus({preventScroll: true});
+  };
+  show(step);
+  if (!guide.open) guide.showModal();
+  $('#guide-next', guide).focus({preventScroll: true});   // showModal сам ставит фокус на первую кнопку («Пропустить»)
+}
+// отметка ставится сразу при закрытии кнопкой; Escape закрывает окно сам – событие close
+function closeGuide() { stored('mechanic:onboarded', '1'); guide.close(); }
+guide.addEventListener('close', () => stored('mechanic:onboarded', '1'));
+
+function toggleLarge() {
+  large = !large;
+  stored('mechanic:large', String(large));
+  applySettings();
+  $('#font-size')?.setAttribute('aria-pressed', String(large));
+  if ($('#question')) resizeQuestion();
+  if (state.route.page === 'chat') fitExcerpts(main);
+}
 function header() {
   const {page, vid} = state.route;
   const isPark = page === 'park';
   let tools = $('#header-tools', topbar);
   if (!tools) {
     const picker = action(icon('globe'), openLanguage, {id: 'language', 'aria-haspopup': 'dialog'}, el('span', {'aria-hidden': 'true'}));
-    const size = action(el('span', {'aria-hidden': 'true'}, 'Aᴀ'), () => {
-      large = !large;
-      stored('mechanic:large', String(large));
-      applySettings();
-      size.setAttribute('aria-pressed', String(large));
-      if ($('#question')) resizeQuestion();
-      if (state.route.page === 'chat') fitExcerpts(main);
-    }, {id: 'font-size'});
+    const size = action(el('span', {'aria-hidden': 'true'}, 'Aᴀ'), toggleLarge, {id: 'font-size'});
     tools = el('div', {id: 'header-tools'}, picker, size);
     topbar.append(tools);
   }
@@ -306,7 +356,7 @@ function vehicleRow(v) {
 function renderPark() {
   const list = el('div', {class: 'vehicle-list'});
   const count = el('span', {class: 'count', 'aria-live': 'polite'});
-  const input = el('input', {id: 'vehicle-search', type: 'text', enterkeyhint: 'search', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off', inputmode: 'search', oninput: e => { state.query = e.target.value; state.all = false; update(); }});
+  const input = el('input', {id: 'vehicle-search', 'aria-describedby': 'search-example', type: 'text', enterkeyhint: 'search', autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off', inputmode: 'search', oninput: e => { state.query = e.target.value; state.all = false; update(); }});
   const clear = iconButton(t('clear'), 'cross', () => { input.value = state.query = ''; state.all = false; update(); input.focus(); });
   const ordered = orderedVehicles();
   const update = () => {
@@ -322,9 +372,11 @@ function renderPark() {
   input.value = state.query;
   update();
   main.replaceChildren(el('div', {class: 'search-group'}, el('label', {for: 'vehicle-search'}, t('search')),
-    el('div', {class: 'search'}, icon('search'), input, clear)),
+    el('div', {class: 'search'}, icon('search'), input, clear), hint(t('searchExample'), {id: 'search-example'})),
     state.me?.user?.role !== 'mechanic' && action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; state.fleetNormal = false; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
-    el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo'))), list,
+    el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo')),
+      // инструкция – словами, а не значком: строка уже есть, места в списке не занимает
+      action([el('span', {class: 'help-mark', 'aria-hidden': 'true'}, '?'), t('help')], () => openGuide(), {class: 'link-button help-link', id: 'help', 'aria-haspopup': 'dialog'})), list,
     el('a', {class: 'data-link', href: '#data-dialog', 'aria-haspopup': 'dialog', onclick: e => { e.preventDefault(); openDataDialog(); }}, t('dataPolicy')),
     state.me?.user && el('p', {class: 'account'}, `${state.me.user.name} – ${state.me.user.role_name.toLocaleLowerCase('ru')}`, ' ',
       action(t('logout'), async () => { await fetch(`${api}/logout`, {method: 'POST'}); location.reload(); }, {class: 'link-button'})));
@@ -359,7 +411,7 @@ function renderFleet() {
   const heading = el('h2', {class: 'list-title'});
   main.replaceChildren(
     el('div', {class: 'page-head'}, el('h1', {tabindex: '-1'}, t('fleetTitle')), hint(t('fleetTotal', {n: items.length}))),
-    el('section', {class: 'box fleet-summary'},
+    el('section', {class: 'box fleet-summary'}, hint(t('fleetTilesHint')),
       el('div', {class: 'tiles'}, tiles.map(([key, label, tone, symbol]) => action(
         [el('span', {class: 'tile-top'}, el('strong', {class: 'tile-number'}, String(by(key).length)), icon(symbol)), el('span', {class: 'tile-label'}, t(label))],
         pick(key), {class: `tile ${tone}`, 'data-filter': key}))),
@@ -459,8 +511,10 @@ function verdict(c, d, id, opens) {
   const otherReasons = entries.filter((_, index) => !whyLines.includes(index));
   const card = el('div', {class: `verdict-head ${stages[status][1]}`}, el('h2', {}, vTitle),
     cause && el('p', {class: 'verdict-cause'}, t('hypothesis', {name: lowerStart(cause)})),
-    !fail && score(d.confidence) && el('p', {class: 'verdict-facts'}, `${t('confidence')}: ${scoreText(d.confidence)}`,
-      score(d.conf_threshold) ? ` (${t('confThreshold', {v: scoreText(d.conf_threshold)})})` : ''),
+    // те же слова и шкала, что у графика в карточке машины: отличие звука от нормы и уверенность программы – два разных числа
+    !fail && !incompatible && !normal && score(d.anomaly_score) && el('p', {class: 'verdict-facts'}, `${t('scoreShort')}: ${scoreText(d.anomaly_score)} / 1`),
+    !fail && score(d.confidence) && el('p', {class: 'verdict-facts'}, `${t('confidence')}: ${scoreText(d.confidence)} / 1`,
+      score(d.conf_threshold) ? [' ', el('span', {class: 'nowrap'}, `(${t('confThreshold', {v: scoreText(d.conf_threshold)})})`)] : ''),
     incompatible && el('p', {}, t('notApplicable')),
     fail && (d.description || d.reason) && el('p', {}, t('rejectReason', {reason: lowerStart(cleanQuote(d.description || d.reason).replace(/^запись отбракована:\s*/iu, ''))})),
     el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
@@ -557,7 +611,7 @@ function markdown(text, citations, id, opens) {
         const word = split < 0 ? '' : before.slice(split);
         nodes.push(...measureNodes(split < 0 ? before : before.slice(0, split)));
         const tail = value.slice(match.index + match[0].length).match(/^[.,;:!?)]+/u)?.[0] || '';
-        nodes.push(el('span', {class: 'nowrap'}, word, '\u00a0', citationLink(cite, `[${n}]`, {class: 'citation-chip inline-cite', 'aria-label': t('source', {n, name: cite.designation || cite.title, page: cite.page})}), tail));
+        nodes.push(el('span', {class: 'nowrap'}, word, '\u00a0', citationLink(cite, `[${n}]`, {class: 'citation-chip inline-cite', 'aria-label': t('source', {n, name: cite.title || cite.designation, page: cite.page})}), tail));
         start = match.index + match[0].length + tail.length;
         continue;
       }
@@ -590,7 +644,7 @@ function markdown(text, citations, id, opens) {
   }
   const references = [...sources].sort(([a], [b]) => a - b);
   const footer = references.length ? el('footer', {class: 'message-sources'}, el('strong', {}, t('sources')), el('ul', {}, references.map(([n, cite]) =>
-    el('li', {}, citationLink(cite, el('strong', {}, `[${n}] ${t('pageRef', {name: cite.designation || cite.title, page: cite.page})}`), {class: 'citation-row'}),
+    el('li', {}, citationLink(cite, el('strong', {}, `[${n}] ${t('pageRef', {name: cite.title || cite.designation, page: cite.page})}`), {class: 'citation-row'}),
       sourceExcerpt(cite.quote, `quote-${id}-${n}`, opens))))) : null;
   return [rendered, footer];
 }
@@ -1027,7 +1081,7 @@ function renderDraft(v, s, c) {
     el('p', {id: 'ticket-error', role: 'alert', class: 'notice red', hidden: !c.confirmError}, c.confirmError || ''),
   );
   const warning = warnings(d.warnings);
-  main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill(t('unsent'), 'neutral', 'clock'), title(t('draft'))), ...(warning ? [warning] : []), form);
+  main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill(t('unsent'), 'neutral', 'clock'), title(t('draft')), hint(t('draftIntro'))), ...(warning ? [warning] : []), form);
   const blocked = () => c.draftNeedsInspection && !c.edits.inspectionConfirmed;
   const button = el('button', {id: 'confirm-ticket', class: 'primary full', type: 'submit', form: 'draft-form',
     'aria-describedby': 'confirm-note'}, c.confirming ? t('sending') : t('confirm'), icon('send'));
@@ -1083,7 +1137,7 @@ function renderReceipt(v, s, c) {
   const fields = [[t('machine'), [v.vehicle_id, v.garage_no].filter(Boolean).join(' / ')], [t('checkedAt'), dateFor(s?.checked_at)],
     [t('conclusion'), result.conclusion, 'receipt-prose'], [t('priority'), priorityLabel(result.payload.urgency)],
     ...(result.override ? [[t('overrideLabel'), result.override, 'receipt-prose']] : [])];
-  main.replaceChildren(el('section', {class: 'receipt green'}, title(t('receipt')), el('strong', {class: 'receipt-id mono'}, result.id)), el('section', {class: 'box stack'}, el('h2', {}, t('sentDetails')), el('dl', {class: 'receipt-fields'}, fields.map(([label, value, style]) => el('div', {}, el('dt', {}, label), el('dd', {class: style}, value))))));
+  main.replaceChildren(el('section', {class: 'receipt green'}, title(t('receipt')), el('strong', {class: 'receipt-id mono'}, result.id), hint(t('receiptHint'))), el('section', {class: 'box stack'}, el('h2', {}, t('sentDetails')), el('dl', {class: 'receipt-fields'}, fields.map(([label, value, style]) => el('div', {}, el('dt', {}, label), el('dd', {class: style}, value))))));
   dock.replaceChildren(el('div', {class: 'dock'}, primary(t('backPark'), () => navigate({page: 'park'}))));
 }
 function render() {
@@ -1195,4 +1249,5 @@ history.scrollRestoration = 'manual';
 state.route.key = routeSerial;
 history.replaceState(state.route, '', location.pathname);
 showRoute(state.route);
-json(`${api}/health`).then(health => { if (health.mode === 'demo') { state.demo = true; if (state.route.page === 'park' && !main.hasAttribute('aria-busy') && !state.loadFailed) { const heading = $('.list-heading'); if (heading && !$('.demo', heading)) heading.append(el('span', {class: 'demo'}, t('demo'))); } } }).catch(() => {});
+if (stored('mechanic:onboarded') !== '1') openGuide();
+json(`${api}/health`).then(health => { if (health.mode === 'demo') { state.demo = true; if (state.route.page === 'park' && !main.hasAttribute('aria-busy') && !state.loadFailed) { const heading = $('.list-heading'); if (heading && !$('.demo', heading)) heading.insertBefore(el('span', {class: 'demo'}, t('demo')), $('#help', heading));  } } }).catch(() => {});

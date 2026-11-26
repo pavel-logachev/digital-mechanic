@@ -88,8 +88,8 @@ def summary(v: dict) -> dict:
     open_t = next((x["ticket_id"] for x in reversed(t) if last and x["session_id"] == last["session_id"]), None)
     if verdict is None:
         status = "ok"
-    elif verdict.rule == "R4-critical":
-        status = "quarantine"   # критичная неисправность без заявки: рекомендована дефектовка до выпуска в рейс
+    elif verdict.urgency == "high":
+        status = "quarantine"   # высокий приоритет (#102): рекомендована дефектовка до выпуска в рейс
     elif verdict.verdict in ("anomaly", "check_failed") or verdict.rule in ("R2-normal-doubt", "R2-normal-unresolved"):
         status = "attention"
     else:

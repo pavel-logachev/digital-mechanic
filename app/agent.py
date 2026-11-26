@@ -114,11 +114,11 @@ TOOLS = [
 ]
 
 STEP_TITLES = {
-    "get_diagnosis": "Запрос результата проверки в ML-сервис",
+    "get_diagnosis": "Результат проверки звука",
     "get_vehicle_history": "История машины и прошлые заявки",
     "search_manual": "Поиск в руководстве",
     "read_page": "Чтение страницы руководства",
-    "get_fault_reference": "Справка по классу неисправности",
+    "get_fault_reference": "Справка по неисправности",
     "prepare_ticket": "Подготовка черновика заявки",
 }
 

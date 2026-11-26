@@ -77,7 +77,7 @@ def layout(page):
     expect(page.locator('#top h1')).to_have_text('Цифровой механик')
     expect(page.locator('label[for="vehicle-search"]')).to_have_text('Госномер или гаражный номер')
     expect(page.locator('.count')).to_have_text('Показано 8 из 50')
-    expect(page.locator('.vehicle-row').first).to_contain_text('Карантин')
+    expect(page.locator('.vehicle-row').first).to_contain_text('Дефектовка до рейса')
     page.get_by_role('button', name='Показать еще 42').click()
     expect(page.locator('.vehicle-row')).to_have_count(50)
     assert page.locator('body').evaluate("el => parseFloat(getComputedStyle(el).fontSize)") >= 18
@@ -138,7 +138,7 @@ def locales(page):
     with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
         open_chat(page)
     assert request.value.post_data_json['lang'] == 'hi'
-    expect(page.locator('.next-action p')).to_contain_text('Проверьте машину очно')
+    expect(page.locator('.next-action p')).to_contain_text('Дефектовка на ближайшем ТО')
     no_overflow(page)
     expect(page.locator('html')).to_have_attribute('lang', 'hi')
 
@@ -175,7 +175,7 @@ def voice(page):
 
 def vehicle_voice(page):
     open_vehicle(page)
-    question = page.get_by_role('textbox', name='Вопрос о машине')
+    question = page.get_by_role('textbox', name='Вопрос текстом или голосом')
     expect(question).to_be_visible(timeout=1500)
     # Keep the browser upload and fixture validation, substitute only the recognized phrase.
     page.evaluate('''() => {
@@ -315,7 +315,7 @@ def fleet_tickets(page):
     assert set(rows.evaluate_all('rows => rows.map(row => row.dataset.plate)')) == set(open_tickets)
     assert 'T792HO98' in open_tickets
     page.locator('[data-plate="T792HO98"]').click()
-    expect(page.locator('.vehicle-head')).to_contain_text(f"Заявка {open_tickets['T792HO98']}")
+    expect(page.locator('.vehicle-head')).to_contain_text(f"Заявка в ремонт {open_tickets['T792HO98']}")
     page.go_back()
     expect(counter).to_have_attribute('aria-pressed', 'true')
     counter.click()
@@ -353,6 +353,57 @@ def auto_stop(page):
     expect(page.locator('#mic-timer')).to_be_hidden()
 
 
+def onboarding(page):
+    # первый запуск: инструкция открыта сама, шаги листаются, закрытие запоминается, «?» открывает ее снова
+    guide = page.locator('#guide')
+    expect(guide).to_be_visible()
+    expect(page.locator('#guide-heading')).to_have_text('Цифровой механик – помощник у машины')
+    expect(page.locator('.guide-count')).to_have_text('Шаг 1 из 6')
+    expect(page.locator('#guide-prev')).to_have_count(0)
+    expect(page.locator('#guide-next')).to_be_focused()
+    for step in range(2, 7):
+        page.locator('#guide-next').click()
+        expect(page.locator('.guide-count')).to_have_text(f'Шаг {step} из 6')
+        assert guide.evaluate('d => d.scrollWidth <= d.clientWidth && d.getBoundingClientRect().right <= innerWidth')
+    expect(page.locator('#guide-skip')).to_have_count(0)
+    expect(page.locator('#guide-next')).to_have_text('Начать работу')
+    page.locator('#guide-prev').click()
+    expect(page.locator('.guide-count')).to_have_text('Шаг 5 из 6')
+    expect(page.locator('.guide-legend, .guide-flow').first).to_contain_text('Помощник заполнит черновик')
+    page.locator('#guide-next').click()
+    page.locator('#guide-next').click()
+    expect(guide).to_be_hidden()
+    assert page.evaluate("localStorage.getItem('mechanic:onboarded')") == '1'
+    page.reload()
+    expect(page.locator('#vehicle-search')).to_be_visible()
+    expect(guide).to_be_hidden()
+    no_overflow(page)
+    # повторный вход кнопкой «?», Escape закрывает
+    page.get_by_role('button', name='Как пользоваться').click()  # ссылка над списком машин
+    expect(page.locator('.guide-count')).to_have_text('Шаг 1 из 6')
+    page.keyboard.press('Escape')
+    expect(guide).to_be_hidden()
+    # узкий экран и крупный шрифт: кнопки внизу окна видны на каждом шаге, текст листается внутри
+    page.set_viewport_size({'width': 360, 'height': 640})
+    page.locator('#font-size').click()
+    page.locator('#help').click()
+    for step in range(1, 7):
+        box = page.locator('#guide-next').bounding_box()
+        assert box and box['y'] + box['height'] <= 640 and box['x'] + box['width'] <= 360, (step, box)
+        assert guide.evaluate('d => d.scrollWidth <= d.clientWidth')
+        assert page.locator('.guide-body').evaluate('b => b.scrollWidth <= b.clientWidth')
+        if step < 6:
+            page.locator('#guide-next').click()
+    page.locator('#guide-next').click()
+    expect(guide).to_be_hidden()
+    # ссылка на инструкцию – только на главном экране
+    page.locator('#vehicle-search').fill('B418HK98')
+    page.locator('.vehicle-row').first.click()
+    expect(page.locator('#diagnose')).to_be_visible()
+    expect(page.locator('#help')).to_be_hidden()
+    no_overflow(page)
+
+
 def screenshot(page, name):
     page.evaluate('document.fonts.ready')
     stray = page.evaluate('''(() => { const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); const out = [];
@@ -376,6 +427,8 @@ def screenshot(page, name):
         const target = node.matches('.top button, .excerpt-toggle, a') ? 44 : 56;
         return [node.id || node.tagName, r.width, r.height, target];
     })''')
+    # элемент мог скрыться между поиском и замером (указатель на объяснение прячется при прокрутке) – нулевой размер не считаем
+    measurements = [m for m in measurements if m[1] and m[2]]
     assert all(w >= min_h and h >= min_h for _, w, h, min_h in measurements), (name, measurements)
     contrasts = page.evaluate('''() => {
         const values = [];
@@ -410,6 +463,12 @@ def screenshot(page, name):
 def screens(page):
     expect(page.locator('.vehicle-row').first).to_be_visible()
     screenshot(page, '01-park')
+    page.locator('#help').click()
+    screenshot(page, '00-guide-start')
+    page.locator('#guide-next').click()
+    screenshot(page, '00-guide-labels')
+    page.keyboard.press('Escape')
+    expect(page.locator('#guide')).to_be_hidden()
     page.get_by_role('link', name='Как мы обрабатываем данные').click()
     screenshot(page, '19-data-policy')
     page.locator('#data-dialog').get_by_role('button', name='Закрыть').click()
@@ -477,8 +536,8 @@ def screens(page):
     page.get_by_text('Прошлые проверки', exact=True).click()
     page.locator('[data-session="S-0021"]').click()
     expect(page.locator('#chat-progress-row')).to_be_hidden()
-    expect(page.locator('.verdict-head')).to_contain_text('Тип отклонения не подтвержден')
-    expect(page.locator('.defect-note')).to_contain_text('Заявку продукт не отправляет')
+    expect(page.locator('.verdict-head')).to_contain_text('Программа ошиблась')
+    expect(page.locator('.defect-note')).to_contain_text('Заявку по этой проверке не создаем')
     expect(page.locator('[data-command="draft"]')).to_have_count(0)
     page.context.grant_permissions(['clipboard-read', 'clipboard-write'])
     page.locator('[data-command="copy-defect-note"]').click()
@@ -513,7 +572,7 @@ def real_voice(page):
     with page.expect_request(lambda r: r.url.endswith('/api/chat')) as chat:
         page.locator('[data-session="S-0021"]').click()
     assert chat.value.post_data_json['lang'] == 'ru'
-    expect(page.locator('.verdict-head')).to_contain_text('Тип отклонения не подтвержден', timeout=30000)
+    expect(page.locator('.verdict-head')).to_contain_text('Программа ошиблась', timeout=30000)
     expect(page.locator('#chat-progress-row')).to_be_hidden(timeout=45000)
     warning = page.locator('.warnings')
     expect(warning).to_contain_text('не подходит к двигателю')
@@ -604,7 +663,7 @@ def interactions(page):
     page.locator('#send-question').click()
     expect(page.locator('#chat-progress-row')).to_be_hidden()
     expect(page.locator('.trace')).to_have_count(1)
-    expect(page.locator('.citation-row').first).to_have_text('[1] 236-3902150-Б РЭ, стр. 31')
+    expect(page.locator('.citation-row').first).to_have_text('[1] ЯМЗ-236М2. Руководство по эксплуатации, стр. 31')
     first_quote = page.locator('.citation-excerpt').first
     preview = first_quote.inner_text()
     assert preview.endswith('…') and 'сопрягае- мых' not in preview, preview
@@ -775,7 +834,7 @@ def real_kickoff(page):
 
 
 def main():
-    fake = (layout, locales, voice, voice_errors, auto_stop, interactions, network_errors, large_routes,
+    fake = (onboarding, layout, locales, voice, voice_errors, auto_stop, interactions, network_errors, large_routes,
             vehicle_voice, detail_mode, inspection_required, data_consent, fleet_tickets)
     scenarios = {test.__name__: test for test in (*fake, screens, real_voice, real_kickoff)}
     parser = argparse.ArgumentParser()
@@ -800,6 +859,8 @@ def main():
         ])
         for name in selected:
             context = browser.new_context(viewport=SIZES, is_mobile=True, has_touch=True, permissions=['microphone'])
+            if name != 'onboarding':   # инструкция первого запуска проверяется отдельным сценарием
+                context.add_init_script("try { localStorage.setItem('mechanic:onboarded', '1'); } catch {}")
             page = context.new_page()
             page.set_default_timeout(7000)
             errors = []
