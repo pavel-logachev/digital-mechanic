@@ -10,3 +10,7 @@ logs/
 data/state/
 data/eval/
 docs/screens/07-manual-page.png
+
+demo/build/
+demo/*.mp4
+demo/timeline.json
