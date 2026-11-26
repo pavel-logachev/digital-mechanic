@@ -1,0 +1,418 @@
+{
+  "before_audited": {
+    "n": 71,
+    "n_answerable": 62,
+    "n_absent": 9,
+    "verdicts": {
+      "correct": 58,
+      "refused_bad": 1,
+      "partially": 2,
+      "refused_ok": 9,
+      "wrong": 1
+    },
+    "correct_pct": 93.55,
+    "correct_plus_partially_pct": 96.77,
+    "strict_task_success_pct": 94.37,
+    "refused_ok": 9,
+    "scored": 71,
+    "citation_supported_pct": 90.32,
+    "displayed_quote_supported_pct": 90.32,
+    "p50_seconds": 6.26,
+    "agent_mean_usd": 0.00702921,
+    "cost": {
+      "agent_usd": 0.14774538,
+      "rerank_usd": 0.35132819,
+      "judge_usd": 0.5981656
+    },
+    "rerank_unknown_requests": 41,
+    "failures": {
+      "generation_routing": 1,
+      "generation": 2,
+      "search": 1,
+      "citation": 2
+    },
+    "strict_numerator": 67,
+    "strict_wilson_95_pct": [
+      86.39,
+      97.79
+    ],
+    "no_data_ok": 8,
+    "no_data_n": 8,
+    "gold_page_retrieved": 54,
+    "gold_page_n": 62,
+    "verify_retry": 9,
+    "verify_remaining": 6,
+    "failures_by_case": {
+      "КВ-05": "generation_routing",
+      "КВ-06": "generation",
+      "КВ-12": "search",
+      "КВ-17": "citation",
+      "КВ-25": "citation",
+      "КВ-33": "generation"
+    }
+  },
+  "after_audited": {
+    "n": 71,
+    "n_answerable": 62,
+    "n_absent": 9,
+    "verdicts": {
+      "correct": 61,
+      "wrong": 1,
+      "refused_ok": 9
+    },
+    "correct_pct": 98.39,
+    "correct_plus_partially_pct": 98.39,
+    "strict_task_success_pct": 98.59,
+    "refused_ok": 9,
+    "scored": 71,
+    "citation_supported_pct": 95.16,
+    "displayed_quote_supported_pct": 91.94,
+    "p50_seconds": 6.89,
+    "agent_mean_usd": 0.00765259,
+    "cost": {
+      "agent_usd": 0.1933472,
+      "rerank_usd": 0.34998667,
+      "judge_usd": 0.69434667
+    },
+    "rerank_unknown_requests": 0,
+    "failures": {
+      "citation": 2,
+      "generation": 1
+    },
+    "strict_numerator": 70,
+    "strict_wilson_95_pct": [
+      92.44,
+      99.75
+    ],
+    "no_data_ok": 8,
+    "no_data_n": 8,
+    "gold_page_retrieved": 58,
+    "gold_page_n": 62,
+    "verify_retry": 34,
+    "verify_remaining": 13,
+    "failures_by_case": {
+      "КВ-05": "citation",
+      "КВ-06": "generation",
+      "КВ-33": "citation"
+    }
+  },
+  "before_judge": {
+    "n": 71,
+    "n_answerable": 62,
+    "n_absent": 9,
+    "verdicts": {
+      "correct": 61,
+      "refused_bad": 1,
+      "refused_ok": 9
+    },
+    "correct_pct": 98.39,
+    "correct_plus_partially_pct": 98.39,
+    "strict_task_success_pct": 98.59,
+    "refused_ok": 9,
+    "scored": 71,
+    "citation_supported_pct": 95.16,
+    "displayed_quote_supported_pct": 96.77,
+    "p50_seconds": 6.26,
+    "agent_mean_usd": 0.00702921,
+    "cost": {
+      "agent_usd": 0.14774538,
+      "rerank_usd": 0.35132819,
+      "judge_usd": 0.5981656
+    },
+    "rerank_unknown_requests": 41,
+    "failures": {
+      "generation_routing": 1,
+      "citation": 2
+    },
+    "strict_numerator": 70,
+    "strict_wilson_95_pct": [
+      92.44,
+      99.75
+    ],
+    "no_data_ok": 8,
+    "no_data_n": 8,
+    "gold_page_retrieved": 54,
+    "gold_page_n": 62,
+    "verify_retry": 9,
+    "verify_remaining": 6,
+    "failures_by_case": {
+      "КВ-05": "generation_routing",
+      "КВ-17": "citation",
+      "КВ-25": "citation"
+    }
+  },
+  "after_judge": {
+    "n": 71,
+    "n_answerable": 62,
+    "n_absent": 9,
+    "verdicts": {
+      "correct": 62,
+      "refused_ok": 9
+    },
+    "correct_pct": 100.0,
+    "correct_plus_partially_pct": 100.0,
+    "strict_task_success_pct": 100.0,
+    "refused_ok": 9,
+    "scored": 71,
+    "citation_supported_pct": 100.0,
+    "displayed_quote_supported_pct": 100.0,
+    "p50_seconds": 6.89,
+    "agent_mean_usd": 0.00765259,
+    "cost": {
+      "agent_usd": 0.1933472,
+      "rerank_usd": 0.34998667,
+      "judge_usd": 0.69434667
+    },
+    "rerank_unknown_requests": 0,
+    "failures": {},
+    "strict_numerator": 71,
+    "strict_wilson_95_pct": [
+      94.87,
+      100.0
+    ],
+    "no_data_ok": 8,
+    "no_data_n": 8,
+    "gold_page_retrieved": 58,
+    "gold_page_n": 62,
+    "verify_retry": 34,
+    "verify_remaining": 13,
+    "failures_by_case": {}
+  },
+  "comparison": {
+    "sample_size": 30,
+    "common_ids": [
+      "КВ-02",
+      "КВ-08",
+      "КВ-09",
+      "КВ-12",
+      "КВ-13",
+      "КВ-21",
+      "КВ-22",
+      "КВ-25",
+      "КВ-26",
+      "КВ-27",
+      "КВ-29",
+      "КВ-33",
+      "КВ-36",
+      "КВ-38",
+      "КВ-46",
+      "КВ-50",
+      "КВ-51",
+      "КВ-52",
+      "КВ-55",
+      "КВ-57",
+      "КВ-58",
+      "КВ-61",
+      "КВ-62",
+      "КВ-65",
+      "КВ-66"
+    ],
+    "coverage": {
+      "deepseek-flash": 30,
+      "google/gemini-3.5-flash-lite": 30,
+      "deepseek-v4-pro": 30,
+      "qwen/qwen3.8-flash": 25
+    },
+    "results": {
+      "deepseek-flash": {
+        "n": 25,
+        "n_answerable": 22,
+        "n_absent": 3,
+        "verdicts": {
+          "correct": 22,
+          "refused_ok": 3
+        },
+        "correct_pct": 100.0,
+        "correct_plus_partially_pct": 100.0,
+        "strict_task_success_pct": 100.0,
+        "refused_ok": 3,
+        "scored": 25,
+        "citation_supported_pct": 100.0,
+        "displayed_quote_supported_pct": 100.0,
+        "p50_seconds": 8.53,
+        "agent_mean_usd": 0.00815642,
+        "cost": {
+          "agent_usd": 0.07605101,
+          "rerank_usd": 0.12785938,
+          "judge_usd": 0.26231033
+        },
+        "rerank_unknown_requests": 0,
+        "failures": {},
+        "strict_numerator": 25,
+        "strict_wilson_95_pct": [
+          86.68,
+          100.0
+        ],
+        "no_data_ok": 2,
+        "no_data_n": 2,
+        "gold_page_retrieved": 20,
+        "gold_page_n": 22,
+        "verify_retry": 15,
+        "verify_remaining": 6,
+        "failures_by_case": {}
+      },
+      "google/gemini-3.5-flash-lite": {
+        "n": 25,
+        "n_answerable": 22,
+        "n_absent": 3,
+        "verdicts": {
+          "correct": 21,
+          "refused_ok": 3,
+          "partially": 1
+        },
+        "correct_pct": 95.45,
+        "correct_plus_partially_pct": 100.0,
+        "strict_task_success_pct": 96.0,
+        "refused_ok": 3,
+        "scored": 25,
+        "citation_supported_pct": 95.45,
+        "displayed_quote_supported_pct": 95.45,
+        "p50_seconds": 4.38,
+        "agent_mean_usd": 0.00976447,
+        "cost": {
+          "agent_usd": 0.1068796,
+          "rerank_usd": 0.13723223,
+          "judge_usd": 0.159724
+        },
+        "rerank_unknown_requests": 0,
+        "failures": {
+          "search": 1,
+          "citation": 1
+        },
+        "strict_numerator": 24,
+        "strict_wilson_95_pct": [
+          80.46,
+          99.29
+        ],
+        "no_data_ok": 2,
+        "no_data_n": 2,
+        "gold_page_retrieved": 19,
+        "gold_page_n": 22,
+        "verify_retry": 12,
+        "verify_remaining": 8,
+        "failures_by_case": {
+          "КВ-12": "search",
+          "КВ-62": "citation"
+        }
+      },
+      "deepseek-v4-pro": {
+        "n": 25,
+        "n_answerable": 22,
+        "n_absent": 3,
+        "verdicts": {
+          "correct": 22,
+          "refused_ok": 2,
+          "unscored": 1
+        },
+        "correct_pct": 95.45,
+        "correct_plus_partially_pct": 95.45,
+        "strict_task_success_pct": 92.0,
+        "refused_ok": 2,
+        "scored": 24,
+        "citation_supported_pct": 100.0,
+        "displayed_quote_supported_pct": 100.0,
+        "p50_seconds": 10.53,
+        "agent_mean_usd": 0.02028169,
+        "cost": {
+          "agent_usd": 0.33686198,
+          "rerank_usd": 0.17018035,
+          "judge_usd": 0.183036
+        },
+        "rerank_unknown_requests": 10,
+        "failures": {
+          "execution": 1
+        },
+        "strict_numerator": 23,
+        "strict_wilson_95_pct": [
+          75.03,
+          97.78
+        ],
+        "no_data_ok": 1,
+        "no_data_n": 2,
+        "gold_page_retrieved": 19,
+        "gold_page_n": 22,
+        "verify_retry": 10,
+        "verify_remaining": 5,
+        "failures_by_case": {
+          "КВ-26": "execution"
+        }
+      },
+      "qwen/qwen3.8-flash": {
+        "n": 25,
+        "n_answerable": 22,
+        "n_absent": 3,
+        "verdicts": {
+          "correct": 19,
+          "refused_ok": 2,
+          "unscored": 4
+        },
+        "correct_pct": 81.82,
+        "correct_plus_partially_pct": 81.82,
+        "strict_task_success_pct": 80.0,
+        "refused_ok": 2,
+        "scored": 21,
+        "citation_supported_pct": 100.0,
+        "displayed_quote_supported_pct": 100.0,
+        "p50_seconds": 23.72,
+        "agent_mean_usd": 0.00836117,
+        "cost": {
+          "agent_usd": 0.05437109,
+          "rerank_usd": 0.15465811,
+          "judge_usd": 0.282086
+        },
+        "rerank_unknown_requests": 0,
+        "failures": {
+          "execution": 4
+        },
+        "strict_numerator": 20,
+        "strict_wilson_95_pct": [
+          60.87,
+          91.14
+        ],
+        "no_data_ok": 1,
+        "no_data_n": 2,
+        "gold_page_retrieved": 17,
+        "gold_page_n": 22,
+        "verify_retry": 13,
+        "verify_remaining": 3,
+        "failures_by_case": {
+          "КВ-51": "execution",
+          "КВ-52": "execution",
+          "КВ-55": "execution",
+          "КВ-57": "execution"
+        }
+      }
+    }
+  },
+  "calibration": {
+    "before": {
+      "verdict": 3,
+      "citation_supported": 2,
+      "displayed_quote_supported": 1,
+      "n": 6
+    },
+    "after": {
+      "verdict": 5,
+      "citation_supported": 2,
+      "displayed_quote_supported": 0,
+      "n": 6
+    }
+  },
+  "budget": {
+    "openrouter_account_delta_usd": 3.81360336,
+    "openrouter_main_delta_usd": 3.7989198,
+    "deepseek_account_delta_usd": 0.74
+  },
+  "dataset": {
+    "n": 76,
+    "categories": {
+      "числовой норматив": 30,
+      "ловушка": 9,
+      "процедура": 9,
+      "поиск неисправности": 10,
+      "нет данных": 8,
+      "результат ML": 4,
+      "запчасти/материалы": 6
+    }
+  }
+}

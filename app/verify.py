@@ -37,9 +37,15 @@ def _norm_num(s: str) -> str:
     return s
 
 
+GROUPED_NUM = re.compile(r"(?<![\w.,])\d{1,3}(?:[ \u00a0\u202f]\d{3})+(?![\w]|[.,]\d)")
+
+
+def _join_groups(text: str) -> str:
+    return GROUPED_NUM.sub(lambda m: ''.join(m.group().split()), text)
+
+
 def page_numbers(text: str) -> set[str]:
-    t = re.sub(r"(?<=\d)[ \u00a0](?=\d{3}\b)", "", text)  # «1 500» -> «1500»
-    return {_norm_num(m) for m in NUM.findall(t)}
+    return {_norm_num(m) for m in NUM.findall(_join_groups(text))}
 
 
 def _significant(n: str) -> bool:
@@ -72,32 +78,33 @@ def check(answer: str, allowed: set[str], seen: set[tuple[str, int]], page_text,
             order[key] = len(order) + 1
         return f"[{order[key]}]"
 
-    # проверка чисел: предложение → его строка → соседние строки того же абзаца.
-    # Число принимается, если оно есть на процитированной странице или на другой странице руководства,
-    # которую агент получил инструментом в этом диалоге (ссылка тогда неточная, но цифра не выдумана).
+    # Не засчитываем случайное совпадение на другой прочитанной странице.
+    # Для списка с одной ссылкой используем соседние строки, но не другой абзац.
     lines = answer.split("\n")
-    seen_ok = [(m, p) for m, p in seen if m in allowed]
-    seen_nums: set[str] | None = None
+    nums_cache: dict[tuple[str, int], set[str]] = {}
     for li, line in enumerate(lines):
         near = []
-        for j in (li, li - 1, li + 1, li + 2):
-            if 0 <= j < len(lines) and (j == li or lines[j].strip()):
+        for step in (-1, 1):
+            j = li + step
+            while 0 <= j < len(lines) and abs(j - li) <= 2 and lines[j].strip():
                 near += [(m, int(p)) for m, p in TAG.findall(lines[j])]
+                j += step
+        near += [(m, int(p)) for m, p in TAG.findall(line)]
         for sent in re.split(r"(?<=[.!?])\s+", line):
             tags = [(m, int(p)) for m, p in TAG.findall(sent)] or near
             body = LIST_MARK.sub("", TAG.sub(" ", sent))
-            body_n = NOT_NORM.sub(" ", body)
+            body_n = _join_groups(NOT_NORM.sub(" ", body))
             nums = [n for n in NUM.findall(body_n) if _significant(n)]
             nums = [n for n in nums if _norm_num(n) not in context_numbers]
             if not nums:
                 continue
-            valid = [(m, p) for m, p in tags if m in allowed and (m, p) in seen]
-            on_pages = set().union(*(page_numbers(page_text(m, p)) for m, p in valid)) if valid else set()
+            valid = [(m, p) for m, p in tags if m in allowed and (m, p) in seen and m in BY_ID and 1 <= p <= BY_ID[m].pages]
+            on_pages: set[str] = set()
+            for key in valid:
+                if key not in nums_cache:
+                    nums_cache[key] = page_numbers(page_text(*key))
+                on_pages.update(nums_cache[key])
             missing = [n for n in nums if _norm_num(n) not in on_pages]
-            if missing:
-                if seen_nums is None:
-                    seen_nums = set().union(*(page_numbers(page_text(m, p)) for m, p in seen_ok)) if seen_ok else set()
-                missing = [n for n in missing if _norm_num(n) not in seen_nums]
             if not missing:
                 continue
             if not valid:
@@ -118,7 +125,15 @@ def quote_for(answer: str, mid: str, page: int, ptext: str) -> str:
     """Точная цитата со страницы: фрагмент вокруг числа из ответа или самая похожая строка."""
     tag = f"{{{mid}#{page}}}"
     sents = [s for s in re.split(r"(?<=[.!?])\s+|\n", answer) if tag in s]
-    flat = re.sub(r"\s+", " ", ptext)
+    flat = " ".join(ptext.split())
+    # Когда ответ приводит точную цитату, показываем этот же фрагмент, а не первое совпавшее число.
+    literals = {" ".join(literal.split()) for line in answer.splitlines() if tag in line
+                for pair in re.findall(r'«([^»]+)»|"([^"]+)"', line)
+                for literal in pair if 35 <= len(literal) <= 420}
+    for literal in sorted(literals, key=lambda q: (-len(q), q)):
+        direct = re.search(re.escape(literal), flat, re.I)
+        if direct:
+            return direct.group()
     nums = []
     for s in sents:
         nums += [n for n in NUM.findall(NOT_NORM.sub(" ", TAG.sub(" ", s))) if _significant(n)]
