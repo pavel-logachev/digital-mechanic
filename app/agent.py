@@ -262,7 +262,7 @@ class Agent:
                "reranked": rr.get("status") == "applied",
                "note": "Ссылайся на ref после факта. При excerpt=true нужный фрагмент может быть за пределами выдачи: вызови read_page. Если узел или раздел не совпадает – уточни запрос."}
         found = {(h["manual_id"], int(h["page"])) for h in hits if h["manual_id"] in self.allowed}
-        if conflicts := conflicts_for(found):
+        if conflicts := conflicts_for(found, " ".join(queries), set(self.allowed)):
             for c in conflicts:   # ссылки обеих сторон противоречия считаются показанными агенту
                 for ref in c["refs"]:
                     m, p = ref.strip("{}").split("#")

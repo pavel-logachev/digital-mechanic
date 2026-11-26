@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -16,6 +17,7 @@ class Conflict:
     summary: str
     rule: str
     source: str
+    topic_re: str = ""                   # запрос механика или агента на эту тему тоже поднимает противоречие
 
 
 CONFLICTS: tuple[Conflict, ...] = (
@@ -29,15 +31,21 @@ CONFLICTS: tuple[Conflict, ...] = (
              "Покажи обе формулировки со ссылками, назови противоречие и посоветуй уточнить у специалиста "
              "или производителя для этой модификации.",
         source="разъяснение организаторов в чате задачи, 26.11.2026",
+        topic_re=r"(тепл\w*\s+)?зазор\w*.{0,40}клапан|клапан\w*.{0,40}зазор|регулир\w*\s+клапан",
     ),
 )
 
 
-def conflicts_for(pages: set[tuple[str, int]]) -> list[dict]:
-    """Противоречия, затронутые найденными страницами, с полным списком ссылок обеих сторон."""
+def conflicts_for(pages: set[tuple[str, int]], text: str = "", manuals: set[str] | None = None) -> list[dict]:
+    """Противоречия, затронутые найденными страницами или темой запроса, с полным списком ссылок обеих сторон.
+
+    По теме срабатывает только для двигателя, к руководствам которого относится противоречие (manuals)."""
     out = []
     for c in CONFLICTS:
-        if pages & set(c.pages):
+        own = {m for m, _ in c.pages}
+        by_topic = bool(c.topic_re and text and manuals is not None and own <= manuals
+                        and re.search(c.topic_re, text, re.I))
+        if pages & set(c.pages) or by_topic:
             out.append({"topic": c.topic, "refs": [f"{{{m}#{p}}}" for m, p in c.pages],
                         "summary": c.summary, "rule": c.rule, "source": c.source})
     return out
