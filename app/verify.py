@@ -125,6 +125,8 @@ def quote_for(answer: str, mid: str, page: int, ptext: str) -> str:
     """Точная цитата со страницы: фрагмент вокруг числа из ответа или самая похожая строка."""
     tag = f"{{{mid}#{page}}}"
     sents = [s for s in re.split(r"(?<=[.!?])\s+|\n", answer) if tag in s]
+    # перенос слова в PDF («эле-\nмента») склеиваем, иначе цитата начинается с обрубка слова
+    ptext = re.sub(r"(?<=[а-яёa-z])[-\u00ad][ \t]*\r?\n[ \t]*(?=[а-яёa-z])", "", ptext)
     flat = " ".join(ptext.split())
     # Когда ответ приводит точную цитату, показываем этот же фрагмент, а не первое совпавшее число.
     literals = {" ".join(literal.split()) for line in answer.splitlines() if tag in line
@@ -156,7 +158,8 @@ def quote_for(answer: str, mid: str, page: int, ptext: str) -> str:
         return ("…" if a else "") + flat[a:b].strip() + ("…" if b < len(flat) else "")
     words = {w for s in sents for w in re.findall(r"[а-яёa-z]{5,}", s.lower())}
     best, score = "", 0
-    for line in re.split(r"(?<=[.;:])\s+|\n", ptext):
+    for line in re.split(r"(?<=[.;:])\s+|\n(?=\s*(?:[А-ЯЁA-Z0-9•–-]))", ptext):
+        line = " ".join(line.split())
         lw = set(re.findall(r"[а-яёa-z]{5,}", line.lower()))
         sc = len(words & lw)
         if sc > score and 20 < len(line) < 400:

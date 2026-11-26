@@ -46,3 +46,10 @@ def test_displayed_quote_prefers_exact_source_excerpt_over_page_heading():
               + warning + ', учтите это в первую очередь; ' + 'текст другой операции ' * 19)
     answer = f'В книге прямо указано: «{warning}» {{{mid}#152}}.'
     assert warning in verify.quote_for(answer, mid, 152, source)
+
+
+def test_quote_does_not_start_with_broken_word():
+    from app.verify import quote_for
+    page = "4. Замените фильтр.\nПри засорении эле-\nмента фильтра грубой очистки заменить его\nи промыть корпус."
+    q = quote_for("Засорение фильтра грубой очистки – заменить элемент {m#5}.", "m", 5, page)
+    assert not q.startswith("мента") and "элемента фильтра грубой очистки" in q
