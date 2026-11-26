@@ -27,9 +27,10 @@ class Usage:
     cached: int = 0
     completion: int = 0
     seconds: float = 0.0
+    log: list = field(default_factory=list)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def add(self, u, secs: float) -> None:
+    def add(self, u, secs: float, kind: str = "") -> None:
         if u is None:
             return
         with self._lock:
@@ -39,6 +40,8 @@ class Usage:
             details = getattr(u, "prompt_tokens_details", None)
             self.cached += (getattr(details, "cached_tokens", 0) or 0) if details else (getattr(u, "prompt_cache_hit_tokens", 0) or 0)
             self.seconds += secs
+            self.log.append({"kind": kind, "prompt": u.prompt_tokens or 0, "completion": u.completion_tokens or 0,
+                             "seconds": round(secs, 2)})
 
     def as_dict(self) -> dict:
         return {"calls": self.calls, "prompt_tokens": self.prompt, "cached_tokens": self.cached,
@@ -54,6 +57,7 @@ def chat(messages: list[dict], tools: list[dict] | None = None, usage: Usage | N
     if "deepseek" in config.LLM_BASE_URL:
         kw["extra_body"] = {"thinking": {"type": "disabled"}}
     resp = client().chat.completions.create(**kw)
+    msg = resp.choices[0].message
     if usage is not None:
-        usage.add(resp.usage, time.time() - t0)
-    return resp.choices[0].message
+        usage.add(resp.usage, time.time() - t0, "tools" if msg.tool_calls else "answer")
+    return msg
