@@ -14,7 +14,17 @@ from app import config
 from app.manuals import manuals_for_engine
 from app.search import Searcher, TOP_N
 
-DATASET = Path(__file__).with_name("control-questions.json")
+
+def _data_dir():
+    from app import config
+    config.EVAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return config.EVAL_DATA_DIR
+
+
+def _data(name):
+    return _data_dir() / name
+
+DATASET = _data("control-questions.json")
 EVAL_BUDGET = 0.30
 # До 100 страниц по 3200 символов; оценка резерва для Jev 1.13, с запасом на служебный JSON.
 JEV_QUERY_RESERVE = 0.04

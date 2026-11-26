@@ -17,6 +17,16 @@ from openai import OpenAI
 from app import agent, config, llm, verify
 from eval.agent_eval import vehicle_for
 
+
+def _data_dir():
+    from app import config
+    config.EVAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return config.EVAL_DATA_DIR
+
+
+def _data(name):
+    return _data_dir() / name
+
 HERE = Path(__file__).resolve().parent
 OR_URL = 'https://openrouter.ai/api/v1'
 DS_URL = 'https://api.deepseek.com'
@@ -265,7 +275,7 @@ def grade_with_retry(client, judge, items):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--dataset', type=Path, default=HERE / 'control-questions-v2.json')
+    p.add_argument('--dataset', type=Path, default=_data('control-questions-v2.json'))
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--provider', choices=['deepseek', 'openrouter'], default='deepseek')
     p.add_argument('--model', default='deepseek-flash')

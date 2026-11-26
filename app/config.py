@@ -32,6 +32,8 @@ MANUALS_DIR = Path(env("MANUALS_DIR", str(ROOT / "data" / "manuals")))
 INDEX_DIR = Path(env("INDEX_DIR", str(ROOT / "data" / "index")))
 PAGES_DIR = Path(env("PAGES_DIR", str(ROOT / "data" / "pages")))
 STATE_DIR = Path(env("STATE_DIR", str(ROOT / "data" / "state")))
+# контрольные вопросы и трассы оценки содержат фрагменты руководств – хранятся вне Git (требование организаторов)
+EVAL_DATA_DIR = Path(env("EVAL_DATA_DIR", str(ROOT / "data" / "eval")))
 
 LLM_BASE_URL = env("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_API_KEY = env("LLM_API_KEY")

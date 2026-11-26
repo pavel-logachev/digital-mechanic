@@ -8,6 +8,16 @@ from typing import Any
 from eval.quality_eval import HERE, classify_failure, read_json, ref_list, summarize, write_json
 
 
+
+def _data_dir():
+    from app import config
+    config.EVAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return config.EVAL_DATA_DIR
+
+
+def _data(name):
+    return _data_dir() / name
+
 def wilson(success: int, n: int) -> list[float] | None:
     if not n:
         return None
@@ -54,12 +64,12 @@ def normalize(rows, questions, audit, stage, apply_manual=False):
 
 
 def main():
-    questions = {q['id']: q for q in read_json(HERE / 'control-questions-v2.json')['questions']}
-    manual = read_json(HERE / 'quality-manual-audit.json')['cases']
-    sample = read_json(HERE / 'quality-comparison-sample.json')['ids']
-    before = read_json(HERE / 'quality-v2-before.json')['rows']
-    after = read_json(HERE / 'quality-v2-after-flash.json')['rows']
-    rescored = {r['id']: r for r in read_json(HERE / 'quality-v2-before-rejudge.json')['rows']}
+    questions = {q['id']: q for q in read_json(_data('control-questions-v2.json'))['questions']}
+    manual = read_json(_data('quality-manual-audit.json'))['cases']
+    sample = read_json(_data('quality-comparison-sample.json'))['ids']
+    before = read_json(_data('quality-v2-before.json'))['rows']
+    after = read_json(_data('quality-v2-after-flash.json'))['rows']
+    rescored = {r['id']: r for r in read_json(_data('quality-v2-before-rejudge.json'))['rows']}
     # Preserve the first decision when present. Replace missing decisions only, and apply the separately logged manual audit.
     before = [r if r.get('judgment') else rescored.get(r['id'], r) for r in before]
     assert len(before) == len(after) == 72 and {r['id'] for r in before} == {r['id'] for r in after}
@@ -68,7 +78,7 @@ def main():
              'before_judge': report_stats(normalize(before, questions, manual, 'before')),
              'after_judge': report_stats(normalize(after, questions, manual, 'after'))}
     model_rows = {'deepseek-flash': [r for r in after if r['id'] in sample]}
-    for p in sorted(HERE.glob('quality-v2-compare-*.json')):
+    for p in sorted(_data_dir().glob('quality-v2-compare-*.json')):
         d = read_json(p)
         model_rows[d['meta']['model']] = d['rows']
     common = set(sample).intersection(*(set(r['id'] for r in model) for model in model_rows.values()))
@@ -85,8 +95,8 @@ def main():
         stats['calibration'][stage] = {field: sum(bool(rs[id].get('judgment')) and rs[id]['judgment'].get(field) == a[stage][field]
                                                  for id, a in manual.items()) for field in fields}
         stats['calibration'][stage]['n'] = len(manual)
-    start = read_json(HERE / 'quality-budget-start.json')
-    end = HERE / 'quality-budget-end.json'
+    start = read_json(_data('quality-budget-start.json'))
+    end = _data('quality-budget-end.json')
     if end.exists():
         final = read_json(end)
         stats['budget'] = dict(openrouter_account_delta_usd=round(final['openrouter_usage'] - start.get('openrouter_usage_before_preflight', start['openrouter_usage']), 8),
@@ -94,7 +104,7 @@ def main():
                                deepseek_account_delta_usd=round(start['deepseek_remaining'] - final['deepseek_remaining'], 2))
     counts = Counter(q['category'] for q in questions.values())
     stats['dataset'] = dict(n=len(questions), categories=dict(counts))
-    write_json(HERE / 'quality-summary.json', stats)
+    write_json(_data('quality-summary.json'), stats)
     for k, v in stats.items():
         print(k, v)
 

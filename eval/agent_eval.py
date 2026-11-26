@@ -15,6 +15,16 @@ from pathlib import Path
 
 from app import agent, data, verify
 
+
+def _data_dir():
+    from app import config
+    config.EVAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return config.EVAL_DATA_DIR
+
+
+def _data(name):
+    return _data_dir() / name
+
 ROOT = Path(__file__).resolve().parent
 REFUSAL = re.compile(r"нет данных|не (указан|приведен|приведён|нашёл|нашел|найден|описан)|в руководстве[^.]{0,60}нет|отсутству", re.I)
 
@@ -63,7 +73,7 @@ def main():
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--ids", default="")
     a = ap.parse_args()
-    ds = json.loads((ROOT / "control-questions.json").read_text(encoding="utf-8"))
+    ds = json.loads((_data("control-questions.json")).read_text(encoding="utf-8"))
     qs = [q for q in ds["questions"] if q["category"] != "результат ML"]
     if a.ids:
         qs = [q for q in qs if q["id"] in a.ids.split(",")]
@@ -89,7 +99,7 @@ def main():
         "mean_completion_tokens": round(statistics.mean(r["usage"]["completion_tokens"] for r in res)),
         "mean_llm_calls": round(statistics.mean(r["usage"]["calls"] for r in res), 2),
     }
-    (ROOT / "agent-eval-report.json").write_text(json.dumps({"summary": summary, "results": res}, ensure_ascii=False, indent=1), encoding="utf-8")
+    (_data("agent-eval-report.json")).write_text(json.dumps({"summary": summary, "results": res}, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, indent=1))
     for r in res:
         flag = "OK " if r["page_hit"] or (r["category"] == "нет данных" and r["refused"]) else "-- "

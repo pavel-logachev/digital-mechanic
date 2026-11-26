@@ -9,6 +9,16 @@ from pathlib import Path
 
 from app import agent, data
 
+
+def _data_dir():
+    from app import config
+    config.EVAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return config.EVAL_DATA_DIR
+
+
+def _data(name):
+    return _data_dir() / name
+
 CASES = [("E549YT198", "S-0011"), ("P854BT78", "S-0021"), ("P456AT178", "S-0003"), ("E549YT198", "S-0012")]
 
 
@@ -28,7 +38,7 @@ def main():
         print(out[-1], flush=True)
     keys = ("calls", "prompt_tokens", "cached_tokens", "completion_tokens", "searches", "seconds")
     summary = {k: round(statistics.mean(r[k] for r in out), 2) for k in keys}
-    Path(__file__).with_name("cost-probe.json").write_text(json.dumps({"summary": summary, "runs": out}, ensure_ascii=False, indent=1), encoding="utf-8")
+    _data("cost-probe.json").write_text(json.dumps({"summary": summary, "runs": out}, ensure_ascii=False, indent=1), encoding="utf-8")
     print("SUMMARY", summary)
 
 

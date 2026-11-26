@@ -8,3 +8,5 @@ __pycache__/
 .pytest_cache/
 logs/
 data/state/
+data/eval/
+docs/screens/07-manual-page.png
