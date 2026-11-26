@@ -127,3 +127,11 @@ def test_page_covers_unit():
     assert page_covers_unit("F02", body)
     assert not page_covers_unit("F02", " ".join(["Регулировка тепловых зазоров клапанов."] * 8))
     assert not page_covers_unit("F02", "Содержание " + "давление масла ...... 19 " * 20)
+
+
+def test_warning_quality_always_warns():
+    """#101: при качестве warning предупреждение есть в любом вердикте – норма, отклонение, неприменимый класс."""
+    for code, engine, status in (("F04", "ЯМЗ-536", "anomaly"), ("F14", "ЯМЗ-236М2", "anomaly"), (None, "ЯМЗ-536", "normal")):
+        s = _s("S1", code=code, q="warning", score=0.7, conf=0.8) if code else _s("S1", status="normal", q="warning")
+        v = evaluate(s, engine, [s])
+        assert any("помехами" in w for w in v.warnings), (code, v.rule, v.warnings)

@@ -124,6 +124,8 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
         note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
         warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
                         "Вероятна ошибка ML-модели или карточки машины – нужен очный осмотр, диагноз по этой записи не подтвержден.")
+        if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
+            warnings.append(_doubt_text(quality, conf))   # #101: при warning предупреждение показывается всегда
         # в руководстве на этот двигатель нет инструкции по такому узлу – продукт заявку не отправляет (разъяснение #103)
         defect = (f"Рекомендация на дефектовку. Машина {result.get('vehicle_id')}, двигатель {engine}, "
                   f"проверка {result.get('session_id')}: ML-сервис указал {code} «{result.get('anomaly_title')}» "
