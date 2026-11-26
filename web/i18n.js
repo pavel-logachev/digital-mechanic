@@ -80,6 +80,9 @@ error|Ошибка|Xato|Хато|Ката|Қате|गड़बड़ी|Error
 done|Готово|Tayyor|Тайёр|Даяр|Дайын|हो गया|Done
 mechanic|Вы|Siz|Шумо|Сиз|Сіз|आप|You
 answer|Объяснение помощника|Yordamchi izohi|Шарҳи ёрдамчӣ|Жардамчынын түшүндүрмөсү|Көмекшінің түсіндірмесі|सहायक की व्याख्या|Assistant’s explanation
+explainPending|Помощник ищет в руководстве, что проверить. Ответ появится здесь|Yordamchi qo‘llanmadan nimani tekshirishni izlayapti – javob shu yerda chiqadi|Ёрдамчӣ дар дастур меҷӯяд, ки чиро санҷидан лозим аст – ҷавоб дар ҳамин ҷо пайдо мешавад|Жардамчы колдонмодон эмнени текшерүү керектигин издеп жатат – жооп ушул жерде чыгат|Көмекші нұсқаулықтан нені тексеру керегін іздеп жатыр – жауап осы жерде шығады|सहायक पुस्तिका में देख रहा है कि क्या जाँचना है – जवाब यहीं दिखेगा|The assistant is checking the manual for what to inspect – the answer will appear here
+explainBelow|Готовлю объяснение – оно будет ниже|Izoh tayyorlanmoqda – natija ostida chiqadi|Шарҳ омода мешавад – дар зери натиҷа пайдо мешавад|Түшүндүрмө даярдалууда – жыйынтыктын астында чыгат|Түсіндірме дайындалуда – нәтиженің астында шығады|व्याख्या तैयार हो रही है – परिणाम के नीचे दिखेगी|Preparing the explanation – it will appear below
+explainReady|Объяснение готово – показать|Yordamchi izohi tayyor – ko‘rsatish|Шарҳи ёрдамчӣ омода аст – нишон додан|Жардамчынын түшүндүрмөсү даяр – көрсөтүү|Көмекшінің түсіндірмесі дайын – көрсету|सहायक की व्याख्या तैयार है – दिखाएँ|Explanation ready – show it
 result|Результат проверки|Tekshiruv natijasi|Натиҷаи санҷиш|Текшерүү жыйынтыгы|Тексеру нәтижесі|जाँच का नतीजा|Check result
 pending|Готовлю ответ…|Javob tayyorlayapman…|Ҷавобро тайёр мекунам…|Жооп даярдап жатам…|Жауап дайындап жатырмын…|जवाब तैयार हो रहा है…|Preparing an answer…
 stepDiagnose|Проверяю запись…|Yozuvni tekshiryapman…|Сабтро месанҷам…|Жазууну текшерип жатам…|Жазбаны тексеріп жатырмын…|रिकॉर्डिंग की जाँच हो रही है…|Checking the recording…

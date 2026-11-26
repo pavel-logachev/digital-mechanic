@@ -1,6 +1,7 @@
 """Local UI fixture, with in-memory tickets. Run: python web/dev_fake_api.py"""
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -228,6 +229,7 @@ def chat(req: Chat):
             yield step('get_diagnosis', title, 'running', 'Ищем выбранную запись.')
             yield step('get_diagnosis', title, 'done', 'Запись найдена и результат получен.')
             yield dict(type='diagnosis', data=result)
+            await asyncio.sleep(float(os.environ.get('FAKE_EXPLAIN_DELAY', '0')))  # для проверки экрана ожидания объяснения
             yield message({'normal': 'По этой записи отклонений не видно. При новых признаках проверьте машину очно.', 'anomaly': 'Тип отклонения указывает на возможную причину. Ее нужно подтвердить при осмотре. Можно обсудить результат или подготовить заявку на осмотр.', 'check_failed': 'Запись не подошла для анализа. О состоянии двигателя по ней судить нельзя.'}[s['status']])
         elif req.action == 'draft_ticket':
             title = 'Подготовка черновика заявки'

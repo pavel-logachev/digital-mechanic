@@ -50,7 +50,7 @@ applySettings();
 
 const svgNS = 'http://www.w3.org/2000/svg';
 const paths = {
-  wave: 'M2 12h4l3-7 4 14 3-7h6', back: 'm14 6-6 6 6 6M8 12h13', next: 'm9 6 6 6-6 6', prev: 'm15 6-6 6 6 6',
+  wave: 'M2 12h4l3-7 4 14 3-7h6', back: 'm14 6-6 6 6 6M8 12h13', next: 'm9 6 6 6-6 6', down: 'm6 9 6 6 6-6', prev: 'm15 6-6 6 6 6',
   search: 'M15.5 15.5 21 21M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z', truck: 'M6 18H3V6h12v12H9m6 0h3m3 0h1v-6l-3-4h-4m0 5h7M9 18a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm12 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z',
   check: 'm5 12 4 4L19 6', cross: 'm8 8 8 8m0-8-8 8', warn: 'M12 8v5m0 3v.1M3 20l9-17 9 17Z',
   book: 'M4 4h11l4 4v12H4Zm10 0v5h5M8 12h7m-7 4h7', send: 'm3 3 18 9-18 9 4-9Zm4 9h14', chart: 'M4 4v16h16M7 15l4-5 4 2 5-6',
@@ -637,6 +637,10 @@ function renderTurn(c, turn, latestResult, opens) {
   const answers = turn.messages.map((m, i) => el('article', {class: 'box agent-message'}, markdown(m.text, m.citations, `${turn.id}-${i}`, opens)));
   const log = trace(turn, opens.has(`steps-${turn.id}`));
   const diagnosisResponse = turn.diagnosis && answers.length ? el('details', {class: 'fold', open: opens.has(`answer-${turn.id}`), 'data-trace': `answer-${turn.id}`}, el('summary', {}, t('answer')), el('div', {class: 'fold-body'}, answers)) : null;
+  // последний результат: объяснение помощника сразу видно под карточкой, пока его нет – место ответа с индикатором
+  const explanation = turn.diagnosis && (answers.length || turn.pending) ? el('section', {class: 'explain', 'aria-label': t('answer')},
+    el('h3', {class: 'explain-title'}, t('answer')),
+    ...(answers.length ? answers : [el('p', {class: 'box explain-pending', role: 'status'}, spinner(), el('span', {}, t('explainPending')))])) : null;
   if (turn.diagnosis && !latestResult) {
     block.append(el('details', {class: 'fold previous', open: opens.has(`verdict-${turn.id}`), 'data-trace': `verdict-${turn.id}`}, el('summary', {}, t('result'), stagePill(resultStage(c, turn.diagnosis))), el('div', {class: 'fold-body'}, verdict(c, turn.diagnosis, turn.id, opens), diagnosisResponse, log)));
   } else {
@@ -646,7 +650,8 @@ function renderTurn(c, turn, latestResult, opens) {
       if (command) card.lastElementChild.before(command);
       block.append(card);
     }
-    if (answers.length) block.append(...(diagnosisResponse ? [diagnosisResponse] : answers));
+    if (explanation) block.append(explanation);
+    else if (answers.length) block.append(...answers);
     if (log) block.append(log);
   }
   for (const error of turn.errors) block.append(el('p', {class: 'notice red', role: 'alert'}, error));
@@ -679,12 +684,40 @@ function updateChat(c, latestOnly = false, scrollTo = null) {
   if (focus?.dataset.command && !cmd?.disabled) cmd?.focus({preventScroll: true});
   fitExcerpts(feed);
   const progress = $('#chat-progress');
-  $('#chat-progress-row').hidden = !c.busy;
+  // пока ждем объяснение к уже показанному результату, индикатор стоит на месте ответа, а не внизу
+  $('#chat-progress-row').hidden = !c.busy || Boolean(turn?.diagnosis && turn.pending);
   const statusText = c.busy ? pendingText(turn) : '';
   if (progress.textContent !== statusText) progress.textContent = statusText;
   updateComposer(c);
   if (scrollTo) feed.lastElementChild?.querySelector(scrollTo)?.scrollIntoView({block: 'start'});
+  syncExplainJump(c);
 }
+// Результат проверки приходит сразу, объяснение помощника – через несколько секунд под карточкой.
+// Пока объяснение не видно на экране, внизу кнопка-указатель: «готовлю…», затем «готово – показать».
+function syncExplainJump(c) {
+  const button = $('#explain-jump');
+  if (!button) return;
+  const turn = c.turns.at(-1), box = $('#conversation .explain');
+  let show = Boolean(isCurrent(c) && turn?.diagnosis && box && !turn.explainSeen && (turn.pending || turn.messages.length));
+  if (show) {
+    const limit = (button.closest('.dock')?.getBoundingClientRect().top ?? innerHeight) - 24;
+    if (box.getBoundingClientRect().top < limit) {
+      if (!turn.pending) turn.explainSeen = true;
+      show = false;
+    }
+  }
+  button.hidden = !show;
+  if (!show) return;
+  button.classList.toggle('is-ready', !turn.pending);
+  const text = t(turn.pending ? 'explainBelow' : 'explainReady');
+  const label = $('#explain-jump-text');
+  if (label.textContent !== text) label.textContent = text;
+}
+let jumpFrame = 0;
+main.addEventListener('scroll', () => {
+  cancelAnimationFrame(jumpFrame);
+  jumpFrame = requestAnimationFrame(() => { if (state.route.page !== 'chat') return; const c = state.chats.get(JSON.stringify([state.route.vid, state.route.sid ?? null])); if (c) syncExplainJump(c); });
+}, {passive: true});
 function renderChat(v, s, c) {
   const feed = el('div', {id: 'conversation', role: 'log', 'aria-label': t('chat'), 'aria-live': 'polite'});
   feed.addEventListener('toggle', () => fitExcerpts(feed), true);
@@ -712,7 +745,10 @@ function renderComposer(c) {
       el('button', {id: 'send-question', class: 'primary', type: 'submit', 'aria-label': t('sendQuestion'), hidden: true}, t('send'))),
     el('p', {class: 'voice-status', id: 'voice-status', role: 'status', hidden: true}),
   );
-  dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {class: 'chat-status', id: 'chat-progress-row', hidden: true}, spinner(), el('span', {id: 'chat-progress', role: 'status'})), composer));
+  const jump = el('button', {type: 'button', class: 'chat-status explain-jump', id: 'explain-jump', hidden: true, onclick: () => {
+    $('.explain')?.scrollIntoView({block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  }}, spinner(), el('span', {id: 'explain-jump-text'}), icon('down'));
+  dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {class: 'chat-status', id: 'chat-progress-row', hidden: true}, spinner(), el('span', {id: 'chat-progress', role: 'status'})), jump, composer));
   $('#question').value = c.question;
   updateComposer(c);
 }
@@ -760,7 +796,7 @@ function updateComposer(c) {
   }
   const cmd = $('[data-command="draft"]');
   if (cmd) cmd.disabled = c.busy || Boolean(active);
-  $('.compose').hidden = c.busy;
+  $('.compose').classList.toggle('is-busy', c.busy);   // поле и режим ответа не пропадают, пока помощник работает
   input.hidden = Boolean(active);
   input.disabled = c.busy || Boolean(active);
   send.hidden = Boolean(active) || !hasText;
