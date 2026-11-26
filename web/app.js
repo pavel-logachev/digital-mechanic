@@ -35,7 +35,9 @@ const lowerStart = value => lang === 'ru' && value ? value[0].toLocaleLowerCase(
 const qualities = {good: 'good', warning: 'noisy', bad: 'poor'};
 // в браузере может не быть названий месяцев для узбекского, таджикского и т. п. – тогда дата цифрами: 19.11.2026, 17:50
 const formatDate = options => {
-  if (Intl.DateTimeFormat.supportedLocalesOf(lang).length) return new Intl.DateTimeFormat(lang, {timeZone: 'Europe/Moscow', ...options});
+  const probe = new Intl.DateTimeFormat(lang, {month: 'long'});
+  const ownMonths = probe.resolvedOptions().locale.split('-')[0] === lang && !/^M?\d+$/.test(probe.format(new Date(2026, 10, 15)));
+  if (ownMonths) return new Intl.DateTimeFormat(lang, {timeZone: 'Europe/Moscow', ...options});
   const numeric = {...options}; if (numeric.month) numeric.month = '2-digit'; if (numeric.day) numeric.day = '2-digit';
   return new Intl.DateTimeFormat('ru-RU', {timeZone: 'Europe/Moscow', ...numeric});
 };
