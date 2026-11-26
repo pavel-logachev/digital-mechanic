@@ -81,6 +81,8 @@ button:disabled { color: #4b5865; border-color: #c9d2d8; background: #e9eef1; fo
 .full { width: 100%; }
 /* главное действие после вердикта: заливка, текст слева, стрелка справа – как у остальных строк-переходов */
 [data-command=draft] { background: var(--action); border-color: var(--action); color: var(--white); justify-content: space-between; text-align: start; padding-inline: 16px 13px; font-size: 1.06rem; }
+/* пока помощник пишет объяснение, кнопка заявки ждет – узнаваемой, но приглушенной */
+[data-command=draft]:disabled { background: var(--action); border-color: var(--action); color: var(--white); opacity: .55; }
 [data-command=draft]:not(:disabled):active { background: #325676; color: var(--white); }
 .primary { background: var(--action); border-color: var(--action); color: var(--white); font-size: 1.06rem; }
 .primary:not(:disabled):active { background: #325676; color: var(--white); }
