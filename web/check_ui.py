@@ -24,6 +24,20 @@ def choose_language(page, lang):
 
 
 def no_overflow(page):
+    stray = page.evaluate('''(() => { const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); const out = [];
+        while (w.nextNode()) if (/^\\s*(null|undefined|false|NaN|\\[object Object\\])\\s*$/.test(w.currentNode.data)) out.push(w.currentNode.parentElement.className || w.currentNode.parentElement.tagName);
+        return out; })()''')
+    assert not stray, f'служебный текст на экране: {stray}'
+    clipped = page.evaluate('''(() => [...document.querySelectorAll('button, a, input, select, textarea, summary')].filter(n => {
+        const r = n.getBoundingClientRect(); if (!r.width || !r.height || getComputedStyle(n).visibility === 'hidden') return false;
+        if (r.left < -0.5 || r.right > innerWidth + 0.5) return true;
+        for (let p = n.parentElement; p && p !== document.body; p = p.parentElement) {
+          const cs = getComputedStyle(p); if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+          if (cs.overflowY !== 'visible' && p.scrollHeight > p.clientHeight) continue;  // прокручиваемая область: кнопка уедет в прокрутку, это нормально
+          const q = p.getBoundingClientRect(); if (r.left < q.left - 0.5 || r.right > q.right + 0.5) return true;
+        }
+        return false; }).map(n => (n.id || n.className || n.tagName) + ':' + (n.textContent || '').trim().slice(0, 20)))()''')
+    assert not clipped, f'кнопки обрезаны контейнером: {clipped}'
     assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
     assert page.locator('main').evaluate('e => e.scrollWidth <= e.clientWidth')
     # шапка и каждый элемент страницы – в пределах ширины экрана, заголовок не наезжает на кнопки
@@ -341,6 +355,20 @@ def auto_stop(page):
 
 def screenshot(page, name):
     page.evaluate('document.fonts.ready')
+    stray = page.evaluate('''(() => { const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); const out = [];
+        while (w.nextNode()) if (/^\\s*(null|undefined|false|NaN|\\[object Object\\])\\s*$/.test(w.currentNode.data)) out.push(w.currentNode.parentElement.className || w.currentNode.parentElement.tagName);
+        return out; })()''')
+    assert not stray, f'служебный текст на экране: {stray}'
+    clipped = page.evaluate('''(() => [...document.querySelectorAll('button, a, input, select, textarea, summary')].filter(n => {
+        const r = n.getBoundingClientRect(); if (!r.width || !r.height || getComputedStyle(n).visibility === 'hidden') return false;
+        if (r.left < -0.5 || r.right > innerWidth + 0.5) return true;
+        for (let p = n.parentElement; p && p !== document.body; p = p.parentElement) {
+          const cs = getComputedStyle(p); if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+          if (cs.overflowY !== 'visible' && p.scrollHeight > p.clientHeight) continue;  // прокручиваемая область: кнопка уедет в прокрутку, это нормально
+          const q = p.getBoundingClientRect(); if (r.left < q.left - 0.5 || r.right > q.right + 0.5) return true;
+        }
+        return false; }).map(n => (n.id || n.className || n.tagName) + ':' + (n.textContent || '').trim().slice(0, 20)))()''')
+    assert not clipped, f'кнопки обрезаны контейнером: {clipped}'
     assert page.evaluate('document.documentElement.scrollWidth === innerWidth'), name
     assert page.locator('main').evaluate('e => e.scrollWidth <= e.clientWidth'), name
     measurements = page.locator('button:visible, select:visible, textarea:visible, input:not([type=radio],[type=checkbox]):visible, .check-label:visible, summary:visible, .check-row:visible, a:visible:not(.inline-cite)').evaluate_all('''nodes => nodes.map(node => {

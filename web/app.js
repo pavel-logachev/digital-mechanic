@@ -1,5 +1,10 @@
 'use strict';
 
+// пустые части интерфейса (null, false) не должны попадать на экран текстом «null» / «false»
+for (const method of ['replaceChildren', 'append']) {
+  const native = Element.prototype[method];
+  Element.prototype[method] = function (...nodes) { return native.apply(this, nodes.flat(Infinity).filter(n => n != null && n !== false)); };
+}
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const main = $('#main'), dock = $('#dock'), topbar = $('#top'), manual = $('#manual'), languageDialog = $('#language-dialog'), dataDialog = $('#data-dialog');

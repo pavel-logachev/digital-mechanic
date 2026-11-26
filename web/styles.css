@@ -56,7 +56,7 @@ p, li, dd, h1, h2, h3, strong, .brand, .pill, button { overflow-wrap: anywhere; 
 #language .icon { width: 19px; height: 19px; }
 #font-size { font-size: 21px; }
 #font-size[aria-pressed=true] { background: var(--white); border-color: var(--white); color: var(--dark); }
-.back-button { font-size: 15px; white-space: nowrap; margin-inline-start: -10px; }
+.back-button { font-size: 15px; white-space: nowrap; }
 .back-button .icon { width: 18px; height: 18px; }
 @media (max-width: 470px) { .back-button .icon { display: none; } }
 @media (max-width: 375px) { .brand { font-size: 16px; } }
@@ -317,6 +317,9 @@ dialog::backdrop { background: #172326b3; }
 .compose textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .question-row > button { height: var(--target); }
 /* заголовок в шапке никогда не раздвигает экран */
-.identity { overflow: hidden; }
-.brand { overflow: hidden; text-overflow: ellipsis; }
+.brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .row-date time { white-space: nowrap; }
+
+/* ответ помощника никогда не раздвигает экран: длинные коды и артикулы переносятся */
+.markdown, .markdown > *, .markdown li, .fold-body > *, .message-sources, .source-excerpt { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.markdown table { display: block; max-width: 100%; overflow-x: auto; }
