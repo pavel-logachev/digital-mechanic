@@ -101,8 +101,8 @@ button:disabled { color: #4b5865; border-color: #8997a1; background: #e9eef1; cu
 .wide-link { width: 100%; justify-content: flex-start; padding-inline: 16px; color: var(--action); border-color: var(--line); }
 .wide-link .icon:last-child { margin-inline-start: auto; }
 .vehicle-list { display: grid; gap: 12px; }
-.vehicle-row, .check-row { width: 100%; padding: 14px 16px; border-color: var(--line); display: grid; grid-template-columns: minmax(0,1fr) 20px; align-items: center; text-align: left; font-weight: 400; }
-.vehicle-row > .icon, .check-row > .icon { width: 20px; color: var(--muted); }
+.vehicle-row, .check-row { width: 100%; padding: 14px 16px; border-color: var(--line); display: grid; grid-template-columns: minmax(0,1fr) 20px; align-items: start; text-align: left; font-weight: 400; }
+.vehicle-row > .icon, .check-row > .icon { width: 20px; color: var(--muted); margin-top: .35em; }
 .row-copy, .vehicle-head, .selection, .check-copy { display: grid; gap: 8px; min-width: 0; }
 .plate { justify-self: start; display: inline-flex; align-items: baseline; white-space: nowrap; font: 770 1.52rem/1.04 Arial, sans-serif; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: 'zero' 0; letter-spacing: .025em; }
 .plate-region { margin-inline-start: 6px; border-inline-start: 1px solid var(--edge-line); padding-inline-start: 6px; font-size: .77em; }
@@ -110,13 +110,8 @@ button:disabled { color: #4b5865; border-color: #8997a1; background: #e9eef1; cu
 .row-model, .status-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
 .row-model > span, .cause { overflow-wrap: anywhere; }
 .garage { white-space: nowrap; font-weight: 650; }
-.status-line { flex-direction: column; align-items: flex-start; }
-/* цветная кромка слева – статус читается боковым зрением ещё до текста */
-.vehicle-row { border-inline-start-width: 4px; }
-.vehicle-row[data-stage=quarantine] { border-inline-start-color: var(--red); }
-.vehicle-row[data-stage=anomaly] { border-inline-start-color: #d29a00; }
-.vehicle-row[data-stage=check_failed] { border-inline-start-color: var(--violet); }
-.vehicle-row[data-stage=normal] { border-inline-start-color: #3a9a63; }
+/* статус всегда отдельной строкой, причина под ним – одинаково во всех карточках, всё по одной левой кромке */
+.status-line { flex-direction: column; align-items: flex-start; gap: 4px; }
 .cause { color: var(--ink); }
 .vehicle-row .row-copy { gap: 6px; }
 .vehicle-row .row-date { color: var(--muted); font-size: .92rem; }
@@ -138,6 +133,21 @@ button:disabled { color: #4b5865; border-color: #8997a1; background: #e9eef1; cu
 .verdict-head h2 { font-size: 1.46rem; }
 .verdict-head p, .verdict-head li { color: var(--ink); }
 .verdict-cause { font-size: 1.08rem; }
+.verdict-facts { color: var(--ink); font-size: .94rem; }
+.score-chart { display: grid; gap: 12px; }
+.bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; align-items: end; }
+.bar-col { display: grid; grid-template-rows: 150px auto; justify-items: center; gap: 6px; min-width: 0; }
+.bar-value { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: .94rem; }
+.bar-track { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; width: 100%; height: 100%; }
+.bars { border-bottom: 2px solid var(--line); padding-bottom: 0; }
+.bars .bar-col { grid-template-rows: 150px; }
+.bar-dates { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; justify-items: center; margin-top: -4px; }
+.bar { display: block; flex: none; max-height: calc(100% - 1.6em); width: min(44px, 70%); border-radius: 4px 4px 0 0; }
+.bar.green { background: #3a9a63; }
+.bar.amber { background: #d29a00; }
+.bar.red { background: var(--red); }
+.bar.violet, .bar.neutral { background: var(--violet); }
+.bar-date { color: var(--muted); font-size: .86rem; font-variant-numeric: tabular-nums; }
 .next-action, .verdict-why { display: grid; gap: 4px; }
 .verdict-why { padding-top: 8px; border-top: 1px solid #0002; }
 .priority-label { font-weight: 650; }
@@ -176,7 +186,7 @@ ol.fold-body { padding-inline-start: 30px; }
 .citation-row { display: flex; align-items: center; min-height: 48px; color: var(--action); text-decoration: underline; text-underline-offset: 3px; }
 .citation-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .source-excerpt.is-expanded .citation-excerpt { display: block; }
-.excerpt-toggle { justify-self: start; min-width: 48px; min-height: 48px; border-color: transparent; padding-inline: 0; font-size: .93rem; text-decoration: underline; color: var(--action); }
+.excerpt-toggle { justify-self: start; justify-content: flex-start; min-width: 48px; min-height: 48px; border-color: transparent; padding-inline: 0; font-size: .93rem; text-decoration: underline; color: var(--action); }
 .source-link { justify-content: flex-start; text-align: start; color: var(--green); overflow-wrap: anywhere; }
 .source-link .icon:last-child { margin-inline-start: auto; }
 .notice { padding: 12px; border-radius: 8px; }
@@ -213,7 +223,7 @@ ol.fold-body { padding-inline-start: 30px; }
 .field-static { display: grid; gap: 4px; }
 .field-static > span { font-weight: 700; }
 .field-static strong { font-weight: 600; }
-.field textarea { resize: vertical; max-height: 24em; overflow-y: auto; }
+.field textarea { resize: vertical; overflow-y: hidden; }
 @supports (field-sizing: content) { .field textarea { field-sizing: content; } }
 .receipt { display: grid; gap: 8px; padding: 16px; border-radius: var(--radius); }
 .receipt-id { font-size: 2rem; line-height: 1.1; }
@@ -256,3 +266,13 @@ dialog::backdrop { background: #172326b3; }
   .shell { height: auto; min-height: 100dvh; }
   main { overflow: visible; }
 }
+
+/* ссылка [n] держится с последним словом */
+.nowrap { white-space: nowrap; }
+/* источники в черновике: одно руководство – одна строка, страницы кнопками */
+.ref-group { display: grid; gap: 8px; }
+.ref-name { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 700; }
+.ref-name .icon { flex: none; color: var(--muted); }
+.ref-pages { display: flex; flex-wrap: wrap; gap: 8px; }
+.page-chip { display: inline-flex; align-items: center; min-height: var(--target); min-width: var(--target); padding: 8px 14px; border: 1px solid var(--edge-line); border-radius: 7px; background: var(--white); color: var(--action); font-weight: 700; text-decoration: none; font-variant-numeric: tabular-nums; }
+.page-chip:active { background: var(--active); }

@@ -73,9 +73,9 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     # 1. Плохая запись – абсолютный приоритет: никаких выводов о двигателе и заявки.
     if status == "check_failed" or quality == "bad":
-        return Verdict("check_failed", None, "Запишите звук двигателя ещё раз: по этой записи судить нельзя.",
+        return Verdict("check_failed", None, "Запишите звук двигателя еще раз: по этой записи судить нельзя.",
                        False, ["Запись непригодна для анализа, оценка и уверенность не используются.",
-                               "Заявка по этой проверке не создаётся."], rule="R1-bad")
+                               "Заявка по этой проверке не создается."], rule="R1-bad")
 
     score, conf = result.get("anomaly_score"), result.get("confidence")
     hist_note = _history_note(past)
@@ -110,7 +110,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if appl == "no":
         note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
         warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
-                        "Вероятна ошибка ML-модели или карточки машины – нужен очный осмотр, диагноз по этой записи не подтверждён.")
+                        "Вероятна ошибка ML-модели или карточки машины – нужен очный осмотр, диагноз по этой записи не подтвержден.")
         return Verdict("anomaly", "medium", "Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины.", True,
                        [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но класс {code} неприменим к {engine}.",
                         "Средний приоритет: машину стоит осмотреть, но конкретную неисправность по записи назвать нельзя."],
@@ -126,17 +126,17 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if repeated:
         reasons.insert(0, f"Такое же отклонение уже было: {', '.join(_date(s) for s in repeated)}.")
     if growing:
-        reasons.insert(0, "Отклонение растёт от проверки к проверке.")
+        reasons.insert(0, "Отклонение растет от проверки к проверке.")
     if appl == "check":
         warnings.append(f"Убедитесь, что на этой машине есть узел «{result.get('anomaly_title')}»: для {engine} это зависит от комплектации.")
     if doubtful:
-        warnings.append("Запись с помехами или уверенность модели невысокая. Перезапись не нужна: сначала осмотрите узел на машине. Подтвердился признак – оформляйте заявку, не подтвердился – машина идёт в рейс.")
+        warnings.append("Запись с помехами или уверенность модели невысокая. Перезапись не нужна: сначала осмотрите узел на машине. Подтвердился признак – оформляйте заявку, не подтвердился – машина идет в рейс.")
 
     if sev == "C":
         urg, rule = "high", "R4-critical"
         action = ("Если машина в рейсе – остановиться в безопасном месте и заглушить двигатель. "
                   "На линию – только после дефектовки и устранения причины.")
-        reasons.insert(0, f"«{result.get('anomaly_title')}» – критичная неисправность: работа с ней может закончиться тяжёлой поломкой двигателя.")
+        reasons.insert(0, f"«{result.get('anomaly_title')}» – критичная неисправность: работа с ней может закончиться тяжелой поломкой двигателя.")
     elif sev == "S" and (strong or growing or (repeated and not doubtful)):
         urg, rule = "high", "R5-significant-strong"
         action = "Поставить на дефектовку в ближайшее время, в дальние рейсы не выпускать."

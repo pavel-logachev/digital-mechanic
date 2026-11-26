@@ -10,7 +10,7 @@ language|Язык|Til|Забон|Тил|Тіл|भाषा|Language
 large|Крупный шрифт|Yirik yozuv|Ҳарфи калон|Чоң арип|Ірі қаріп|बड़े अक्षर|Large text
 back|Назад|Orqaga|Бозгашт|Артка|Артқа|वापस|Back
 demo|Демо|Demo|Намоиш|Демо|Демо|डेमो|Demo
-fleet|Сводка парка|Avtopark holati|Ҳолати автопарк|Автопарктын абалы|Автопарк күйі|बेड़े की स्थिति|Fleet overview
+fleet|Режим главного механика|Avtopark holati|Ҳолати автопарк|Автопарктын абалы|Автопарк күйі|बेड़े की स्थिति|Fleet overview
 vehicle|Карточка машины|Mashina kartasi|Маълумоти мошин|Унаа тууралуу|Көлік картасы|गाड़ी की जानकारी|Vehicle details
 chat|Диагностика|Diagnostika|Ташхис|Диагностика|Диагностика|जाँच का नतीजा|Diagnosis
 draft|Черновик заявки|Buyurtma qoralamasi|Пешнависи дархост|Өтүнмөнүн долбоору|Өтінім жобасы|वर्क ऑर्डर का मसौदा|Work order draft
@@ -24,11 +24,11 @@ noResults|Машин с таким номером нет|Bunday raqamli mashina 
 showAll|Показать еще {count}|Yana {count} tasini ko‘rsatish|Боз {count} мошинро нишон додан|Дагы {count} унааны көрсөтүү|Тағы {count} көлікті көрсету|{count} और दिखाएँ|Show {count} more
 garage|Гаражный № {no}|Garaj raqami {no}|Рақами гаражӣ {no}|Гараж номери {no}|Гараж нөмірі {no}|गैराज नं. {no}|Garage no. {no}
 normal|Норма|Me’yorda|Дар меъёр|Нормада|Қалыпты|सामान्य|Normal
-anomaly|Нужна проверка|Tekshirish kerak|Санҷидан лозим|Текшерүү керек|Тексеру керек|जाँच ज़रूरी है|Needs a check
+anomaly|Требует внимания|Tekshirish kerak|Санҷидан лозим|Текшерүү керек|Тексеру керек|जाँच ज़रूरी है|Needs a check
 failed|Перезаписать звук|Ovozni qayta yozing|Садоро аз нав сабт кунед|Үндү кайра жазыңыз|Дыбысты қайта жазыңыз|आवाज़ फिर से रिकॉर्ड करें|Record the sound again
 noCheck|Нет проверки|Tekshiruv yo‘q|Санҷиш нашудааст|Текшерүү жок|Тексеру жоқ|जाँच नहीं हुई|No check
-attention|Нужна проверка|Tekshirish kerak|Санҷидан лозим|Текшерүү керек|Тексеру керек|जाँच ज़रूरी है|Needs attention
-quarantine|Не выпускать|Yo‘lga chiqarmang|Ба роҳ набароред|Жолго чыгарбаңыз|Жолға шығармаңыз|ड्यूटी पर न भेजें|Keep off the road
+attention|Требует внимания|Tekshirish kerak|Санҷидан лозим|Текшерүү керек|Тексеру керек|जाँच ज़रूरी है|Needs attention
+quarantine|Карантин|Yo‘lga chiqarmang|Ба роҳ набароред|Жолго чыгарбаңыз|Жолға шығармаңыз|ड्यूटी पर न भेजें|Keep off the road
 fleetPriority|Машины, требующие внимания|Tekshirish kerak bo‘lgan mashinalar|Мошинҳое, ки бояд санҷид|Текшериле турган унаалар|Тексеру керек көліктер|जिन गाड़ियों की जाँच चाहिए|Vehicles needing attention
 fleetEmpty|В этой группе нет машин|Bu guruhda mashina yo‘q|Дар ин гурӯҳ мошин нест|Бул топто унаа жок|Бұл топта көлік жоқ|इस समूह में कोई गाड़ी नहीं है|No vehicles in this group
 engine|Двигатель|Dvigatel|Муҳаррик|Кыймылдаткыч|Қозғалтқыш|इंजन|Engine
@@ -41,7 +41,7 @@ noScore|Нет оценки|Ball yo‘q|Баҳо нест|Баа жок|Баға
 trendNote|Шкала от 0 до 1. × – запись не подошла. Сравнивайте только записи, сделанные в одинаковых условиях.|Shkala 0 dan 1 gacha. × – yozuv yaroqsiz. Faqat bir xil sharoitda olingan yozuvlarni solishtiring.|Миқёс аз 0 то 1. × – сабт корношоям аст. Танҳо сабтҳои дар шароити яксон гирифташударо муқоиса кунед.|Шкала 0дөн 1ге чейин. × – жазуу жараксыз. Бирдей шартта жасалган жазууларды гана салыштырыңыз.|Шкала 0-ден 1-ге дейін. × – жазба жарамсыз. Тек бірдей жағдайда жазылған дыбыстарды салыстырыңыз.|स्कोर 0 से 1 तक है। × – रिकॉर्डिंग काम की नहीं है। एक जैसे हालात में की गई रिकॉर्डिंग ही मिलाएँ।|Scale: 0 to 1. × means the recording was unusable. Only compare recordings made under the same conditions.
 pastTickets|Заявки по машине|Mashina bo‘yicha buyurtmalar|Дархостҳои ин мошин|Бул унаа боюнча өтүнмөлөр|Осы көлік бойынша өтінімдер|इस गाड़ी के वर्क ऑर्डर|Vehicle work orders
 noTickets|Заявок пока нет|Hozircha buyurtma yo‘q|Ҳоло дархост нест|Азырынча өтүнмө жок|Әзірге өтінім жоқ|अभी कोई वर्क ऑर्डर नहीं है|No work orders yet
-diagnose|Открыть результат проверки|Tekshiruv natijasini ochish|Натиҷаи санҷишро кушодан|Текшерүүнүн жыйынтыгын ачуу|Тексеру нәтижесін ашу|जाँच का नतीजा खोलें|Open check result
+diagnose|Получить результат диагностики|Tekshiruv natijasini ochish|Натиҷаи санҷишро кушодан|Текшерүүнүн жыйынтыгын ачуу|Тексеру нәтижесін ашу|जाँच का नतीजा खोलें|Open check result
 loading|Загружаем данные…|Ma’lumot yuklanmoqda…|Маълумот бор мешавад…|Маалымат жүктөлүүдө…|Дерек жүктелуде…|जानकारी आ रही है…|Loading…
 loadFailed|Не удалось загрузить данные|Ma’lumot yuklanmadi|Маълумот бор нашуд|Маалымат жүктөлгөн жок|Дерек жүктелмеді|जानकारी नहीं आ सकी|Could not load data
 retry|Повторить|Qayta urinish|Аз нав кӯшиш кунед|Кайра аракет кылуу|Қайталау|फिर कोशिश करें|Try again
@@ -64,7 +64,7 @@ whyPriority|Почему такой приоритет|Nega bunday ustuvorlik|Ч
 whyResult|Почему такой результат|Nega bunday natija|Чаро чунин натиҷа|Эмне үчүн мындай жыйынтык|Неге осындай нәтиже|यह नतीजा क्यों|Why this result
 noReasons|Причины не указаны|Sabablar ko‘rsatilmagan|Сабабҳо нишон дода нашудаанд|Себептери көрсөтүлгөн эмес|Себептері көрсетілмеген|वजह नहीं बताई गई|No reasons given
 important|Важно|Muhim|Муҳим|Маанилүү|Маңызды|ज़रूरी|Important
-metrics|Подробности проверки|Tekshiruv tafsilotlari|Ҷузъиёти санҷиш|Текшерүүнүн чоо-жайы|Тексеру мәліметтері|जाँच का विवरण|Check details
+metrics|Цифры проверки|Tekshiruv tafsilotlari|Ҷузъиёти санҷиш|Текшерүүнүн чоо-жайы|Тексеру мәліметтері|जाँच का विवरण|Check details
 confidence|Уверенность модели|Model ishonchi|Эътимоди модел|Моделдин ишеними|Модель сенімділігі|मॉडल का भरोसा|Model confidence
 quality|Качество записи|Yozuv sifati|Сифати сабт|Жазуунун сапаты|Жазба сапасы|रिकॉर्डिंग की गुणवत्ता|Recording quality
 good|Хорошее|Yaxshi|Хуб|Жакшы|Жақсы|अच्छी|Good
@@ -74,7 +74,7 @@ noData|Нет данных|Ma’lumot yo‘q|Маълумот нест|Маал�
 sources|Источники|Manbalar|Манбаъҳо|Булактар|Дереккөздер|स्रोत|Sources
 source|Источник {n}: {name}, страница {page}|Manba {n}: {name}, {page}-bet|Манбаи {n}: {name}, саҳифаи {page}|Булак {n}: {name}, {page}-бет|Дереккөз {n}: {name}, {page}-бет|स्रोत {n}: {name}, पन्ना {page}|Source {n}: {name}, page {page}
 pageRef|{name}, стр. {page}|{name}, {page}-bet|{name}, саҳ. {page}|{name}, {page}-бет|{name}, {page}-бет|{name}, पन्ना {page}|{name}, p. {page}
-steps|Что сделал помощник|Yordamchi nima qildi|Ёрдамчӣ чӣ кор кард|Жардамчы эмне кылды|Көмекші не істеді|सहायक ने क्या किया|What the assistant did
+steps|Как помощник искал ответ|Yordamchi nima qildi|Ёрдамчӣ чӣ кор кард|Жардамчы эмне кылды|Көмекші не істеді|सहायक ने क्या किया|What the assistant did
 working|В работе|Bajarilmoqda|Дар кор|Аткарылууда|Орындалуда|काम जारी है|In progress
 error|Ошибка|Xato|Хато|Ката|Қате|गड़बड़ी|Error
 done|Готово|Tayyor|Тайёр|Даяр|Дайын|हो गया|Done
@@ -89,7 +89,7 @@ stepRead|Читаю страницу руководства…|Qo‘llanma betin
 stepFault|Уточняю тип отклонения…|Og‘ish turini aniqlayapman…|Навъи инҳирофро месанҷам…|Четтөөнүн түрүн тактап жатам…|Ауытқу түрін анықтап жатырмын…|गड़बड़ी की वजह देख रहे हैं…|Checking the possible fault…
 stepDraft|Готовлю черновик…|Qoralama tayyorlayapman…|Пешнавис месозам…|Өтүнмөнүн долбоорун даярдап жатам…|Өтінім жобасын дайындап жатырмын…|मसौदा तैयार हो रहा है…|Preparing a draft…
 openReceipt|Открыть квитанцию|Kvitansiyani ochish|Кушодани расид|Дүмүрчөктү ачуу|Түбіртекті ашу|रसीद खोलें|Open receipt
-createDraft|Подготовить заявку на ремонт|Ta’mirlash buyurtmasini tayyorlash|Дархости таъмирро омода кардан|Оңдоо өтүнмөсүн даярдоо|Жөндеуге өтінім дайындау|मरम्मत का वर्क ऑर्डर तैयार करें|Prepare a repair work order
+createDraft|Создать заявку|Ta’mirlash buyurtmasini tayyorlash|Дархости таъмирро омода кардан|Оңдоо өтүнмөсүн даярдоо|Жөндеуге өтінім дайындау|मरम्मत का वर्क ऑर्डर तैयार करें|Prepare a repair work order
 openDraft|Открыть черновик|Qoralamani ochish|Кушодани пешнавис|Долбоорду ачуу|Жобаны ашу|मसौदा खोलें|Open draft
 question|Спросите про эту машину…|Shu mashina haqida so‘rang…|Дар бораи ин мошин пурсед…|Бул унаа жөнүндө сураңыз…|Осы көлік туралы сұраңыз…|इस गाड़ी के बारे में पूछें…|Ask about this vehicle…
 send|Отправить|Yuborish|Фиристодан|Жөнөтүү|Жіберу|भेजें|Send
@@ -151,15 +151,23 @@ pageUnavailable|Страница недоступна|Bet ochilmadi|Саҳифа
 close|Закрыть|Yopish|Пӯшидан|Жабуу|Жабу|बंद करें|Close
 stopRelease|Не выпускать на линию|Mashinani yo‘lga chiqarmang|Мошинро ба хатсайр набароред|Унааны каттамга чыгарбаңыз|Көлікті бағытқа шығармаңыз|गाड़ी को ड्यूटी पर न भेजें|Do not put this vehicle into service
 noPastChecks|Прошлых проверок нет|Avvalgi tekshiruvlar yo‘q|Санҷиши пешина нест|Мурунку текшерүү жок|Бұрынғы тексерулер жоқ|कोई पिछली जाँच नहीं है|No past checks
+recordTipLoud|Звук был слишком громким для микрофона: поставьте прибор дальше от выпускной трубы и вентилятора.|Ovoz mikrofon uchun juda baland edi: qurilmani chiqarish trubasi va ventilyatordan uzoqroq qo‘ying.|Садо барои микрофон хеле баланд буд: дастгоҳро аз қубури газбарор ва вентилятор дуртар гузоред.|Үн микрофон үчүн өтө катуу болду: аспапты чыгаруучу түтүктөн жана желдеткичтен алысыраак коюңуз.|Дыбыс микрофон үшін тым қатты болды: құрылғыны шығару құбыры мен желдеткіштен алысырақ қойыңыз.|आवाज़ माइक्रोफ़ोन के लिए बहुत तेज़ थी: डिवाइस को एग्ज़ॉस्ट पाइप और पंखे से दूर रखें।|The sound was too loud for the microphone: place the recorder further from the exhaust pipe and fan.
+recordTipIdle|Обороты не успели установиться: прогрейте двигатель и начинайте запись, когда холостой ход станет ровным.|Aylanishlar barqarorlashmadi: dvigatelni qizdiring va salt yurish tekis bo‘lganda yozishni boshlang.|Гардишҳо устувор нашуданд: муҳаррикро гарм кунед ва вақте ки гардиши холӣ ҳамвор шуд, сабтро оғоз кунед.|Айлануулар турукташа элек: кыймылдаткычты жылытып, бош жүрүш бир калыпка келгенде жаза баштаңыз.|Айналым тұрақталмады: қозғалтқышты қыздырып, бос жүріс біркелкі болғанда жазуды бастаңыз.|आरपीएम स्थिर नहीं हुए: इंजन गर्म करें और आइडलिंग स्थिर होने पर रिकॉर्डिंग शुरू करें।|Engine speed had not settled: warm the engine up and start recording once idle is steady.
+recordTipNoise|Двигатель заглушил шум поста: на время записи выключите компрессор и соседние машины.|Dvigatel ovozini post shovqini bosib ketdi: yozuv vaqtida kompressor va yonidagi mashinalarni o‘chiring.|Садои муҳаррикро садои пост пахш кард: ҳангоми сабт компрессор ва мошинҳои наздикро хомӯш кунед.|Кыймылдаткычтын үнүн посттун ызы-чуусу басып кетти: жазуу учурунда компрессорду жана жанындагы машиналарды өчүрүңүз.|Қозғалтқыш дыбысын пост шуы басып кетті: жазу кезінде компрессор мен жанындағы көліктерді өшіріңіз.|पोस्ट के शोर में इंजन की आवाज़ दब गई: रिकॉर्डिंग के दौरान कंप्रेसर और पास की गाड़ियाँ बंद करें।|Workshop noise drowned out the engine: switch off the compressor and nearby vehicles while recording.
+rejectReason|Причина: {reason}.|Sabab: {reason}.|Сабаб: {reason}.|Себеп: {reason}.|Себеп: {reason}.|कारण: {reason}.|Reason: {reason}.
 recordTip1|Записывайте там, где тихо.|Tinch joyda yozing.|Дар ҷои ором сабт кунед.|Тынч жерде жазыңыз.|Тыныш жерде жазыңыз.|शांत जगह पर रिकॉर्ड करें।|Record somewhere quiet.
 recordTip2|Держите прибор неподвижно.|Qurilmani qimirlatmay ushlang.|Дастгоҳро беҳаракат нигоҳ доред.|Аспапты кыймылдатпай кармаңыз.|Құрылғыны қозғалтпай ұстаңыз.|डिवाइस को स्थिर रखें।|Keep the recorder still.
 recordTip3|Не разговаривайте во время записи.|Yozuv paytida gaplashmang.|Ҳангоми сабт суҳбат накунед.|Жазып жатканда сүйлөбөңүз.|Жазу кезінде сөйлемеңіз.|रिकॉर्डिंग के दौरान बात न करें।|Do not talk while recording.
 why|Почему|Sababi|Чаро|Эмне үчүн|Неге|क्यों|Why
 priorityLine|Приоритет: {level}|Ustuvorlik: {level}|Афзалият: {level}|Артыкчылык: {level}|Басымдық: {level}|प्राथमिकता: {level}|Priority: {level}
-more|Еще|Ko‘proq|Бештар|Дагы|Толығырақ|और पढ़ें|More
+more|Показать выдержку полностью|Ko‘proq|Бештар|Дагы|Толығырақ|और पढ़ें|More
 less|Свернуть|Yig‘ish|Пинҳон кардан|Жыйноо|Жию|कम दिखाएँ|Show less
 zoom|Масштаб|Masshtab|Миқёс|Масштаб|Масштаб|ज़ूम|Zoom
 note|Учтите|E’tibor bering|Диққат кунед|Эске алыңыз|Ескеріңіз|ध्यान दें|Keep in mind
+scoreChart|Оценка отклонения по проверкам|Tekshiruvlar bo‘yicha og‘ish bahosi|Баҳои инҳироф аз рӯи санҷишҳо|Текшерүүлөр боюнча четтөө баасы|Тексерулер бойынша ауытқу бағасы|जाँचों के अनुसार विचलन स्कोर|Deviation score by check
+scoreScale|0 – норма, 1 – сильное отклонение|0 – me’yor, 1 – kuchli og‘ish|0 – меъёр, 1 – инҳирофи сахт|0 – норма, 1 – катуу четтөө|0 – қалыпты, 1 – күшті ауытқу|0 – सामान्य, 1 – गंभीर विचलन|0 – normal, 1 – strong deviation
+noScore|нет оценки|baho yo‘q|баҳо нест|баа жок|баға жоқ|स्कोर नहीं|no score
+pageShort|стр. {page}|{page}-bet|саҳ. {page}|{page}-бет|{page}-бет|पृष्ठ {page}|p. {page}
 checkedLabel|Проверка|Tekshiruv|Санҷиш|Текшерүү|Тексеру|जाँच|Check
 checkedAt|Дата и время проверки|Tekshiruv sanasi va vaqti|Сана ва вақти санҷиш|Текшерүүнүн күнү жана убактысы|Тексерілген күн мен уақыт|जाँच की तारीख और समय|Check date and time
 overrideLabel|Причина изменения приоритета|Ustuvorlikni o‘zgartirish sababi|Сабаби иваз кардани афзалият|Артыкчылыкты өзгөртүүнүн себеби|Басымдықты өзгерту себебі|प्राथमिकता बदलने की वजह|Reason for changing priority
@@ -169,7 +177,7 @@ brief|Коротко|Qisqa|Кӯтоҳ|Кыскача|Қысқаша|संक्
 detailed|Подробно|Batafsil|Муфассал|Кеңири|Толық|विस्तार से|Detailed
 detailHint|Подробно – каждый шаг объясняется простыми словами|Batafsil – har bir qadam oddiy tilda tushuntiriladi|Муфассал – ҳар қадам бо суханони сода шарҳ дода мешавад|Кеңири – ар бир кадам жөнөкөй сөздөр менен түшүндүрүлөт|Толық – әр қадам қарапайым тілмен түсіндіріледі|विस्तार से – हर कदम आसान शब्दों में समझाया जाता है|Detailed – each step explained in plain language
 inspectFirst|Сначала осмотрите узел на машине|Avval mashinadagi uzelni ko‘zdan kechiring|Аввал ҷузъро дар мошин аз назар гузаронед|Адегенде унаадагы түйүндү карап чыгыңыз|Алдымен көліктегі торапты қарап шығыңыз|पहले गाड़ी में उस हिस्से की जाँच करें|Inspect the affected part on the vehicle first
-inspectionConfirmed|Признак подтверждён осмотром|Alomat ko‘rikda tasdiqlandi|Аломат ҳангоми муоина тасдиқ шуд|Белги кароодо тастыкталды|Белгі қарап тексеру кезінде расталды|जाँच में लक्षण की पुष्टि हुई|I inspected the part and confirmed the symptom
+inspectionConfirmed|Признак подтвержден осмотром|Alomat ko‘rikda tasdiqlandi|Аломат ҳангоми муоина тасдиқ шуд|Белги кароодо тастыкталды|Белгі қарап тексеру кезінде расталды|जाँच में लक्षण की पुष्टि हुई|I inspected the part and confirmed the symptom
 inspectBeforeSend|Отметьте выше, что осмотр подтвердил признак. После этого заявку можно отправить.|Buyurtmani yuborish uchun ko‘rikni tasdiqlang.|Барои фиристодани дархост муоинаро тасдиқ кунед.|Өтүнмөнү жөнөтүү үчүн кароону ырастаңыз.|Өтінімді жіберу үшін қарап тексергеніңізді растаңыз.|वर्क ऑर्डर भेजने के लिए जाँच की पुष्टि करें।|Confirm the inspection to send the work order.
 dataPolicy|Как мы обрабатываем данные|Ma’lumotlarga qanday ishlov beramiz|Маълумотро чӣ тавр коркард мекунем|Маалыматты кантип иштетебиз|Деректерді қалай өңдейміз|हम डेटा कैसे संभालते हैं|How we handle data
 voiceConsentTitle|Перед записью голоса|Ovoz yozishdan oldin|Пеш аз сабти овоз|Үн жаздыруудан мурун|Дауыс жазу алдында|आवाज़ रिकॉर्ड करने से पहले|Before recording your voice

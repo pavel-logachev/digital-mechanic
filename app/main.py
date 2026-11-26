@@ -188,7 +188,7 @@ def chat(body: ChatIn, request: Request):
             a.run(text[:2000])
         except Exception as e:  # noqa: BLE001 – показываем механику понятную ошибку, детали в лог
             log.exception("agent failed")
-            q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте ещё раз."})
+            q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте еще раз."})
         finally:
             log.info("chat %s %s %.1fs usage=%s", body.vehicle_id, body.action or "msg", time.time() - t0, conv.usage.as_dict())
             audit.write("chat", conversation=body.conversation_id, vehicle=body.vehicle_id, session=body.session_id,

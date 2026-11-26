@@ -253,7 +253,7 @@ class Agent:
                  "references": refs, "engine_model": self.engine}
         self.c.drafts[draft["draft_id"]] = draft
         self.emit({"type": "draft", "draft": draft})
-        out = {"draft_id": draft["draft_id"], "status": "черновик показан механику, ждёт его подтверждения кнопкой",
+        out = {"draft_id": draft["draft_id"], "status": "черновик показан механику, ждет его подтверждения кнопкой",
                "urgency": draft["urgency"]}
         if bad:
             out["rejected_references"] = bad
@@ -324,7 +324,7 @@ class Agent:
                     checked.text += "\n\n_Часть сведений не удалось подтвердить по руководству: проверьте по ссылкам перед работой._"
                 msgs.append({"role": "assistant", "content": answer})
                 self.emit({"type": "step", "tool": "verify", "title": "Проверка цифр и ссылок", "status": "done",
-                           "detail": f"ссылок: {len(checked.citations)}" + (f", замечаний: {len(checked.problems)}" if checked.problems else ", всё подтверждено")})
+                           "detail": f"ссылок: {len(checked.citations)}" + (f", замечаний: {len(checked.problems)}" if checked.problems else ", все подтверждено")})
                 self.emit({"type": "message", "text": checked.text, "citations": checked.citations,
                            "usage": self.c.usage.as_dict(), "unverified": checked.problems,
                            "first_pass_problems": first_problems})

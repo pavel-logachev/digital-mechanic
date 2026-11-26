@@ -57,7 +57,7 @@ def layout(page):
     expect(page.locator('#top h1')).to_have_text('Цифровой механик')
     expect(page.locator('label[for="vehicle-search"]')).to_have_text('Госномер или гаражный номер')
     expect(page.locator('.count')).to_have_text('Показано 8 из 50')
-    expect(page.locator('.vehicle-row').first).to_contain_text('Не выпускать')
+    expect(page.locator('.vehicle-row').first).to_contain_text('Карантин')
     page.get_by_role('button', name='Показать еще 42').click()
     expect(page.locator('.vehicle-row')).to_have_count(50)
     assert page.locator('body').evaluate("el => parseFloat(getComputedStyle(el).fontSize)") >= 18
@@ -77,14 +77,14 @@ def layout(page):
     page.locator('#font-size').click()
     open_chat(page)
     assert page.locator('.verdict-head h2').evaluate('el => parseFloat(getComputedStyle(el).fontSize)') >= 26
-    expect(page.locator('.verdict-head h2')).to_have_text('Нужна проверка')
+    expect(page.locator('.verdict-head h2')).to_have_text('Требует внимания')
     expect(page.locator('.verdict-cause')).to_have_text('Возможная причина: клапанный механизм')
     expect(page.locator('.next-action h3')).to_have_text('Что делать')
     expect(page.locator('.verdict-why li')).to_have_count(2)
     expect(page.locator('.verdict-why')).not_to_contain_text('Уверенность модели 0.85')
     expect(page.locator('.context time')).to_have_text('17 ноября 2026, 16:20')
     expect(page.locator('.metric').first).not_to_be_visible()
-    page.get_by_text('Подробности проверки', exact=True).click()
+    page.get_by_text('Цифры проверки', exact=True).click()
     expect(page.locator('.metric')).to_have_count(3)
     expect(page.locator('body')).not_to_contain_text('\u2014')
 
@@ -224,7 +224,7 @@ def inspection_required(page):
     assert notice.bounding_box()['y'] < command.bounding_box()['y']
     command.click()
     confirm = page.locator('#confirm-ticket')
-    check = page.get_by_role('checkbox', name='Признак подтверждён осмотром')
+    check = page.get_by_role('checkbox', name='Признак подтвержден осмотром')
     label = page.locator('label[for="inspection-confirmed"]')
     expect(check).not_to_be_checked()
     assert label.bounding_box()['height'] >= 56
@@ -285,7 +285,7 @@ def data_consent(page):
 def fleet_tickets(page):
     vehicles = page.request.get(f'{BASE}/api/vehicles').json()
     open_tickets = {v['vehicle_id']: v['open_ticket'] for v in vehicles if v['open_ticket']}
-    page.get_by_role('button', name='Сводка парка').click()
+    page.get_by_role('button', name='Режим главного механика').click()
     counter = page.get_by_role('button', name=re.compile('Заявок в работе'))
     expect(counter.locator('strong')).to_have_text(str(len(open_tickets)), timeout=1500)
     rows = page.locator('.vehicle-row')
@@ -547,7 +547,7 @@ def interactions(page):
     expect(page.locator('#send-question')).to_be_hidden()
     page.get_by_text('Объяснение помощника', exact=True).click()
     expect(page.locator('.agent-message').first).to_be_visible()
-    page.get_by_text('Что сделал помощник', exact=True).click()
+    page.get_by_text('Как помощник искал ответ', exact=True).click()
     expect(page.locator('.trace li')).to_have_count(1)
     q = page.locator('#question')
     q.fill('1\n2\n3\n4\n5\n6')
@@ -604,7 +604,7 @@ def interactions(page):
     expect(page.locator('[name="urgency_reason"]')).to_have_attribute('required', '')
     page.locator('[name="urgency_reason"]').fill('Очный осмотр')
     page.get_by_text('Почему такой приоритет', exact=True).click()
-    page.locator('.source-link').first.click()
+    page.locator('.page-chip').first.click()
     expect(page.locator('#manual-image')).to_be_visible()
     page.locator('#close-manual').click()
     page.go_back()

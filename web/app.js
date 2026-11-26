@@ -15,9 +15,10 @@ let large = stored('mechanic:large') === 'true';
 let detail = stored('mechanic:detail') === 'detailed' ? 'detailed' : 'brief';
 let voiceConsent = stored('mechanic:voice-consent') === 'true';
 const t = (key, vars) => text(lang, key, vars);
-const displayText = value => String(value ?? '').replaceAll('\u2014', '–');
+// редакционная норма: короткое тире вместо длинного, в русском интерфейсе без «ё»
+const displayText = value => { const text = String(value ?? '').replaceAll('\u2014', '–'); return lang === 'ru' ? text.replaceAll('ё', 'е').replaceAll('Ё', 'Е') : text; };
 const stages = {
-  quarantine: ['quarantine', 'red', 'cross'], anomaly: ['anomaly', 'amber', 'warn'],
+  quarantine: ['quarantine', 'red', 'ban'], anomaly: ['anomaly', 'amber', 'warn'],
   check_failed: ['failed', 'violet', 'mic'], normal: ['normal', 'green', 'check'],
   unknown: ['noCheck', 'neutral', 'clock'],
 };
@@ -48,7 +49,7 @@ const paths = {
   check: 'm5 12 4 4L19 6', cross: 'm8 8 8 8m0-8-8 8', warn: 'M12 8v5m0 3v.1M3 20l9-17 9 17Z',
   book: 'M4 4h11l4 4v12H4Zm10 0v5h5M8 12h7m-7 4h7', send: 'm3 3 18 9-18 9 4-9Zm4 9h14', chart: 'M4 4v16h16M7 15l4-5 4 2 5-6',
   mic: 'M9 6a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0ZM5 11a7 7 0 0 0 14 0m-7 7v4m-4 0h8',
-  stop: 'M5 5h14v14H5Z', globe: 'M2 12h20M12 2a10 10 0 1 1 0 20 10 10 0 1 1 0-20Zm0 0c5 5 5 15 0 20-5-5-5-15 0-20Z',
+  stop: 'M5 5h14v14H5Z', ban: 'M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18ZM5.6 5.6l12.8 12.8', globe: 'M2 12h20M12 2a10 10 0 1 1 0 20 10 10 0 1 1 0-20Zm0 0c5 5 5 15 0 20-5-5-5-15 0-20Z',
   clock: 'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z', plus: 'M6 12h12m-6-6v12', minus: 'M6 12h12',
 };
 
@@ -104,6 +105,29 @@ const dateFor = value => {
   return moscow.format(date);
 };
 const checkTime = value => el('time', {datetime: value}, dateFor(value));
+const shortDate = value => {
+  const date = new Date(value);
+  return Number.isNaN(+date) ? '–' : new Intl.DateTimeFormat('ru-RU', {day: '2-digit', month: '2-digit', timeZone: 'Europe/Moscow'}).format(date);
+};
+// B2: столбики оценки отклонения по последним проверкам – HTML, а не SVG, чтобы подписи росли вместе с крупным шрифтом
+function scoreChart(v, sessions) {
+  const points = [...sessions].sort((a, b) => (Date.parse(a.checked_at) || 0) - (Date.parse(b.checked_at) || 0)).slice(-5);
+  if (points.length < 2) return null;
+  const bars = points.map((s, i) => {
+    const stage = vehicleStage(v, s, i === points.length - 1);
+    const value = score(s.anomaly_score) ? s.anomaly_score : null;
+    const tone = stages[stage]?.[1] || 'neutral';
+    return el('div', {class: 'bar-col', 'data-bar': s.session_id},
+      el('span', {class: 'bar-track'},
+        el('span', {class: 'bar-value'}, value === null ? t('noScore') : scoreText(value)),
+        el('span', {class: `bar ${tone}`, style: `height:calc(${value === null ? 0 : Math.max(.03, value).toFixed(2)} * (100% - 1.6em - 4px))`})),
+    );
+  });
+  const dates = el('div', {class: 'bar-dates', 'aria-hidden': 'true'}, points.map(s => el('span', {class: 'bar-date'}, shortDate(s.checked_at))));
+  return el('section', {class: 'box score-chart'}, el('h2', {}, t('scoreChart')),
+    el('div', {class: 'bars', role: 'img', 'aria-label': points.map(s => `${shortDate(s.checked_at)}: ${score(s.anomaly_score) ? scoreText(s.anomaly_score) : t('noScore')}`).join('; ')}, bars), dates,
+    hint(t('scoreScale')));
+}
 const endpoint = id => `${api}/vehicles/${encodeURIComponent(id)}`;
 const manualPath = (id, page) => `${api}/manuals/${encodeURIComponent(id)}/pages/${page}`;
 const jsonPost = body => ({method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -335,6 +359,7 @@ function renderVehicle(v) {
     el('section', {class: 'box selection'}, el('h2', {}, t('lastCheck')),
       latest ? [checkTime(latest.checked_at), statusLine(vehicleStage(v, latest, true), latest),
         primary(t('diagnose'), () => openCheck(v, latest), {id: 'diagnose'})] : hint(t('noChecks'))),
+    scoreChart(v, sessions),
     details(t('checks'), past.length ? el('div', {class: 'checks'}, past.map(s =>
       action(el('span', {class: 'check-copy'}, checkTime(s.checked_at), statusLine(vehicleStage(v, s, false), s)),
         () => openCheck(v, s), {class: 'check-row', 'data-session': s.session_id}, icon('next')))) : hint(t('noPastChecks'))),
@@ -397,11 +422,12 @@ function verdict(c, d, id, opens) {
   const otherReasons = entries.filter((_, index) => !whyLines.includes(index));
   const card = el('div', {class: `verdict-head ${stages[status][1]}`}, el('h2', {}, vTitle),
     cause && el('p', {class: 'verdict-cause'}, t('hypothesis', {name: lowerStart(cause)})),
+    !fail && score(d.confidence) && el('p', {class: 'verdict-facts'}, `${t('confidence')}: ${scoreText(d.confidence)}`),
     incompatible && el('p', {}, t('notApplicable')),
-    fail && (d.description || d.reason) && el('p', {}, cleanQuote(d.description || d.reason)),
+    fail && (d.description || d.reason) && el('p', {}, t('rejectReason', {reason: lowerStart(cleanQuote(d.description || d.reason).replace(/^запись отбракована:\s*/iu, ''))})),
     el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
       el('p', {}, d.action || t(fail ? 'nextFail' : normal ? 'nextNormal' : 'nextAnomaly')),
-      fail && reasons(['recordTip1', 'recordTip2', 'recordTip3'].map(key => t(key)))),
+      fail && reasons(recordTips(d.description || d.reason).map(key => t(key)))),
     !fail && whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t(normal ? 'note' : 'why')), reasons(whyLines.map(index => entries[index]))) : null,
     priorityLabel(d.urgency) && el('p', {class: 'priority-label'}, priorityLine(d.urgency)));
   const metrics = el('dl', {class: 'metrics'}, metric(t('score'), score(d.anomaly_score) ? `${scoreText(d.anomaly_score)} / 1` : null),
@@ -421,9 +447,16 @@ function citationLink(cite, label, attrs = {}) {
   }}, label);
 }
 // Keep common workshop measurements together without changing their values.
-const units = String.raw`мм рт\. ст\.|кгс(?:[·⋅]м|/см[²2])?|кПа|МПа|Па|бар|мм|см[²³23]?|км(?:/ч)?|мкм|м[²³23]?|об(?:/мин)?|мин|сек|ч|л(?:/мин)?|°[CFС]?|%|Н(?:[·⋅ ]м)?|кН|кг|мг|г|мл|В|А|Гц|кВт|mm|cm|km(?:/h)?|kg|kPa|MPa|Pa|bar|rpm|Nm|volts?|lit(?:er|re)s?|ms|Hz|kW|in|psi|s|m|h|V|A|L`;
+const units = String.raw`мм рт\. ст\.|кгс(?:[·⋅∙.]м|/см[²2])?|кПа|МПа|Па|бар|мм|см[²³23]?|км(?:/ч)?|мкм|м[²³23]?|об(?:/мин)?|мин|сек|ч|л(?:/мин)?|°[CFС]?|%|Н(?:[·⋅∙. ]м)?|кН|кг|мг|г|мл|В|А|Гц|кВт|mm|cm|km(?:/h)?|kg|kPa|MPa|Pa|bar|rpm|Nm|volts?|lit(?:er|re)s?|ms|Hz|kW|in|psi|s|m|h|V|A|L`;
 const decimal = '[−-]?\\d+(?:[.,]\\d+)?';
 const measurePattern = new RegExp(`(${decimal}\\s*[-–−]\\s*${decimal})(?:[ \u00a0]+(${units})(?![\\p{L}\\d]))?|(${decimal})[ \u00a0]+(${units})(?![\\p{L}\\d])`, 'giu');
+// советы по перезаписи – под конкретную причину отбраковки из ML, общий совет последним
+function recordTips(reason) {
+  const text = String(reason || '').toLocaleLowerCase('ru');
+  const specific = /перегруз|клиппинг|clip/u.test(text) ? 'recordTipLoud' : /оборот|холост/u.test(text) ? 'recordTipIdle'
+    : /шум|не слышен/u.test(text) ? 'recordTipNoise' : null;
+  return specific ? [specific, 'recordTip2'] : ['recordTip1', 'recordTip2', 'recordTip3'];
+}
 function measureNodes(value) {
   const nodes = [];
   let start = 0;
@@ -460,14 +493,22 @@ function markdown(text, citations, id, opens) {
     const nodes = [], pattern = allowBold ? /\*\*([^*]+)\*\*|\s*\[(\d+)\]/g : /\s*\[(\d+)\]/g;
     let start = 0;
     for (const match of value.matchAll(pattern)) {
-      nodes.push(...measureNodes(value.slice(start, match.index)));
-      if (allowBold && match[1]) nodes.push(el('strong', {}, inline(match[1], false)));
-      else {
-        const n = Number(match[allowBold ? 2 : 1]);
-        const cite = sources.get(n);
-        if (cite) nodes.push('\u00a0\u2060', citationLink(cite, `[${n}]`, {class: 'citation-chip inline-cite', 'aria-label': t('source', {n, name: cite.designation || cite.title, page: cite.page})}));
-        else nodes.push(match[0]);
+      const before = value.slice(start, match.index);
+      const n = allowBold && match[1] ? null : Number(match[allowBold ? 2 : 1]);
+      const cite = n === null ? null : sources.get(n);
+      if (cite) {
+        // ссылка [n] не уезжает на отдельную строку: держим её вместе с последним словом и знаком препинания после неё
+        const split = before.search(/\S+$/u);
+        const word = split < 0 ? '' : before.slice(split);
+        nodes.push(...measureNodes(split < 0 ? before : before.slice(0, split)));
+        const tail = value.slice(match.index + match[0].length).match(/^[.,;:!?)]+/u)?.[0] || '';
+        nodes.push(el('span', {class: 'nowrap'}, word, '\u00a0', citationLink(cite, `[${n}]`, {class: 'citation-chip inline-cite', 'aria-label': t('source', {n, name: cite.designation || cite.title, page: cite.page})}), tail));
+        start = match.index + match[0].length + tail.length;
+        continue;
       }
+      nodes.push(...measureNodes(before));
+      if (n === null) nodes.push(el('strong', {}, inline(match[1], false)));
+      else nodes.push(match[0]);
       start = match.index + match[0].length;
     }
     nodes.push(...measureNodes(value.slice(start)));
@@ -856,6 +897,15 @@ async function sendChat(c, mode, question = '') {
   }
 }
 
+function groupRefs(references) {
+  const groups = new Map();
+  for (const r of references) {
+    const name = r.title || r.manual;
+    if (!groups.has(name)) groups.set(name, []);
+    if (!groups.get(name).some(x => x.pdf_page === r.pdf_page && x.manual_id === r.manual_id)) groups.get(name).push(r);
+  }
+  return [...groups];
+}
 function field(c, name, label, rows, placeholder = '') {
   const grow = node => { node.style.height = 'auto'; node.style.height = `${node.scrollHeight + 2}px`; };
   const input = el('textarea', {name, rows, placeholder, required: name === 'conclusion', oninput: e => { c.edits[name] = e.target.value; grow(e.target); }});
@@ -879,14 +929,16 @@ function renderDraft(v, s, c) {
     el('section', {class: 'box stack'}, el('label', {class: 'field'}, el('span', {}, t('priority')), urgency), overrideField,
       details(t('whyPriority'), reasons(d.urgency_reasons))),
     el('section', {class: 'box stack'}, field(c, 'operations', t('work'), 2, t('newLine')), field(c, 'spare_parts', t('parts'), 1, t('newLine'))),
-    references.length ? el('section', {class: 'box stack'}, el('h3', {}, t('sources')), references.map(r => citationLink({manual_id: r.manual_id, title: r.title || r.manual, page: r.pdf_page}, [icon('book'), t('pageRef', {name: r.title || r.manual, page: r.pdf_page}), icon('next')], {class: 'source-link'}))) : null,
+    references.length ? el('section', {class: 'box stack'}, el('h3', {}, t('sources')), groupRefs(references).map(([name, refs]) =>
+      el('div', {class: 'ref-group'}, el('p', {class: 'ref-name'}, icon('book'), name),
+        el('div', {class: 'ref-pages'}, refs.map(r => citationLink({manual_id: r.manual_id, title: name, page: r.pdf_page}, t('pageShort', {page: r.pdf_page}), {class: 'page-chip', 'aria-label': t('pageRef', {name, page: r.pdf_page})})))))) : null,
     el('p', {id: 'ticket-error', role: 'alert', class: 'notice red', hidden: !c.confirmError}, c.confirmError || ''),
   );
   const warning = warnings(d.warnings);
   main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill(t('unsent'), 'neutral', 'clock'), title(t('draft'))), ...(warning ? [warning] : []), form);
   const blocked = () => c.draftNeedsInspection && !c.edits.inspectionConfirmed;
   const button = el('button', {id: 'confirm-ticket', class: 'primary full', type: 'submit', form: 'draft-form',
-    'aria-describedby': 'confirm-note'}, c.confirming ? t('sending') : t('confirm'), icon('check'));
+    'aria-describedby': 'confirm-note'}, c.confirming ? t('sending') : t('confirm'), icon('send'));
   const note = hint('', {id: 'confirm-note', role: 'status'});
   const syncConfirm = () => {
     button.disabled = Boolean(c.confirming || c.confirmUncertain || blocked());
