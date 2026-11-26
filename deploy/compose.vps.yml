@@ -1,0 +1,28 @@
+# Стенд на VPS: docker compose -f docker-compose.yml -f deploy/compose.vps.yml up -d
+# Приложение подключается к сети внешнего Caddy (HTTPS mechanic.logachev.net) и к сети с HTTP-прокси для OpenRouter.
+services:
+  app:
+    container_name: mechanic-app
+    ports: !reset []  # наружу только через Caddy
+    networks:
+      default: {}
+      caddy:
+        aliases: [mechanic-app]
+      egress: {}
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  mock-ml:
+    container_name: mechanic-mock-ml
+    pids_limit: 64
+  mock-toir:
+    container_name: mechanic-mock-toir
+    pids_limit: 64
+networks:
+  caddy:
+    name: logachev-site_default
+    external: true
+  egress:
+    name: ai-tender-radar_default
+    external: true
