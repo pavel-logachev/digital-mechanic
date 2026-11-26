@@ -72,7 +72,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     # 1. Плохая запись – абсолютный приоритет: никаких выводов о двигателе и заявки.
     if status == "check_failed" or quality == "bad":
-        return Verdict("check_failed", None, "Повторите запись звука: по этой записи выводов о двигателе нет.",
+        return Verdict("check_failed", None, "Запишите звук двигателя ещё раз: по этой записи судить нельзя.",
                        False, ["Запись непригодна для анализа, оценка и уверенность не используются.",
                                "Заявка по этой проверке не создаётся."], rule="R1-bad")
 
@@ -80,7 +80,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     hist_note = _history_note(past)
 
     if status == "normal":
-        v = Verdict("normal", None, "Можно продолжать эксплуатацию: эта проверка отклонений не выявила.", False,
+        v = Verdict("normal", None, "По звуку двигателя отклонений нет. Работайте по обычному графику ТО.", False,
                     [f"Оценка отклонения {fmt(score)} из 1 – низкая, уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
                      "Это результат одной акустической проверки, а не акт технического состояния."], rule="R2-normal")
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):

@@ -157,8 +157,23 @@ def chat(body: ChatIn, request: Request):
 
     def work():
         t0 = time.time()
+        shown: set = set()
+
+        def put(ev: dict) -> None:
+            # карточка вердикта по одной проверке – один раз за запрос
+            if ev.get("type") == "diagnosis":
+                key = (ev.get("data") or {}).get("session_id")
+                if key in shown:
+                    return
+                shown.add(key)
+            q.put(ev)
+
         try:
-            agent.Agent(conv, q.put, lang=body.lang).run(text[:2000])
+            a = agent.Agent(conv, put, lang=body.lang)
+            if body.action == "diagnose":
+                # кнопка «Получить результат» всегда показывает карточку, даже если разговор уже был
+                a.t_get_diagnosis()
+            a.run(text[:2000])
         except Exception as e:  # noqa: BLE001 – показываем механику понятную ошибку, детали в лог
             log.exception("agent failed")
             q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте ещё раз."})
