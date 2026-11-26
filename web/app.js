@@ -9,7 +9,8 @@ const stages = {normal: ['Норма', 'green', 'check'], anomaly: ['Откло�
 const priority = {low: 'Низкий', medium: 'Средний', high: 'Высокий'};
 const quality = {good: 'Хорошее', warning: 'С помехами', bad: 'Плохое'};
 const fleetTones = {ok: 'green', attention: 'amber', quarantine: 'red'};
-const moscow = new Intl.DateTimeFormat('ru-RU', {timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'});
+const moscow = new Intl.DateTimeFormat('ru-RU', {timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: '2-digit'});
+const moscowTime = new Intl.DateTimeFormat('ru-RU', {timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit'});
 const shortDate = new Intl.DateTimeFormat('ru-RU', {timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit'});
 const number = new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -55,7 +56,10 @@ const mono = text => el('span', {class: 'mono'}, text);
 const score = x => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1;
 const scoreText = x => score(x) ? number.format(x) : '—';
 const stageOf = d => d?.verdict || d?.status;
-const dateFor = (value, fmt = moscow) => value && !isNaN(new Date(value)) ? fmt.format(new Date(value)) : '—';
+const dateFor = (value, fmt) => {
+  const date = new Date(value);
+  return value && !isNaN(date) ? fmt ? fmt.format(date) : `${moscow.format(date)} ${moscowTime.format(date)}` : '—';
+};
 const endpoint = id => `${api}/vehicles/${encodeURIComponent(id)}`;
 const manualPath = (id, page) => `${api}/manuals/${encodeURIComponent(id)}/pages/${page}`;
 const jsonPost = body => ({method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -70,10 +74,11 @@ async function json(path, options) {
   }
   return body;
 }
-const titles = {park: 'Цифровой механик', fleet: 'Главный механик', vehicle: 'Карточка машины', chat: 'Чат с агентом', draft: 'Черновик заявки', receipt: 'Заявка создана'};
+const titles = {park: 'Цифровой механик', fleet: 'Главный механик', vehicle: 'Карточка машины', draft: 'Черновик заявки', receipt: 'Заявка создана'};
 function header() {
-  const isPark = state.route.page === 'park';
-  topbar.replaceChildren(isPark ? mark() : iconButton('Назад', 'back', back), el('div', {class: 'brand'}, el('strong', {}, titles[state.route.page]), isPark && el('span', {}, 'Акустический пост')), state.demo ? el('span', {class: 'demo'}, 'ДЕМО') : '');
+  const {page, vid} = state.route;
+  const isPark = page === 'park', isChat = page === 'chat';
+  topbar.replaceChildren(isPark ? mark() : iconButton('Назад', 'back', back), el('div', {class: 'brand'}, el('strong', {class: isChat ? 'plate' : null}, isChat ? vid : titles[page]), isPark && el('span', {}, 'Акустический пост')), state.demo ? el('span', {class: 'demo'}, 'ДЕМО') : '');
 }
 function navigate(route, replace = false) {
   history[replace ? 'replaceState' : 'pushState'](route, '', location.pathname);
@@ -86,7 +91,7 @@ async function showRoute(route, focus = false) {
   header();
   dock.replaceChildren();
   main.className = route.page;
-  window.scrollTo(0, 0);
+  main.scrollTop = 0;
   const load = route.page === 'park' && !state.vehicles ? async () => { state.vehicles = await json(`${api}/vehicles`); }
     : route.page === 'fleet' ? async () => { state.fleet = await json(`${api}/fleet`); }
     : route.vid && !state.cards.has(route.vid) ? async () => { state.cards.set(route.vid, await json(endpoint(route.vid))); }
@@ -149,8 +154,11 @@ function renderFleet() {
     items.length ? el('div', {class: 'vehicle-list'}, items.map(v => vehicleRow(v, true))) : box(hint('Нет машин, которым нужно внимание.')),
   );
 }
-function context(v, s) {
-  return el('div', {class: 'context'}, icon('truck'), el('div', {class: 'context-copy'}, el('strong', {class: 'mono'}, [v.vehicle_id, v.garage_no].filter(Boolean).join(' / ')), el('span', {class: 'muted'}, [v.model, v.engine_model].filter(Boolean).join(' / '))), el('time', {class: 'mono', datetime: s?.checked_at}, dateFor(s?.checked_at)));
+function context(v, s, chat = false) {
+  const label = chat ? v.garage_no && `Гаражный № ${v.garage_no}` : [v.vehicle_id, v.garage_no].filter(Boolean).join(' / ');
+  return el('div', {class: chat ? 'context chat-context' : 'context'}, icon('truck'),
+    el('div', {class: 'context-copy'}, label && el('strong', {class: chat ? null : 'mono'}, label), el('span', {class: 'muted'}, [v.model, v.engine_model].filter(Boolean).join(' / '))),
+    el('time', {class: 'mono', datetime: s?.checked_at}, el('span', {}, dateFor(s?.checked_at, moscow)), s?.checked_at ? el('span', {}, dateFor(s.checked_at, moscowTime)) : null));
 }
 function graph(sessions) {
   const recent = sessions.slice(-5);
@@ -222,21 +230,32 @@ function reasons(values) {
   const entries = Array.isArray(values) ? values.filter(Boolean) : [];
   return entries.length ? el('ul', {class: 'reasons'}, entries.map(line => el('li', {}, line))) : hint('Сервис не указал основания.');
 }
+function warnings(values) {
+  const entries = Array.isArray(values) ? values.filter(Boolean) : [];
+  return entries.length ? el('section', {class: 'box warnings'}, icon('warn'), el('div', {}, el('h3', {}, 'Важно'), reasons(entries))) : null;
+}
 function metric(label, value, low, high) {
   const band = score(value) ? value >= high ? 'высокая' : value >= low ? 'средняя' : 'низкая' : null;
   return el('div', {class: 'metric'}, el('dt', {}, label), el('dd', {}, band ? el('strong', {}, `${scoreText(value)} из 1 — ${band}`) : 'Нет данных'));
 }
-function verdict(d) {
+function verdict(d, id, opens) {
   const status = stageOf(d);
   const fail = status === 'check_failed', normal = status === 'normal';
-  const vTitle = normal ? 'Отклонений не выявлено' : fail ? 'Повторите запись' : d.anomaly_title ? `Гипотеза: ${d.anomaly_title}` : 'Есть признаки отклонения';
-  const flag = normal ? ['Норма', 'green', 'check'] : fail ? ['Запись не подошла', 'red', 'cross'] : ['Выявлено отклонение', 'amber', 'warn'];
+  const incompatible = d.rule === 'R3-not-applicable';
+  const hypothesis = d.anomaly_title?.replace(/^\p{Lu}(?=\p{Ll})/u, first => first.toLocaleLowerCase('ru-RU'));
+  const vTitle = normal ? 'Отклонений не выявлено' : fail ? 'Сбой записи' : incompatible ? 'Тип отклонения не подтверждён' : hypothesis ? `Гипотеза: ${hypothesis}` : 'Есть признаки отклонения';
+  const flag = normal ? ['Норма', 'green', 'check'] : fail ? ['Запись непригодна', 'red', 'cross'] : ['Отклонение по записи', 'amber', 'warn'];
   const urgency = priority[d.urgency];
-  const top = el('div', {class: `verdict-head ${flag[1]}`}, pill(...flag), el('h2', {}, vTitle), el('p', {}, normal ? 'Можно эксплуатировать по данным этой проверки. Это не заменяет осмотр и решение по правилам парка.' : fail ? 'По этой записи нельзя судить о состоянии двигателя. Приоритет не назначен.' : `${d.anomaly_type ? `${d.anomaly_type}. ` : ''}По записи; подтвердить при осмотре.`));
+  const next = el('div', {class: 'next-action'}, el('h3', {}, 'Что делать'), el('p', {}, d.action || (fail ? 'Запишите звук заново.' : normal ? 'Следуйте правилам вашего парка.' : 'Проверьте машину очно.')));
+  const note = fail ? 'Заявка по этой проверке не создаётся.' : normal ? null : incompatible ? `${d.anomaly_type ? `Код ${d.anomaly_type} · ` : ''}модель определила класс по звуку` : `${d.anomaly_type ? `Код ${d.anomaly_type} · ` : ''}вывод по звуку, подтвердите при осмотре`;
+  const top = el('div', {class: `verdict-head ${flag[1]}`}, pill(...flag), el('h2', {}, vTitle), next,
+    el('span', {class: `pill priority-badge${urgency ? ` priority-${d.urgency}` : ''}`}, `Приоритет: ${urgency ? urgency.toLowerCase() : 'не назначен'}`),
+    note && el('p', {class: 'verdict-note'}, note));
   const metrics = !fail && el('dl', {class: 'box metrics'}, metric('Оценка отклонения', d.anomaly_score, .4, .7), metric('Уверенность модели', d.confidence, .6, .8), el('div', {class: 'metric'}, el('dt', {}, 'Качество записи'), el('dd', {}, el('strong', {}, quality[d.signal_quality] ?? 'Нет данных'))));
-  const next = normal ? null : el('section', {class: 'box next-action'}, el('h3', {}, 'Что делать'), el('p', {}, d.action || (fail ? 'Запишите звук заново по правилам парка.' : 'Проверьте машину очно.')));
-  const why = !fail && !normal && el('section', {class: 'box why'}, el('div', {class: 'between'}, el('h3', {}, 'Основание приоритета'), pill(urgency ?? 'Не назначен', d.urgency === 'high' ? 'red' : 'amber')), reasons(d.urgency_reasons));
-  return el('article', {class: `verdict ${status}`}, top, !fail && !normal && d.description ? hint(d.description, {class: 'muted observation'}) : null, !fail && !normal ? why : null, next, metrics, !fail && !normal ? hint('Оценка и уверенность сами по себе не определяют срочность.') : null, normal && d.action ? hint(d.action) : null, fail ? hint('Создать заявку по этой записи нельзя.') : null);
+  const key = `priority-${id}`;
+  const why = Array.isArray(d.urgency_reasons) && d.urgency_reasons.length > 0 && el('details', {class: 'priority-reasons', open: opens.has(key), 'data-trace': key},
+    el('summary', {}, urgency ? 'Основание приоритета' : 'Основание результата'), reasons(d.urgency_reasons));
+  return el('article', {class: `verdict ${status}`}, top, warnings(d.warnings), metrics, why);
 }
 
 function citationLink(cite, label, attrs = {}) {
@@ -247,7 +266,7 @@ function citationLink(cite, label, attrs = {}) {
   }}, label);
 }
 function markdown(text, citations) {
-  const rendered = el('div', {class: 'markdown'}), cited = new Set();
+  const rendered = el('div', {class: 'markdown'});
   const sources = new Map((citations ?? []).filter(c => c.manual_id && Number.isInteger(c.page) && c.page > 0).map(c => [Number(c.n), c]));
   const inline = (value, allowBold = true) => {
     const nodes = [], pattern = allowBold ? /\*\*([^*]+)\*\*|\[(\d+)\]/g : /\[(\d+)\]/g;
@@ -259,8 +278,7 @@ function markdown(text, citations) {
         const n = Number(match[allowBold ? 2 : 1]);
         const cite = sources.get(n);
         if (cite) {
-          cited.add(n);
-          nodes.push(citationLink(cite, match[0], {class: 'inline-cite', 'aria-label': `Источник ${n}: ${cite.title}, страница ${cite.page}`}));
+          nodes.push(citationLink(cite, match[0], {class: 'citation-chip inline-cite', 'aria-label': `Источник ${n}: ${cite.designation || cite.title}, страница ${cite.page}`}));
         } else nodes.push(match[0]);
       }
       start = match.index + match[0].length;
@@ -269,33 +287,17 @@ function markdown(text, citations) {
     return nodes;
   };
   let paragraph = null, list = null;
-  const quotes = (after, ids) => {
-    for (const n of ids) {
-      const cite = sources.get(n);
-      const badge = citationLink(cite, [icon('book'), `${cite.designation || cite.title}, стр. ${cite.page}`, icon('next')], {class: 'source-link'});
-      after.append(el('div', {class: 'source'}, badge, cite.quote ? el('blockquote', {}, `«${cite.quote}»`) : null));
-    }
-    cited.clear();
-  };
-  const finishParagraph = () => {
-    if (!paragraph) return;
-    quotes(rendered, cited);
-    paragraph = null;
-  };
   for (const line of String(text ?? '').split(/\r?\n/)) {
     const heading = /^#{1,6}\s+(.+)$/.exec(line);
     const item = /^(?:([-+*])|(\d+)[.)])\s+(.+)$/.exec(line.trim());
-    if (heading || item || !line.trim()) finishParagraph();
+    if (heading || item || !line.trim()) paragraph = null;
     if (heading) {
       list = null;
       rendered.append(el('h3', {}, inline(heading[1])));
-      quotes(rendered, cited);
     } else if (item) {
       const tag = item[1] ? 'UL' : 'OL';
       if (list?.tagName !== tag) { list = el(tag.toLowerCase()); rendered.append(list); }
-      const li = el('li', {}, inline(item[3]));
-      quotes(li, cited);
-      list.append(li);
+      list.append(el('li', {}, inline(item[3])));
     } else if (line.trim()) {
       list = null;
       if (!paragraph) { paragraph = el('p'); rendered.append(paragraph); }
@@ -303,8 +305,11 @@ function markdown(text, citations) {
       paragraph.append(...inline(line));
     } else list = null;
   }
-  finishParagraph();
-  return rendered;
+  const references = [...sources].sort(([a], [b]) => a - b);
+  const footer = references.length ? el('footer', {class: 'message-sources'}, el('strong', {}, 'Источники:'), el('ul', {}, references.map(([n, cite]) =>
+    el('li', {}, citationLink(cite, [el('span', {class: 'citation-chip'}, `[${n}]`), el('span', {class: 'citation-excerpt'},
+      el('strong', {}, `${cite.designation || cite.title}, стр. ${cite.page}`), cite.quote && ` — «${cite.quote}»`)], {class: 'citation-row'}))))) : null;
+  return [rendered, footer];
 }
 function trace(turn, open) {
   if (!turn.steps.length) return null;
@@ -321,48 +326,73 @@ function renderTurn(turn, latest, opens, receipt) {
   const answers = () => turn.messages.map(m => el('article', {class: 'box agent-message'}, el('div', {class: 'byline'}, mark(), el('strong', {}, 'Цифровой механик')), markdown(m.text, m.citations)));
   const log = trace(turn, opens.has(String(turn.id)));
   if (turn.diagnosis && !latest) {
-    block.append(el('details', {class: 'previous', open: opens.has(`verdict-${turn.id}`), 'data-trace': `verdict-${turn.id}`}, el('summary', {}, el('strong', {}, 'Результат диагностики'), stagePill(stageOf(turn.diagnosis))), verdict(turn.diagnosis), log, answers()));
+    block.append(el('details', {class: 'previous', open: opens.has(`verdict-${turn.id}`), 'data-trace': `verdict-${turn.id}`}, el('summary', {}, el('strong', {}, 'Результат диагностики'), stagePill(stageOf(turn.diagnosis))), verdict(turn.diagnosis, turn.id, opens), log, answers()));
   } else {
-    if (turn.diagnosis) block.append(verdict(turn.diagnosis));
+    if (turn.diagnosis) block.append(verdict(turn.diagnosis, turn.id, opens));
     if (log) block.append(log);
     block.append(...answers());
   }
   for (const error of turn.errors) block.append(el('p', {class: 'notice red', role: 'alert'}, error));
-  if (turn.draft && !receipt) block.append(action('Открыть черновик заявки', () => navigate({page: 'draft', vid: turn.draft.vehicle_id, sid: turn.draft.session_id}), {class: 'full'}, icon('next')));
-  if (turn.pending && !turn.steps.length) block.append(hint('Агент готовит ответ…'));
+  if (turn.draft && !receipt && !turn.pending) block.append(action('Открыть черновик заявки', () => navigate({page: 'draft', vid: turn.draft.vehicle_id, sid: turn.draft.session_id}), {class: 'full'}, icon('next')));
   return block;
 }
-function updateChat(c) {
+const spinner = () => el('span', {class: 'spinner', 'aria-hidden': 'true'});
+const runningSteps = {
+  get_diagnosis: 'Получаю результат проверки', get_vehicle_history: 'Сверяю историю машины', search_manual: 'Ищу в руководстве', search_manuals: 'Ищу в руководстве',
+  read_page: 'Читаю страницу руководства', get_fault_reference: 'Уточняю класс неисправности', prepare_ticket: 'Готовлю черновик заявки', draft_ticket: 'Готовлю черновик заявки',
+};
+function pendingText(turn) {
+  const step = turn?.steps.at(-1);
+  if (!step) return 'Агент готовит ответ…';
+  if (step.status !== 'running') {
+    if (step.status === 'done' && ['search_manual', 'search_manuals'].includes(step.tool)) return 'Сверяю найденные страницы руководства…';
+    return 'Агент готовит ответ…';
+  }
+  const label = runningSteps[step.tool] ?? step.title ?? 'Агент выполняет следующий шаг';
+  return step.detail ? `${label}: ${step.detail}` : `${label}…`;
+}
+const canDraft = d => stageOf(d) === 'anomaly' && d.ticket_allowed !== false;
+function updateChat(c, latestOnly = false, scrollTo = null) {
   if (!isCurrent(c)) return;
   const feed = $('#conversation');
   if (!feed) return;
+  const turn = c.turns.at(-1);
   const opens = new Set([...feed.querySelectorAll('details[open]')].map(d => d.dataset.trace));
-  feed.replaceChildren(...c.turns.map((turn, i) => renderTurn(turn, i === c.turns.length - 1, opens, c.receipt)));
+  if (latestOnly && turn && feed.lastElementChild) feed.lastElementChild.replaceWith(renderTurn(turn, true, opens, c.receipt));
+  else feed.replaceChildren(...c.turns.map((t, i) => renderTurn(t, i === c.turns.length - 1, opens, c.receipt)));
+  const progress = $('#chat-progress');
+  $('#chat-progress-row').hidden = !c.busy;
+  const statusText = c.busy ? pendingText(turn) : '';
+  if (progress.textContent !== statusText) progress.textContent = statusText;
   const controls = $('#chat-controls');
   const status = stageOf(c.verdict);
   const commands = [];
-  if (c.busy) commands.push(hint('Агент работает…', {class: 'muted chat-status', role: 'status'}));
-  if (c.receipt) commands.push(primary('Открыть квитанцию', () => navigate({page: 'receipt', vid: c.vid, sid: c.sid})));
-  else if (status === 'anomaly') commands.push(primary(c.draft ? 'Открыть черновик заявки' : 'Создать заявку', () => {
+  if (c.receipt) commands.push(primary('Открыть квитанцию', () => navigate({page: 'receipt', vid: c.vid, sid: c.sid}), {disabled: c.busy}));
+  else if (canDraft(c.verdict)) commands.push(primary(c.draft ? 'Открыть черновик заявки' : 'Создать заявку', () => {
     if (c.draft) navigate({page: 'draft', vid: c.vid, sid: c.sid});
     else sendChat(c, 'draft_ticket');
   }, {'data-command': 'draft', disabled: c.busy}, icon('next')));
   else if (!c.busy && !status) commands.push(primary('Получить результат диагностики', () => sendChat(c, 'diagnose')));
-  else if (status === 'check_failed' || status === 'normal') commands.push(action('Вернуться к машине', back, {class: 'full'}));
+  else if (status === 'check_failed' || status === 'normal') commands.push(action('Вернуться к машине', back, {class: 'full', disabled: c.busy}));
   const quick = c.turns.every(t => !t.question) && status === 'anomaly' && !c.busy;
   const shortcuts = $('#quick-questions');
   shortcuts.hidden = !quick;
   shortcuts.replaceChildren(...(quick ? [action('Сверить норматив', () => ask(c, 'Какой норматив по этой проверке?')), action('Что проверить?', () => ask(c, 'Что проверить при осмотре?'))] : []));
   controls.replaceChildren(...commands);
+  $('#question').disabled = c.busy;
   $('#send-question').disabled = c.busy || !c.question.trim();
+  if (scrollTo) {
+    const target = [...feed.lastElementChild.children].filter(node => node.matches(scrollTo)).at(-1);
+    target?.scrollIntoView({block: 'start'});
+  }
 }
 function renderChat(v, s, c) {
-  main.replaceChildren(el('h1', {tabindex: '-1', class: 'visually-hidden'}, 'Чат с агентом'), context(v, s), el('div', {id: 'conversation', role: 'log', 'aria-label': 'Диалог о проверке', 'aria-live': 'polite'}), el('div', {id: 'quick-questions', class: 'quick', hidden: true}));
+  main.replaceChildren(el('h1', {tabindex: '-1', class: 'visually-hidden'}, v.vehicle_id), context(v, s, true), el('div', {id: 'conversation', role: 'log', 'aria-label': 'Диалог о проверке', 'aria-live': 'polite'}), el('div', {id: 'quick-questions', class: 'quick', hidden: true}));
   const composer = el('form', {class: 'compose', onsubmit: e => { e.preventDefault(); ask(c, c.question); }},
     el('input', {id: 'question', name: 'question', placeholder: 'Напишите вопрос', 'aria-label': 'Напишите вопрос', autocomplete: 'off', maxlength: '2000', oninput: e => { c.question = e.target.value; $('#send-question').disabled = c.busy || !c.question.trim(); }}),
     el('button', {id: 'send-question', class: 'primary icon-button', type: 'submit', 'aria-label': 'Отправить вопрос'}, icon('send')),
   );
-  dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {id: 'chat-controls', class: 'stack'}), composer));
+  dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {class: 'chat-status', id: 'chat-progress-row', hidden: true}, spinner(), el('span', {id: 'chat-progress', role: 'status'})), el('div', {id: 'chat-controls', class: 'stack'}), composer));
   $('#question').value = c.question;
   updateChat(c);
 }
@@ -407,12 +437,12 @@ async function readEvents(response, visit) {
   }
 }
 async function sendChat(c, mode, question = '') {
-  if (c.busy || (mode === 'draft_ticket' && stageOf(c.verdict) !== 'anomaly')) return;
+  if (c.busy || (mode === 'draft_ticket' && !canDraft(c.verdict))) return;
   c.busy = true;
   const turn = {id: c.turns.length + 1, question, pending: true, steps: [], messages: [], errors: []};
   c.turns.push(turn);
-  updateChat(c);
-  if (isCurrent(c)) window.scrollTo(0, 0);
+  updateChat(c, false, question ? '.user-message' : null);
+  if (mode === 'diagnose' && isCurrent(c)) main.scrollTop = 0;
   let done = false;
   try {
     const res = await fetch(`${api}/chat`, jsonPost({conversation_id: c.id, vehicle_id: c.vid, session_id: c.sid, message: question, action: mode}));
@@ -432,8 +462,9 @@ async function sendChat(c, mode, question = '') {
         turn.draft = c.draft = event.draft;
         c.edits = {conclusion: c.draft.conclusion || '', urgency: c.draft.urgency || '', operations: (c.draft.operations || []).join('\n'), spare_parts: (c.draft.spare_parts || []).join('\n')};
       } else if (event.type === 'error') turn.errors.push(event.text || 'Агент не смог выполнить запрос.');
-      else if (event.type === 'done') done = true;
-      updateChat(c);
+      else if (event.type === 'done') { done = true; return; }
+      else return;
+      updateChat(c, true, event.type === 'message' && mode !== 'diagnose' ? '.agent-message' : null);
     });
     if (!done) throw new Error('Поток прервался. Ответ мог быть неполным.');
     if (!turn.errors.length && mode === 'diagnose' && !turn.diagnosis) throw new Error('Сервис не прислал результат проверки.');
@@ -443,7 +474,7 @@ async function sendChat(c, mode, question = '') {
   } finally {
     c.busy = false;
     turn.pending = false;
-    updateChat(c);
+    updateChat(c, true, turn.errors.length ? '.notice' : null);
     if (turn.draft && isCurrent(c) && !turn.errors.length) navigate({page: 'draft', vid: c.vid, sid: c.sid});
   }
 }
@@ -466,12 +497,14 @@ function renderDraft(v, s, c) {
   const references = (d.references ?? []).filter(r => r.manual_id && Number.isInteger(r.pdf_page) && r.pdf_page > 0);
   const form = el('form', {class: 'stack', id: 'draft-form', onsubmit: e => { e.preventDefault(); confirmTicket(c); }},
     el('section', {class: 'box stack'}, d.anomaly_type || c.verdict?.anomaly_title ? el('p', {class: 'muted'}, 'Тип отклонения: ', el('strong', {}, [d.anomaly_type, c.verdict?.anomaly_title].filter(Boolean).join(' — '))) : null, field(c, 'conclusion', 'Заключение (гипотеза)', 2)),
-    el('section', {class: 'box why'}, el('h2', {}, 'Основание приоритета'), el('div', {class: 'between'}, hint('По данным проверки'), pill(priority[d.urgency] ?? 'Не назначен', d.urgency === 'high' ? 'red' : 'amber')), reasons(d.urgency_reasons), el('label', {class: 'field'}, el('span', {}, 'Приоритет в заявке'), urgency), overrideField),
+    el('section', {class: 'box stack'}, el('label', {class: 'field'}, el('span', {}, 'Приоритет в заявке'), urgency), overrideField,
+      el('details', {class: 'priority-reasons'}, el('summary', {}, 'Основание приоритета'), reasons(d.urgency_reasons))),
     el('section', {class: 'box stack'}, field(c, 'operations', 'Работы', 2, 'Каждая работа с новой строки'), field(c, 'spare_parts', 'Запчасти', 1, 'Каждая позиция с новой строки')),
     references.length ? el('section', {class: 'box stack'}, el('h2', {}, 'Источники'), references.map(r => citationLink({manual_id: r.manual_id, title: r.title || r.manual, page: r.pdf_page}, [icon('book'), `${r.title || r.manual}, стр. ${r.pdf_page}`, icon('next')], {class: 'source-link'}))) : null,
     el('p', {id: 'ticket-error', role: 'alert', class: 'notice red', hidden: !c.confirmError}, c.confirmError || ''),
   );
-  main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill('Не отправлена', 'amber'), title('Заявка на осмотр')), form);
+  const warning = warnings(d.warnings);
+  main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill('Не отправлена', 'amber'), title('Заявка на осмотр')), ...(warning ? [warning] : []), form);
   dock.replaceChildren(el('div', {class: 'dock'}, el('button', {id: 'confirm-ticket', class: 'primary full', type: 'submit', form: 'draft-form', disabled: c.confirming || c.confirmUncertain}, c.confirming ? 'Отправляем…' : 'Подтвердить и отправить в ТОиР', icon('check')), hint('В ТОиР попадёт только подтверждённая заявка.')));
 }
 async function confirmTicket(c) {
@@ -541,6 +574,16 @@ manual.addEventListener('close', () => {
   viewer?.trigger?.focus({preventScroll: true});
   viewer = null;
 });
+function pageText(text, quote) {
+  const needle = String(quote ?? '').trim().replace(/^…|…$/g, '').trim();
+  // The API collapses PDF line breaks when creating some excerpts.
+  const pattern = needle.split(/\s+/).map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+  const match = pattern && new RegExp(pattern, 'u').exec(text);
+  const highlight = match ? el('mark', {}, match[0]) : null;
+  const copy = el('div', {class: 'page-text', role: 'region', 'aria-label': 'Текст страницы', tabindex: '0'},
+    match ? [text.slice(0, match.index), highlight, text.slice(match.index + match[0].length)] : text);
+  return {copy, highlight};
+}
 async function loadManual(page) {
   if (!viewer || page < 1) return;
   const active = viewer, seq = ++active.serial;
@@ -553,21 +596,30 @@ async function loadManual(page) {
   try {
     const meta = await json(manualPath(cite.manual_id, page));
     if (viewer !== active || seq !== active.serial) return;
-    const image = el('img', {id: 'manual-image', alt: `${meta.title}, страница ${meta.page}`, src: `${manualPath(cite.manual_id, page)}.png`, onerror: () => image.replaceWith(hint('Изображение не загрузилось. Текст страницы доступен ниже.'))});
-    const viewport = el('div', {class: 'page-frame'}, image);
+    const quote = page === cite.page && cite.quote;
+    const {copy, highlight} = pageText(meta.text || '', quote);
+    const loading = el('p', {class: 'image-status', role: 'status'}, spinner(), 'Загружаем изображение страницы…');
+    const image = el('img', {id: 'manual-image', alt: `${meta.title}, страница ${meta.page}`, hidden: true});
+    const viewport = el('div', {class: 'page-frame'}, loading, image);
+    const zoomOut = iconButton('Уменьшить', 'minus', () => changeZoom(-.5), {id: 'zoom-out', disabled: true});
+    const zoomIn = iconButton('Увеличить', 'plus', () => changeZoom(.5), {id: 'zoom-in', disabled: true});
+    image.addEventListener('load', () => { loading.remove(); image.hidden = false; zoomIn.disabled = false; });
+    image.addEventListener('error', () => { loading.replaceWith(hint('Изображение не загрузилось.', {role: 'status'})); });
     let zoom = 1;
     const changeZoom = delta => {
       zoom = Math.max(1, Math.min(3, zoom + delta));
       image.style.width = `${zoom * 100}%`;
-      $('#zoom-out').disabled = zoom === 1;
-      $('#zoom-in').disabled = zoom === 3;
+      zoomOut.disabled = zoom === 1;
+      zoomIn.disabled = zoom === 3;
     };
-    body.replaceChildren(el('div', {class: 'intro'}, el('h2', {id: 'manual-heading'}, meta.title || cite.title), hint(meta.designation || cite.designation || '')),
+    body.replaceChildren(...[el('div', {class: 'intro'}, el('h2', {id: 'manual-heading'}, meta.title || cite.title), hint(meta.designation || cite.designation || '')),
+      el('div', {class: 'manual-controls'}, iconButton('Предыдущая страница', 'prev', () => loadManual(page - 1), {id: 'manual-prev', disabled: page <= 1}), el('strong', {class: 'mono', 'aria-live': 'polite'}, `Стр. ${meta.page} / ${meta.pages_total}`), iconButton('Следующая страница', 'next', () => loadManual(page + 1), {id: 'manual-next', disabled: page >= meta.pages_total}), el('span', {class: 'camera-gap'}), zoomOut, zoomIn),
+      meta.text ? el('section', {class: 'box manual-text'}, el('h3', {}, 'Текст страницы'), copy) : null,
+      quote && !highlight ? el('section', {class: 'box manual-text'}, el('h3', {}, 'Цитата из ответа'), el('blockquote', {}, `«${quote}»`)) : null,
       viewport,
-      el('div', {class: 'manual-controls'}, iconButton('Предыдущая страница', 'prev', () => loadManual(page - 1), {id: 'manual-prev', disabled: page <= 1}), el('strong', {class: 'mono', 'aria-live': 'polite'}, `Стр. ${meta.page} / ${meta.pages_total}`), iconButton('Следующая страница', 'next', () => loadManual(page + 1), {id: 'manual-next', disabled: page >= meta.pages_total}), el('span', {class: 'camera-gap'}), iconButton('Уменьшить', 'minus', () => changeZoom(-.5), {id: 'zoom-out', disabled: true}), iconButton('Увеличить', 'plus', () => changeZoom(.5), {id: 'zoom-in'})),
-      page === cite.page && cite.quote ? el('section', {class: 'box why'}, el('h3', {}, 'Цитата со страницы'), el('blockquote', {}, `«${cite.quote}»`)) : null,
-      meta.text ? el('details', {class: 'plain-text'}, el('summary', {}, 'Текст страницы'), el('p', {}, meta.text)) : null,
-    );
+    ].filter(Boolean));
+    if (highlight) copy.scrollTop = highlight.getBoundingClientRect().top - copy.getBoundingClientRect().top - 7;
+    image.src = `${manualPath(cite.manual_id, page)}.png`;
     const target = initialFocus && document.getElementById(initialFocus);
     (target && !target.disabled ? target : $('#close-manual')).focus({preventScroll: true});
   } catch (error) {
