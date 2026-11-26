@@ -97,7 +97,7 @@ const scoreText = x => score(x) ? number.format(x) : '–';
 const stageOf = d => d?.verdict || d?.status;
 function vehicleStage(v, s = v.last_check, latest = s === v.last_check) {
   const stage = stageOf(s);
-  // красный «Не выпускать» – только критичный класс (R4) или карантин; высокий приоритет значимой неисправности остаётся «Нужна проверка»
+  // красный «Дефектовка до выпуска» – только критичный класс (R4) или карантин; высокий приоритет значимой неисправности остаётся «Нужна проверка»
   const critical = x => x?.severity === 'C' || x?.rule === 'R4-critical';
   if (critical(s) || s?.fleet_status === 'quarantine' || stage === 'quarantine' || (latest && (v.fleet_status === 'quarantine' || v.last_severity === 'C'))) return 'quarantine';
   if (stage === 'check_failed') return stage;
@@ -459,7 +459,8 @@ function verdict(c, d, id, opens) {
   const otherReasons = entries.filter((_, index) => !whyLines.includes(index));
   const card = el('div', {class: `verdict-head ${stages[status][1]}`}, el('h2', {}, vTitle),
     cause && el('p', {class: 'verdict-cause'}, t('hypothesis', {name: lowerStart(cause)})),
-    !fail && score(d.confidence) && el('p', {class: 'verdict-facts'}, `${t('confidence')}: ${scoreText(d.confidence)}`),
+    !fail && score(d.confidence) && el('p', {class: 'verdict-facts'}, `${t('confidence')}: ${scoreText(d.confidence)}`,
+      score(d.conf_threshold) ? ` (${t('confThreshold', {v: scoreText(d.conf_threshold)})})` : ''),
     incompatible && el('p', {}, t('notApplicable')),
     fail && (d.description || d.reason) && el('p', {}, t('rejectReason', {reason: lowerStart(cleanQuote(d.description || d.reason).replace(/^запись отбракована:\s*/iu, ''))})),
     el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
@@ -474,7 +475,23 @@ function verdict(c, d, id, opens) {
   const more = el('details', {class: 'fold', open: opens.has(key), 'data-trace': key}, el('summary', {}, t('metrics')),
     el('div', {class: 'fold-body'}, metrics, otherReasons.length && reasons(otherReasons)));
   return el('article', {class: `verdict ${status}`}, card, warnings(d.warnings),
-    d.inspect_first === true && el('p', {class: 'notice amber inspection-notice'}, icon('warn'), el('strong', {}, t('inspectFirst'))), more);
+    d.inspect_first === true && el('p', {class: 'notice amber inspection-notice'}, icon('warn'), el('strong', {}, t('inspectFirst'))),
+    d.defect_note && defectNote(d.defect_note), more);
+}
+// Нет инструкции по узлу в руководстве этого двигателя: заявку продукт не отправляет, механик берет готовый текст рекомендации.
+function defectNote(text) {
+  const plain = displayText(text);
+  // номера машин, проверок и коды не переносим посередине: S-0021 должно читаться целиком
+  const body = el('p', {class: 'defect-text'}, ...plain.split(/([A-ZА-ЯЁ0-9]+-[A-ZА-ЯЁ0-9.]+)/u)
+    .map((part, i) => i % 2 ? el('span', {class: 'nowrap'}, part) : part).filter(Boolean));
+  const copy = action(t('copyText'), async () => {
+    try { await navigator.clipboard.writeText(plain); }
+    catch { const range = document.createRange(); range.selectNodeContents(body); getSelection().removeAllRanges(); getSelection().addRange(range); document.execCommand('copy'); }
+    copy.textContent = t('copiedText');
+  }, {class: 'secondary full', 'data-command': 'copy-defect-note'});
+  return el('section', {class: 'box defect-note', 'aria-label': t('defectNote')},
+    el('h3', {}, t('noTicketTitle')), hint(t('noTicketWhy')),
+    el('h4', {}, t('defectNote')), body, copy);
 }
 
 function citationLink(cite, label, attrs = {}) {

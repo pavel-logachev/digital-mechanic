@@ -89,7 +89,7 @@ def summary(v: dict) -> dict:
     if verdict is None:
         status = "ok"
     elif verdict.rule == "R4-critical":
-        status = "quarantine"   # критичная неисправность без заявки: машину не выпускать
+        status = "quarantine"   # критичная неисправность без заявки: рекомендована дефектовка до выпуска в рейс
     elif verdict.verdict in ("anomaly", "check_failed") or verdict.rule in ("R2-normal-doubt", "R2-normal-unresolved"):
         status = "attention"
     else:

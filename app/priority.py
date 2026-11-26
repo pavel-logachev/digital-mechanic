@@ -1,7 +1,17 @@
 """Приоритет (urgency) заявки и рекомендуемое действие – детерминированно, в коде.
 
 Модель приоритет не выбирает: она только объясняет механику результат этой функции.
-Пороги – политика команды (версия PRIO-1), не норматив заказчика.
+Пороги – политика команды (версия PRIO-2), не норматив заказчика.
+
+Смысл приоритетов – по разъяснению заказчика (чат задачи #102):
+  high   – машина ставится на дефектовку до выпуска в рейс;
+  medium – дефектовка на ближайшем ТО, машина работает под наблюдением;
+  low    – машина работает, узел проверяется на следующей проверке.
+Это рекомендации. Запрет эксплуатации формулирует только агент и только когда руководство на этот двигатель
+прямо его содержит – со ссылкой на страницу.
+Схема: базовая тяжесть класса F01–F14 (faults.py) + ограниченная поправка по оценке, уверенности, качеству записи,
+повторам и росту по истории. Порог сомнительного сигнала CONF_MIN = 0,60: ниже него и при записи с помехами
+заявка возможна только после того, как механик осмотрел узел и подтвердил признак (разъяснение #101).
 """
 from __future__ import annotations
 
@@ -10,7 +20,7 @@ from decimal import Decimal
 
 from .faults import ENGINE_DRIVE_NOTE, FAULTS, SEVERITY_RU, applicability
 
-POLICY_VERSION = "PRIO-1"
+POLICY_VERSION = "PRIO-2"
 SCORE_HIGH = Decimal("0.70")
 CONF_HIGH = Decimal("0.80")
 CONF_MIN = Decimal("0.60")
@@ -41,6 +51,7 @@ class Verdict:
     applicable: str | None = None
     inspect_first: bool = False     # сигнал сомнительный: заявка только после подтверждения осмотром
     policy: str = POLICY_VERSION
+    defect_note: str | None = None  # текст рекомендации на дефектовку, когда продукт заявку не отправляет
 
     def as_dict(self) -> dict:
         return {
@@ -48,6 +59,7 @@ class Verdict:
             "ticket_allowed": self.ticket_allowed, "urgency_reasons": self.reasons,
             "warnings": self.warnings, "rule": self.rule, "severity": self.severity,
             "applicable": self.applicable, "policy": self.policy, "inspect_first": self.inspect_first,
+            "defect_note": self.defect_note, "conf_threshold": float(CONF_MIN),
         }
 
 
@@ -87,6 +99,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
             v.action = "Результат «норма» под сомнением: запись с помехами или низкая уверенность. Лучше повторить запись."
             v.rule = "R2-normal-doubt"
+            v.warnings.append(_doubt_text(quality, conf))
         unresolved = _unresolved_critical(past, tickets)
         if unresolved:
             s = unresolved[-1]
@@ -111,10 +124,17 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
         note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
         warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
                         "Вероятна ошибка ML-модели или карточки машины – нужен очный осмотр, диагноз по этой записи не подтвержден.")
-        return Verdict("anomaly", "medium", "Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины.", True,
+        # в руководстве на этот двигатель нет инструкции по такому узлу – продукт заявку не отправляет (разъяснение #103)
+        defect = (f"Рекомендация на дефектовку. Машина {result.get('vehicle_id')}, двигатель {engine}, "
+                  f"проверка {result.get('session_id')}: ML-сервис указал {code} «{result.get('anomaly_title')}» "
+                  f"(оценка {fmt(score)}, уверенность {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}). "
+                  f"Класс не подходит к двигателю {engine}, инструкции по этому узлу в руководстве нет. "
+                  "Нужен очный осмотр двигателя и дефектовка по его результату.")
+        return Verdict("anomaly", None, "Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины. "
+                       "Заявку продукт не отправляет – оформите дефектовку по порядку парка.", False,
                        [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но класс {code} неприменим к {engine}.",
-                        "Средний приоритет: машину стоит осмотреть, но конкретную неисправность по записи назвать нельзя."],
-                       warnings, "R3-not-applicable", sev, appl)
+                        f"В руководстве на {engine} нет инструкции по узлу «{result.get('anomaly_title')}», поэтому заявка не отправляется."],
+                       warnings, "R3-not-applicable", sev, appl, defect_note=defect)
 
     repeated = [s for s in past if s["status"] == "anomaly" and s.get("anomaly_type") == code and _usable(s)]
     growing = _growing(past + [result], code)
@@ -130,30 +150,40 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if appl == "check":
         warnings.append(f"Убедитесь, что на этой машине есть узел «{result.get('anomaly_title')}»: для {engine} это зависит от комплектации.")
     if doubtful:
-        warnings.append("Запись с помехами или уверенность модели невысокая. Перезапись не нужна: сначала осмотрите узел на машине. Подтвердился признак – оформляйте заявку, не подтвердился – машина идет в рейс.")
+        warnings.append(_doubt_text(quality, conf) + " Перезапись не нужна: сначала осмотрите узел на машине. "
+                        "Подтвердился признак – оформляйте заявку, отметив это в черновике; не подтвердился – машина идет в рейс.")
 
     if sev == "C":
         urg, rule = "high", "R4-critical"
-        action = ("Если машина в рейсе – остановиться в безопасном месте и заглушить двигатель. "
-                  "На линию – только после дефектовки и устранения причины.")
+        action = ("Рекомендация: дефектовка до выпуска в рейс. Если машина уже в рейсе – остановитесь в безопасном месте "
+                  "и заглушите двигатель.")
         reasons.insert(0, f"«{result.get('anomaly_title')}» – критичная неисправность: работа с ней может закончиться тяжелой поломкой двигателя.")
     elif sev == "S" and (strong or growing or (repeated and not doubtful)):
         urg, rule = "high", "R5-significant-strong"
-        action = "Поставить на дефектовку в ближайшее время, в дальние рейсы не выпускать."
+        action = "Рекомендация: дефектовка до выпуска в рейс."
         why = "сильный и уверенный сигнал" if strong else ("рост отклонения" if growing else "повторяющееся отклонение")
         reasons.insert(0, f"Значимая неисправность и {why}.")
     elif sev == "L" and not repeated and not growing and not doubtful and conf is not None and d(conf) >= CONF_HIGH \
             and score is not None and d(score) < SCORE_HIGH:
         urg, rule = "low", "R7-minor"
-        action = "Запланировать проверку на ближайшее ТО."
+        action = "Машина работает, узел проверить на следующей проверке."
         reasons.insert(0, "Малозначимая неисправность: отклонение умеренное, сигнал уверенный и разовый.")
     else:
         urg, rule = "medium", "R6-planned"
-        action = "Запланировать дефектовку в плановом порядке, следить за признаками."
-        reasons.insert(0, "Отклонение есть, но причин срочно снимать машину с линии нет.")
+        action = "Дефектовка на ближайшем ТО, машина работает под наблюдением."
+        reasons.insert(0, "Отклонение есть, но признаков, требующих дефектовки до выпуска, нет.")
     if hist_note and not repeated:
         reasons.append(hist_note)
     return Verdict("anomaly", urg, action, True, reasons, warnings, rule, sev, appl, inspect_first=doubtful)
+
+
+def _doubt_text(quality, conf) -> str:
+    parts = []
+    if quality == "warning":
+        parts.append("запись с помехами")
+    if conf is not None and d(conf) < CONF_MIN:
+        parts.append(f"уверенность модели {fmt(conf)} – ниже порога {fmt(CONF_MIN)}")
+    return "Сигнал сомнительный: " + " и ".join(parts) + "."
 
 
 def _band(score) -> str:

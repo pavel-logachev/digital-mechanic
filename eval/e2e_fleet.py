@@ -57,7 +57,7 @@ def check_vehicle(base: str, vid: str) -> dict:
         if not d:
             bad("нет карточки вердикта")
             return out
-        out.update(ml_status=last["status"], verdict=d["verdict"], rule=d.get("rule"), urgency=d.get("urgency"),
+        out.update(ml_status=last["status"], verdict=d["verdict"], rule=d.get("rule"), urgency=d.get("urgency"), confidence=d.get("confidence"),
                    ticket_allowed=d.get("ticket_allowed"), inspect_first=d.get("inspect_first"), code=last.get("anomaly_type"))
         # правила F3 ТЗ и брифа заказчика
         if last["status"] == "check_failed" or last.get("signal_quality") == "bad":
@@ -65,8 +65,14 @@ def check_vehicle(base: str, vid: str) -> dict:
                 bad("сбой записи обработан не как сбой")
         if last["status"] == "normal" and d["verdict"] == "anomaly":
             bad("норма превратилась в отклонение")
-        if d["verdict"] == "anomaly" and d.get("urgency") not in URGENCY:
+        if d.get("rule") == "R3-not-applicable":
+            # класс не подходит к двигателю: заявки нет, приоритета нет, механик получает текст рекомендации (#96, #103)
+            if d.get("ticket_allowed") or d.get("urgency") or not d.get("defect_note"):
+                bad("неприменимый класс: должна быть рекомендация на дефектовку без заявки и приоритета")
+        elif d["verdict"] == "anomaly" and d.get("urgency") not in URGENCY:
             bad("у отклонения нет приоритета")
+        if d.get("verdict") != "check_failed" and d.get("confidence") is not None and d.get("conf_threshold") is None:
+            bad("порог уверенности не передан в интерфейс (#101)")
         if d.get("rule") == "R4-critical" and d.get("urgency") != "high":
             bad("критичная неисправность не с высоким приоритетом")
         cites = (msg or {}).get("citations") or []
@@ -79,11 +85,16 @@ def check_vehicle(base: str, vid: str) -> dict:
         if d["verdict"] == "check_failed" and cites:
             bad("при сбое записи агент ссылается на нормы двигателя")
         out["usage"] = (msg or {}).get("usage")
+        if first(ev, "draft"):
+            bad("черновик заявки появился без просьбы механика")
 
         # заявка
         ev2, sec2 = chat(c, {"conversation_id": cid, "vehicle_id": vid, "session_id": last["session_id"], "action": "draft_ticket"})
         draft = (first(ev2, "draft") or {}).get("draft")
         out["draft_seconds"] = round(sec2, 1)
+        u1, u2 = out.get("usage") or {}, ((first(ev2, "message") or {}).get("usage") or {})
+        if u2:   # usage в сообщении накопительный по разговору: расход шага заявки = разница
+            out["draft_usage"] = {k: u2.get(k, 0) - u1.get(k, 0) for k in ("calls", "prompt_tokens", "cached_tokens", "completion_tokens")}
         if not d.get("ticket_allowed"):
             if draft:
                 bad("черновик создан там, где заявка запрещена")
@@ -147,6 +158,7 @@ def main() -> None:
         "verdicts": {k: sum(r.get("verdict") == k for r in rows) for k in ("normal", "anomaly", "check_failed")},
         "inspect_first": sum(bool(r.get("inspect_first")) for r in rows),
         "tickets_created": sum(bool(r.get("ticket_id")) for r in rows),
+        "defect_notes_without_ticket": sum(r.get("rule") == "R3-not-applicable" for r in rows),
         "diagnose_p50_seconds": round(statistics.median(lat), 1) if lat else None,
         "diagnose_max_seconds": max(lat) if lat else None,
         "draft_p50_seconds": round(statistics.median([r["draft_seconds"] for r in rows if "draft_seconds" in r] or [0]), 1),

@@ -109,12 +109,16 @@ def diagnosis(v, s):
         'check_failed': 'Повторите запись по регламенту парка. Не запускайте двигатель ради записи при аварийном сигнале или сильном стуке.',
     }[s['status']]
     if urgency == 'high':
-        action = 'Не выпускайте машину до очного осмотра.'
+        action = 'Рекомендация: дефектовка до выпуска в рейс. Если машина уже в рейсе – остановитесь в безопасном месте и заглушите двигатель.'
     result = {**s, 'verdict': s['status'], 'urgency': urgency, 'urgency_reasons': reasons, 'action': action,
               'severity': 'C' if urgency == 'high' else None, 'rule': 'R4-critical' if urgency == 'high' else '',
-              'inspect_first': s['session_id'] == 'S-0039'}
+              'inspect_first': s['session_id'] == 'S-0039', 'conf_threshold': 0.6}
     if s['session_id'] == 'S-0021':
-        result.update(rule='R3-not-applicable', ticket_allowed=False, warnings=['Тип отклонения не подходит к двигателю.'])
+        result.update(rule='R3-not-applicable', ticket_allowed=False, urgency=None, warnings=['Тип отклонения не подходит к двигателю.'],
+                      action='Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины. '
+                             'Заявку продукт не отправляет – оформите дефектовку по порядку парка.',
+                      defect_note=f"Рекомендация на дефектовку. Машина {s['vehicle_id']}, проверка {s['session_id']}: ML-сервис указал "
+                                  f"{s['anomaly_type']} «{s['anomaly_title']}», но класс не подходит к двигателю. Нужен очный осмотр и дефектовка.")
     return result
 
 

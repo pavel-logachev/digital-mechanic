@@ -271,7 +271,7 @@ def chat(body: ChatIn, request: Request):
             if body.action == "diagnose":
                 # кнопка «Получить результат» всегда показывает карточку, даже если разговор уже был
                 a.t_get_diagnosis()
-            a.run(text[:2000])
+            a.run(text[:2000], ticket_requested=True if body.action == "draft_ticket" else None)
         except Exception as e:  # noqa: BLE001 – показываем механику понятную ошибку, детали в лог
             log.exception("agent failed")
             q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте еще раз."})

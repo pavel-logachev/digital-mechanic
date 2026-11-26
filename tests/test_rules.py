@@ -40,7 +40,9 @@ def test_significant_weak_is_medium_strong_is_high():
 def test_not_applicable_class_flagged(code, engine):
     s = _s("S1", code=code)
     v = evaluate(s, engine, [s])
-    assert v.rule == "R3-not-applicable" and v.urgency == "medium" and v.warnings
+    # инструкции по такому узлу в руководстве нет: заявку продукт не отправляет, механик получает текст рекомендации
+    assert v.rule == "R3-not-applicable" and v.urgency is None and not v.ticket_allowed and v.warnings
+    assert v.defect_note and code in v.defect_note and "дефектовк" in v.defect_note
 
 
 def test_normal_after_unresolved_critical_warns():
@@ -62,7 +64,8 @@ def test_all_customer_sessions_evaluate():
     for v in data.vehicles():
         for s in v["sessions"]:
             r = evaluate(s, v["engine_model"], v["sessions"])
-            assert (r.urgency is None) == (r.verdict != "anomaly")
+            # без приоритета: норма, сбой записи и класс, неприменимый к двигателю (заявку продукт не отправляет)
+            assert (r.urgency is None) == (r.verdict != "anomaly" or r.rule == "R3-not-applicable")
             assert r.reasons
 
 
@@ -94,3 +97,33 @@ def test_verify_rejects_foreign_engine_and_unseen_page():
 def test_verify_ignores_dates_and_ids():
     c = verify.check("Проверка S-0012 от 10.11.2026 — норма.", set(), set(), _pt, set())
     assert not c.problems
+
+
+def test_priority_actions_are_recommendations_matching_customer_meaning():
+    """#102: high – дефектовка до выпуска в рейс, medium – на ближайшем ТО, low – на следующей проверке; запрет не пишем."""
+    crit = _s("S1", code="F02", score=0.9, conf=0.9)
+    med = _s("S2", code="F04", score=0.6, conf=0.7)
+    low = _s("S3", code="F11", score=0.5, conf=0.9)
+    a = evaluate(crit, "ЯМЗ-536", [crit]).action
+    assert a.startswith("Рекомендация: дефектовка до выпуска в рейс")
+    assert "ближайшем ТО" in evaluate(med, "ЯМЗ-536", [med]).action
+    assert "следующей проверке" in evaluate(low, "ЯМЗ-536", [low]).action
+    for s in (crit, med, low):
+        act = evaluate(s, "ЯМЗ-536", [s]).action.lower()
+        assert "не выпускать" not in act and "запрещ" not in act and "нельзя" not in act
+
+
+def test_doubtful_signal_shows_threshold():
+    """#101: порог уверенности показываем механику числом."""
+    s = _s("S1", code="F04", score=0.6, conf=0.55)
+    v = evaluate(s, "ЯМЗ-536", [s])
+    assert v.inspect_first and any("ниже порога 0,60" in w for w in v.warnings)
+    assert v.as_dict()["conf_threshold"] == 0.6
+
+
+def test_page_covers_unit():
+    from app.faults import page_covers_unit
+    body = " ".join(["Проверка давления масла контрольным манометром на прогретом двигателе."] * 8)
+    assert page_covers_unit("F02", body)
+    assert not page_covers_unit("F02", " ".join(["Регулировка тепловых зазоров клапанов."] * 8))
+    assert not page_covers_unit("F02", "Содержание " + "давление масла ...... 19 " * 20)
