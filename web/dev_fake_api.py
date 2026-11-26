@@ -31,7 +31,10 @@ Q31 = (
 )
 Q33 = 'При правильно отрегулированном зазоре щуп толщиной 0,25 мм должен входить при легком нажиме, а толщиной 0,30 мм - с усилием.'
 VEHICLES = {v['vehicle_id']: v for v in json.loads((ROOT / 'mocks/data/vehicles.json').read_text(encoding='utf-8'))['vehicles']}
-TICKETS = {'B418HK98': [{'ticket_id': 'TKT-0001', 'session_id': 'S-0008', 'anomaly_type': 'F01', 'urgency': 'medium', 'created_at': '2026-10-30T10:10:00+03:00'}]}
+TICKETS = {
+    'B418HK98': [{'ticket_id': 'TKT-0001', 'session_id': 'S-0008', 'anomaly_type': 'F01', 'urgency': 'medium', 'created_at': '2026-10-30T10:10:00+03:00'}],
+    'T792HO98': [{'ticket_id': 'TKT-0002', 'session_id': 'S-0043', 'anomaly_type': 'F02', 'urgency': 'high', 'created_at': '2026-11-15T15:20:00+03:00'}],
+}
 DRAFTS = {}
 CONFIRMED = {}
 app = FastAPI(title='Цифровой механик — учебный сервер')
@@ -56,6 +59,7 @@ class Chat(BaseModel):
     message: str = ''
     action: Literal['diagnose', 'draft_ticket'] | None = None
     lang: Lang = 'ru'
+    detail: Literal['brief', 'detailed'] = 'brief'
 
 
 @app.post('/api/transcribe')
@@ -107,7 +111,8 @@ def diagnosis(v, s):
     if urgency == 'high':
         action = 'Не выпускайте машину до очного осмотра.'
     result = {**s, 'verdict': s['status'], 'urgency': urgency, 'urgency_reasons': reasons, 'action': action,
-              'severity': 'C' if urgency == 'high' else None, 'rule': 'R4-critical' if urgency == 'high' else ''}
+              'severity': 'C' if urgency == 'high' else None, 'rule': 'R4-critical' if urgency == 'high' else '',
+              'inspect_first': s['session_id'] == 'S-0039'}
     if s['session_id'] == 'S-0021':
         result.update(rule='R3-not-applicable', ticket_allowed=False, warnings=['Тип отклонения не подходит к двигателю.'])
     return result

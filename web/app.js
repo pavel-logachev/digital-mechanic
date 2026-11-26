@@ -1,7 +1,7 @@
 'use strict';
 
 const $ = (selector, root = document) => root.querySelector(selector);
-const main = $('#main'), dock = $('#dock'), topbar = $('#top'), manual = $('#manual'), languageDialog = $('#language-dialog');
+const main = $('#main'), dock = $('#dock'), topbar = $('#top'), manual = $('#manual'), languageDialog = $('#language-dialog'), dataDialog = $('#data-dialog');
 const api = '/api';
 const state = {route: {page: 'park'}, vehicles: null, fleetFilter: '', cards: new Map(), chats: new Map(), query: '', all: false, demo: false};
 const {languages, text} = mechanicI18n;
@@ -12,6 +12,8 @@ const stored = (key, value) => {
 const savedLang = stored('mechanic:lang');
 let lang = Object.hasOwn(languages, savedLang) ? savedLang : 'ru';
 let large = stored('mechanic:large') === 'true';
+let detail = stored('mechanic:detail') === 'detailed' ? 'detailed' : 'brief';
+let voiceConsent = stored('mechanic:voice-consent') === 'true';
 const t = (key, vars) => text(lang, key, vars);
 const displayText = value => String(value ?? '').replaceAll('\u2014', '–');
 const stages = {
@@ -81,6 +83,8 @@ const fromStage = ([key, ...style]) => pill(t(key), ...style);
 const stagePill = status => fromStage(stages[status] ?? stages.unknown);
 const box = (...children) => el('section', {class: 'box'}, children);
 const hint = (text, attrs = {}) => el('p', {class: 'muted', ...attrs}, text);
+const checkRow = (id, label, attrs) => el('label', {class: 'check-label', for: id},
+  el('input', {type: 'checkbox', id, ...attrs}), el('span', {}, label));
 const score = x => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1;
 const scoreText = x => score(x) ? number.format(x) : '–';
 const stageOf = d => d?.verdict || d?.status;
@@ -135,6 +139,29 @@ function openLanguage() {
   );
   languageDialog.showModal();
 }
+function openDataDialog(c) {
+  const close = () => dataDialog.close();
+  const heading = el('h2', {id: 'data-heading'}, t(c ? 'voiceConsentTitle' : 'dataPolicy'));
+  if (c) {
+    const proceed = primary(t('continueConsent'), () => {
+      if (!$('#voice-consent', dataDialog).checked || !isComposerCurrent(c)) { close(); return; }
+      voiceConsent = true;
+      stored('mechanic:voice-consent', 'true');
+      close();
+      toggleRecording(c);
+    }, {disabled: true});
+    dataDialog.replaceChildren(el('div', {class: 'sheet-head'}, heading),
+      hint(t('voiceConsentText')),
+      checkRow('voice-consent', t('voiceConsentCheck'), {onchange: e => { proceed.disabled = !e.target.checked; }}),
+      el('div', {class: 'data-actions'}, action(t('cancelConsent'), close), proceed));
+  } else {
+    const sections = ['dataWhat', 'dataWhy', 'dataWhere', 'dataAudio', 'dataModels', 'dataDemo'];
+    dataDialog.replaceChildren(el('div', {class: 'sheet-head'}, heading, iconButton(t('close'), 'cross', close)),
+      el('ul', {class: 'reasons'}, sections.map(key => el('li', {}, t(key)))));
+  }
+  dataDialog.showModal();
+  dataDialog.scrollTop = 0;
+}
 function header() {
   const {page, vid} = state.route;
   const isPark = page === 'park';
@@ -146,7 +173,8 @@ function header() {
       stored('mechanic:large', String(large));
       applySettings();
       size.setAttribute('aria-pressed', String(large));
-      if (state.route.page === 'chat') { resizeQuestion(); fitExcerpts(main); }
+      if ($('#question')) resizeQuestion();
+      if (state.route.page === 'chat') fitExcerpts(main);
     }, {id: 'font-size'});
     tools = el('div', {id: 'header-tools'}, picker, size);
     topbar.append(tools);
@@ -184,7 +212,10 @@ window.addEventListener('popstate', e => {
   showRoute(route, true, routeScroll.get(route.key));
 });
 async function showRoute(route, focus = false, scroll = 0) {
-  if (state.route !== route) cancelRecording();
+  if (state.route !== route) {
+    if (dataDialog.open) dataDialog.close();
+    cancelRecording();
+  }
   state.loadFailed = false;
   state.route = route;
   header();
@@ -261,21 +292,23 @@ function renderPark() {
   main.replaceChildren(el('div', {class: 'search-group'}, el('label', {for: 'vehicle-search'}, t('search')),
     el('div', {class: 'search'}, icon('search'), input, clear)),
     action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
-    el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo'))), list);
+    el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo'))), list,
+    el('a', {class: 'data-link', href: '#data-dialog', 'aria-haspopup': 'dialog', onclick: e => { e.preventDefault(); openDataDialog(); }}, t('dataPolicy')));
 }
 function renderFleet() {
   const items = orderedVehicles();
   const statuses = stageRank.filter(key => key !== 'unknown' || items.some(v => vehicleStage(v) === key));
+  const filters = [...statuses.map(key => [key, ...stages[key]]), ['open_ticket', 'openTickets', 'neutral', 'book']];
+  const matches = (v, key) => key === 'open_ticket' ? Boolean(v.open_ticket) : vehicleStage(v) === key;
   const list = el('div', {class: 'vehicle-list'});
   const update = () => {
-    const visible = state.fleetFilter ? items.filter(v => vehicleStage(v) === state.fleetFilter) : items;
+    const visible = state.fleetFilter ? items.filter(v => matches(v, state.fleetFilter)) : items;
     list.replaceChildren(...visible.map(vehicleRow));
     if (!visible.length) list.append(box(hint(t('fleetEmpty'))));
     for (const btn of counts.children) btn.setAttribute('aria-pressed', String(btn.dataset.filter === state.fleetFilter));
   };
-  const counts = el('div', {class: 'fleet-counts'}, statuses.map(key => {
-    const [label, tone, symbol] = stages[key];
-    return action([icon(symbol), el('span', {}, t(label)), el('strong', {}, String(items.filter(v => vehicleStage(v) === key).length))], () => {
+  const counts = el('div', {class: 'fleet-counts'}, filters.map(([key, label, tone, symbol]) => {
+    return action([icon(symbol), el('span', {}, t(label)), el('strong', {}, String(items.filter(v => matches(v, key)).length))], () => {
       state.fleetFilter = state.fleetFilter === key ? '' : key;
       update();
     }, {class: `fleet-count ${tone}`, 'data-filter': key});
@@ -297,7 +330,8 @@ function renderVehicle(v) {
   const tickets = [...(v.tickets ?? [])].sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
   main.replaceChildren(
     el('section', {class: 'box vehicle-head'}, plate(v.vehicle_id), vehicleModel(v),
-      v.engine_model && hint(`${t('engine')}: ${v.engine_model}`)),
+      v.engine_model && hint(`${t('engine')}: ${v.engine_model}`),
+      v.open_ticket && el('span', {class: 'ticket-note'}, t('ticketOpen', {id: v.open_ticket}))),
     el('section', {class: 'box selection'}, el('h2', {}, t('lastCheck')),
       latest ? [checkTime(latest.checked_at), statusLine(vehicleStage(v, latest, true), latest),
         primary(t('diagnose'), () => openCheck(v, latest), {id: 'diagnose'})] : hint(t('noChecks'))),
@@ -307,6 +341,7 @@ function renderVehicle(v) {
     details(t('pastTickets'), tickets.length ? el('div', {class: 'tickets'}, tickets.map(ticket => el('div', {class: 'ticket-entry'},
       el('strong', {}, ticket.ticket_id), checkTime(ticket.created_at), priorityLabel(ticket.urgency) && el('span', {}, priorityLine(ticket.urgency))))) : hint(t('noTickets'))),
   );
+  renderComposer(conversationFor(v.vehicle_id, latest?.session_id ?? null));
 }
 
 function conversationFor(vid, sid) {
@@ -324,6 +359,10 @@ function conversationFor(vid, sid) {
 }
 function isCurrent(c, page = 'chat') {
   return state.route.page === page && state.route.vid === c.vid && state.route.sid === c.sid;
+}
+function isComposerCurrent(c) {
+  return isCurrent(c) || (state.route.page === 'vehicle' && state.route.vid === c.vid &&
+    (state.cards.get(c.vid)?.last_check?.session_id ?? null) === c.sid);
 }
 function reasons(values) {
   const entries = Array.isArray(values) ? values.filter(Boolean) : [];
@@ -370,7 +409,8 @@ function verdict(c, d, id, opens) {
   const key = `priority-${id}`;
   const more = el('details', {class: 'fold', open: opens.has(key), 'data-trace': key}, el('summary', {}, t('metrics')),
     el('div', {class: 'fold-body'}, metrics, otherReasons.length && reasons(otherReasons)));
-  return el('article', {class: `verdict ${status}`}, card, warnings(d.warnings), more);
+  return el('article', {class: `verdict ${status}`}, card, warnings(d.warnings),
+    d.inspect_first === true && el('p', {class: 'notice amber inspection-notice'}, icon('warn'), el('strong', {}, t('inspectFirst'))), more);
 }
 
 function citationLink(cite, label, attrs = {}) {
@@ -514,7 +554,7 @@ function renderTurn(c, turn, latestResult, opens) {
     if (log) block.append(log);
   }
   for (const error of turn.errors) block.append(el('p', {class: 'notice red', role: 'alert'}, error));
-  if (!c.busy && !c.verdict && turn === c.turns.at(-1) && turn.errors.length && turn.mode === 'diagnose') block.append(primary(t('retry'), () => sendChat(c, 'diagnose')));
+  if (!c.busy && !c.verdict && turn === c.turns.at(-1) && turn.errors.length && turn.mode === 'diagnose') block.append(primary(t('retry'), () => turn.question ? ask(c, c.question, 'diagnose') : sendChat(c, 'diagnose')));
   return block;
 }
 const spinner = () => el('span', {class: 'spinner', 'aria-hidden': 'true'});
@@ -529,7 +569,7 @@ function pendingText(turn) {
 
 const canDraft = d => ['anomaly', 'quarantine'].includes(stageOf(d)) && d.ticket_allowed !== false;
 function updateChat(c, latestOnly = false, scrollTo = null) {
-  if (!isCurrent(c)) return;
+  if (!isCurrent(c)) { updateComposer(c); return; }
   const feed = $('#conversation');
   if (!feed) return;
   const turn = c.turns.at(-1);
@@ -553,7 +593,23 @@ function renderChat(v, s, c) {
   const feed = el('div', {id: 'conversation', role: 'log', 'aria-label': t('chat'), 'aria-live': 'polite'});
   feed.addEventListener('toggle', () => fitExcerpts(feed), true);
   main.replaceChildren(context(v, s), feed);
+  renderComposer(c);
+  updateChat(c);
+}
+function detailSwitch() {
+  const group = el('div', {class: 'detail-switch', role: 'group', 'aria-label': t('answerDetail'), 'aria-describedby': 'detail-hint'});
+  for (const mode of ['brief', 'detailed']) {
+    group.append(action(t(mode), () => {
+      detail = mode;
+      stored('mechanic:detail', mode);
+      for (const button of group.children) button.setAttribute('aria-pressed', String(button.dataset.detail === mode));
+    }, {'data-detail': mode, 'aria-pressed': String(detail === mode)}));
+  }
+  return [group, hint(t('detailHint'), {id: 'detail-hint', class: 'visually-hidden'})];
+}
+function renderComposer(c) {
   const composer = el('form', {class: 'compose', onsubmit: e => { e.preventDefault(); ask(c, c.question); }},
+    isCurrent(c) ? detailSwitch() : null,
     el('div', {class: 'question-row'}, el('textarea', {id: 'question', name: 'question', rows: '1', placeholder: t('question'), 'aria-label': t('question'), autocomplete: 'off', maxlength: '2000', oninput: e => { c.question = e.target.value; if (c.voiceNotice === 'micReady') c.voiceNotice = ''; updateComposer(c); }}),
       el('div', {class: 'voice-status', id: 'voice-live', role: 'status', hidden: true}, el('span', {id: 'voice-label'}), el('span', {id: 'mic-timer', 'aria-hidden': 'true'})),
       iconButton(t('mic'), 'mic', () => toggleRecording(c), {id: 'mic'}),
@@ -562,7 +618,7 @@ function renderChat(v, s, c) {
   );
   dock.replaceChildren(el('div', {class: 'dock chat-dock'}, el('div', {class: 'chat-status', id: 'chat-progress-row', hidden: true}, spinner(), el('span', {id: 'chat-progress', role: 'status'})), composer));
   $('#question').value = c.question;
-  updateChat(c);
+  updateComposer(c);
 }
 function resizeQuestion() {
   const input = $('#question');
@@ -574,20 +630,23 @@ function resizeQuestion() {
   input.style.height = `${Math.min(input.scrollHeight + borders, max)}px`;
 }
 window.addEventListener('resize', () => { resizeQuestion(); fitExcerpts(main); });
-function ask(c, value) {
+function ask(c, value, mode = null) {
   const q = value.trim();
-  if (!q || c.busy || recording?.c === c) return;
+  if (!q || c.busy || recording?.c === c || !isComposerCurrent(c)) return;
   c.question = '';
   c.voiceNotice = '';
-  const input = $('#question');
-  if (input) input.value = '';
-  sendChat(c, null, q);
+  $('#question').value = '';
+  if (state.route.page === 'vehicle') {
+    if (/диагност|результат|что с машин|что с двигател|проверк/i.test(q)) mode = 'diagnose';
+    navigate({page: 'chat', vid: c.vid, sid: c.sid});
+  }
+  sendChat(c, mode, q);
 }
 
 let recording;
 const RECORD_MS = 60000;
 function updateComposer(c) {
-  if (!isCurrent(c) || !$('#mic')) return;
+  if (!isComposerCurrent(c) || !$('#mic')) return;
   const active = recording?.c === c ? recording : null;
   const running = active?.phase === 'recording';
   const mic = $('#mic'), label = running ? t('micStop') : t('mic');
@@ -676,7 +735,7 @@ async function uploadRecording(active) {
     if (!transcript) return endRecording(active, 'micEmpty');
     const c = active.c;
     c.question = transcript.slice(0, 2000);
-    if (isCurrent(c)) $('#question').value = c.question;
+    if (isComposerCurrent(c)) $('#question').value = c.question;
     endRecording(active, 'micReady');
   } catch {
     endRecording(active, 'micService');
@@ -686,19 +745,20 @@ async function uploadRecording(active) {
 }
 async function toggleRecording(c) {
   if (recording?.c === c) { stopRecording(recording); return; }
-  if (recording || c.busy) return;
+  if (recording || c.busy || !isComposerCurrent(c)) return;
   c.voiceNotice = '';
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder !== 'function') {
     c.voiceNotice = window.isSecureContext ? 'micUnsupported' : 'micSecure';
     updateComposer(c);
     return;
   }
+  if (!voiceConsent) { if (!dataDialog.open) openDataDialog(c); return; }
   const active = {c, lang, phase: 'asking', parts: [], abort: new AbortController()};
   recording = active;
   updateComposer(c);
   try {
     active.stream = await navigator.mediaDevices.getUserMedia({audio: true});
-    if (recording !== active || !isCurrent(c)) { releaseRecording(active); return; }
+    if (recording !== active || !isComposerCurrent(c)) { releaseRecording(active); return; }
     const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/ogg']
       .find(type => MediaRecorder.isTypeSupported?.(type));
     active.recorder = new MediaRecorder(active.stream, mimeType ? {mimeType} : undefined);
@@ -757,7 +817,7 @@ async function sendChat(c, mode, question = '') {
   if (mode === 'diagnose' && isCurrent(c)) main.scrollTop = 0;
   let done = false;
   try {
-    const res = await fetch(`${api}/chat`, jsonPost({conversation_id: c.id, vehicle_id: c.vid, session_id: c.sid, message: question, action: mode, lang}));
+    const res = await fetch(`${api}/chat`, jsonPost({conversation_id: c.id, vehicle_id: c.vid, session_id: c.sid, message: question, action: mode, lang, detail}));
     if (!res.ok) {
       const body = await res.json().catch(() => null);
       throw new Error(typeof body?.detail === 'string' ? body.detail : t('serviceError', {code: res.status}));
@@ -772,6 +832,7 @@ async function sendChat(c, mode, question = '') {
       } else if (event.type === 'message') turn.messages.push(event);
       else if (event.type === 'draft' && mode === 'draft_ticket' && event.draft?.draft_id) {
         turn.draft = c.draft = event.draft;
+        c.draftNeedsInspection = c.verdict?.inspect_first === true;
         c.edits = {conclusion: cleanAssistant(c.draft.conclusion), urgency: c.draft.urgency || '', operations: displayText((c.draft.operations || []).join('\n')), spare_parts: displayText((c.draft.spare_parts || []).join('\n'))};
       } else if (event.type === 'error') turn.errors.push(event.text || t('chatError'));
       else if (event.type === 'done') { done = true; return; }
@@ -788,7 +849,7 @@ async function sendChat(c, mode, question = '') {
     turn.pending = false;
     if (turn.errors.length && question && !turn.messages.length) {
       c.question = question;
-      if (isCurrent(c)) $('#question').value = question;
+      if (isComposerCurrent(c)) $('#question').value = question;
     }
     updateChat(c, true, turn.errors.length ? '.notice' : null);
     if (turn.draft && isCurrent(c) && !turn.errors.length) navigate({page: 'draft', vid: c.vid, sid: c.sid});
@@ -823,10 +884,23 @@ function renderDraft(v, s, c) {
   );
   const warning = warnings(d.warnings);
   main.replaceChildren(context(v, s), el('div', {class: 'intro'}, pill(t('unsent'), 'neutral', 'clock'), title(t('draft'))), ...(warning ? [warning] : []), form);
-  dock.replaceChildren(el('div', {class: 'dock'}, el('button', {id: 'confirm-ticket', class: 'primary full', type: 'submit', form: 'draft-form', disabled: c.confirming || c.confirmUncertain}, c.confirming ? t('sending') : t('confirm'), icon('check')), hint(t('confirmNote'))));
+  const blocked = () => c.draftNeedsInspection && !c.edits.inspectionConfirmed;
+  const button = el('button', {id: 'confirm-ticket', class: 'primary full', type: 'submit', form: 'draft-form',
+    'aria-describedby': 'confirm-note'}, c.confirming ? t('sending') : t('confirm'), icon('check'));
+  const note = hint('', {id: 'confirm-note', role: 'status'});
+  const syncConfirm = () => {
+    button.disabled = Boolean(c.confirming || c.confirmUncertain || blocked());
+    note.textContent = t(blocked() ? 'inspectBeforeSend' : 'confirmNote');
+  };
+  const inspection = c.draftNeedsInspection && checkRow('inspection-confirmed', t('inspectionConfirmed'), {
+    form: 'draft-form', required: true, checked: Boolean(c.edits.inspectionConfirmed), disabled: c.confirming || c.confirmUncertain,
+    onchange: e => { c.edits.inspectionConfirmed = e.target.checked; syncConfirm(); },
+  });
+  syncConfirm();
+  dock.replaceChildren(el('div', {class: 'dock'}, inspection, button, note));
 }
 async function confirmTicket(c) {
-  if (c.confirming || c.confirmUncertain || c.receipt) return;
+  if (c.confirming || c.confirmUncertain || c.receipt || (c.draftNeedsInspection && !c.edits.inspectionConfirmed)) return;
   const lines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const conclusion = c.edits.conclusion.trim();
   const override = c.edits.urgency !== c.draft.urgency ? (c.edits.urgencyReason || '').trim() : '';
@@ -838,6 +912,7 @@ async function confirmTicket(c) {
   const button = $('#confirm-ticket');
   button.disabled = true;
   button.textContent = t('sending');
+  if (c.draftNeedsInspection) $('#inspection-confirmed').disabled = true;
   $('#ticket-error').hidden = true;
   try {
     const data = await json(`${api}/tickets/confirm`, jsonPost(payload));

@@ -3,6 +3,7 @@
 Start the fake API first. Uses installed Chrome, or set MECHANIC_BROWSER to a Chromium executable.
 """
 import argparse
+import json
 import os
 import re
 import wave
@@ -122,11 +123,19 @@ def locales(page):
     expect(page.locator('html')).to_have_attribute('lang', 'hi')
 
 
+def accept_voice_consent(page):
+    dialog = page.locator('#data-dialog')
+    if dialog.is_visible():
+        dialog.get_by_role('checkbox').check()
+        dialog.locator('button.primary').click()
+
+
 def voice(page):
     open_chat(page)
     mic = page.locator('#mic')
     question = page.locator('#question')
     mic.click()
+    accept_voice_consent(page)
     expect(mic).to_have_attribute('aria-pressed', 'true')
     expect(page.locator('#mic-timer')).to_be_visible()
     expect(page.locator('#mic-timer')).to_have_text('0:01', timeout=3000)
@@ -144,10 +153,160 @@ def voice(page):
     assert page.locator('.measure').first.inner_text() == '0,25-0,30\xa0мм'
 
 
+def vehicle_voice(page):
+    open_vehicle(page)
+    question = page.get_by_role('textbox', name='Спросите про эту машину…')
+    expect(question).to_be_visible(timeout=1500)
+    # Keep the browser upload and fixture validation, substitute only the recognized phrase.
+    page.evaluate('''() => {
+        const fetch = window.fetch.bind(window);
+        window.fetch = async (path, options) => {
+            const response = await fetch(path, options);
+            if (path !== '/api/transcribe' || !response.ok) return response;
+            return Response.json({...await response.json(), text: 'ЧТО С МАШИНОЙ?'});
+        };
+    }''')
+    mic = page.locator('#mic')
+    mic.click()
+    accept_voice_consent(page)
+    expect(mic).to_have_attribute('aria-pressed', 'true')
+    expect(page.locator('#mic-timer')).to_have_text('0:01', timeout=4000)
+    with page.expect_response(lambda r: r.url.endswith('/api/transcribe')) as upload:
+        mic.click()
+    assert upload.value.ok, upload.value.text()
+    expect(question).to_have_value('ЧТО С МАШИНОЙ?')
+    expect(page.locator('main.vehicle')).to_be_visible()
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as chat:
+        page.locator('#send-question').click()
+    assert {k: chat.value.post_data_json[k] for k in ('vehicle_id', 'session_id', 'message', 'action')} == {
+        'vehicle_id': 'B418HK98', 'session_id': 'S-0009', 'message': 'ЧТО С МАШИНОЙ?', 'action': 'diagnose',
+    }
+    expect(page.locator('.verdict-head')).to_be_visible()
+    expect(page.locator('#chat-progress-row')).to_be_hidden()
+    page.go_back()
+    expect(question).to_be_editable()
+    question.fill('Какой тепловой зазор?')
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as followup:
+        page.locator('#send-question').click()
+    assert followup.value.post_data_json['action'] is None
+    expect(page.locator('.inline-cite').first).to_be_visible()
+
+
+def detail_mode(page):
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
+        open_chat(page)
+    assert request.value.post_data_json.get('detail') == 'brief'
+    page.get_by_role('button', name='Подробно', exact=True).click()
+    hint = page.get_by_text('Подробно – каждый шаг объясняется простыми словами')
+    expect(hint).to_be_visible()
+    assert hint.evaluate('el => el.clientHeight <= Math.ceil(parseFloat(getComputedStyle(el).lineHeight))'), 'Hint wraps at the default mobile width'
+    page.reload()
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
+        open_chat(page)
+    assert request.value.post_data_json['detail'] == 'detailed'
+    expect(page.get_by_role('button', name='Подробно', exact=True)).to_have_attribute('aria-pressed', 'true')
+    page.locator('#question').fill('Какой тепловой зазор?')
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
+        page.locator('#send-question').click()
+    assert request.value.post_data_json['detail'] == 'detailed'
+    expect(page.locator('#chat-progress-row')).to_be_hidden()
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
+        page.locator('[data-command="draft"]').click()
+    assert request.value.post_data_json['detail'] == 'detailed'
+    expect(page.locator('#draft-form')).to_be_visible()
+
+
+def inspection_required(page):
+    open_chat(page, 'K961TH198')
+    notice = page.get_by_text('Сначала осмотрите узел на машине', exact=True)
+    expect(notice).to_be_visible(timeout=1500)
+    command = page.locator('[data-command="draft"]')
+    assert notice.bounding_box()['y'] < command.bounding_box()['y']
+    command.click()
+    confirm = page.locator('#confirm-ticket')
+    check = page.get_by_role('checkbox', name='Признак подтверждён осмотром')
+    label = page.locator('label[for="inspection-confirmed"]')
+    expect(check).not_to_be_checked()
+    assert label.bounding_box()['height'] >= 56
+    expect(confirm).to_be_disabled()
+    expect(page.get_by_text('Отметьте выше, что осмотр подтвердил признак. После этого заявку можно отправить.')).to_be_visible()
+    posts = []
+    page.on('request', lambda r: posts.append(r) if r.url.endswith('/api/tickets/confirm') else None)
+    page.locator('#draft-form').dispatch_event('submit')
+    check.check()
+    expect(confirm).to_be_enabled()
+    check.uncheck()
+    expect(confirm).to_be_disabled()
+    assert not posts
+    check.check()
+    with page.expect_response(lambda r: r.url.endswith('/api/tickets/confirm')) as response:
+        confirm.click()
+    assert response.value.ok
+    expect(page.locator('.receipt-id')).to_be_visible()
+    ticket = page.locator('.receipt-id').inner_text()
+    card = page.request.get(f'{BASE}/api/vehicles/K961TH198').json()
+    assert card['open_ticket'] == ticket
+
+
+def data_consent(page):
+    page.get_by_role('link', name='Как мы обрабатываем данные').click(timeout=1500)
+    dialog = page.locator('#data-dialog')
+    expect(dialog.get_by_role('listitem')).to_have_count(6)
+    dialog.get_by_role('button', name='Закрыть').click()
+    open_vehicle(page)
+    page.evaluate("""() => {
+        const get = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        window.micRequests = 0;
+        navigator.mediaDevices.getUserMedia = options => { window.micRequests++; return get(options); };
+    }""")
+    mic = page.locator('#mic')
+    mic.click()
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_role('button', name='Продолжить')).to_be_disabled()
+    assert page.evaluate('window.micRequests') == 0
+    dialog.get_by_role('button', name='Отмена').click()
+    expect(mic).to_be_focused()
+    assert page.evaluate('window.micRequests') == 0
+    mic.click()
+    consent = dialog.get_by_role('checkbox', name='Согласен на обработку персональных данных')
+    expect(consent).not_to_be_checked()
+    consent.check()
+    dialog.get_by_role('button', name='Продолжить').click()
+    expect(dialog).to_be_hidden()
+    expect(mic).to_have_attribute('aria-pressed', 'true')
+    assert page.evaluate('window.micRequests') == 1
+    page.reload()
+    open_vehicle(page)
+    mic.click()
+    expect(mic).to_have_attribute('aria-pressed', 'true')
+    expect(dialog).to_be_hidden()
+
+
+def fleet_tickets(page):
+    vehicles = page.request.get(f'{BASE}/api/vehicles').json()
+    open_tickets = {v['vehicle_id']: v['open_ticket'] for v in vehicles if v['open_ticket']}
+    page.get_by_role('button', name='Сводка парка').click()
+    counter = page.get_by_role('button', name=re.compile('Заявок в работе'))
+    expect(counter.locator('strong')).to_have_text(str(len(open_tickets)), timeout=1500)
+    rows = page.locator('.vehicle-row')
+    counter.click()
+    expect(counter).to_have_attribute('aria-pressed', 'true')
+    expect(rows).to_have_count(len(open_tickets))
+    assert set(rows.evaluate_all('rows => rows.map(row => row.dataset.plate)')) == set(open_tickets)
+    assert 'T792HO98' in open_tickets
+    page.locator('[data-plate="T792HO98"]').click()
+    expect(page.locator('.vehicle-head')).to_contain_text(f"Заявка {open_tickets['T792HO98']}")
+    page.go_back()
+    expect(counter).to_have_attribute('aria-pressed', 'true')
+    counter.click()
+    expect(rows).to_have_count(len(vehicles))
+
+
 def voice_errors(page):
     open_chat(page)
     page.evaluate("Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {value: () => Promise.reject(new DOMException('', 'NotAllowedError'))})")
     page.locator('#mic').click()
+    accept_voice_consent(page)
     expect(page.locator('#voice-status')).to_contain_text('Доступ к микрофону закрыт')
     expect(page.locator('#question')).to_be_editable()
     page.evaluate('Object.defineProperty(window, "MediaRecorder", {value: undefined})')
@@ -161,6 +320,7 @@ def auto_stop(page):
     page.clock.install()
     mic = page.locator('#mic')
     mic.click()
+    accept_voice_consent(page)
     expect(mic).to_have_attribute('aria-pressed', 'true')
     expect(page.locator('#mic-timer')).to_have_text('0:01', timeout=3000)
     with page.expect_response(lambda r: r.url.endswith('/api/transcribe')) as upload:
@@ -177,7 +337,7 @@ def screenshot(page, name):
     page.evaluate('document.fonts.ready')
     assert page.evaluate('document.documentElement.scrollWidth === innerWidth'), name
     assert page.locator('main').evaluate('e => e.scrollWidth <= e.clientWidth'), name
-    measurements = page.locator('button:visible, select:visible, textarea:visible, input:not([type=radio]):visible, summary:visible, .check-row:visible, a:visible:not(.inline-cite)').evaluate_all('''nodes => nodes.map(node => {
+    measurements = page.locator('button:visible, select:visible, textarea:visible, input:not([type=radio],[type=checkbox]):visible, .check-label:visible, summary:visible, .check-row:visible, a:visible:not(.inline-cite)').evaluate_all('''nodes => nodes.map(node => {
         const r = node.getBoundingClientRect();
         const target = node.matches('.top button, .excerpt-toggle, a') ? 44 : 56;
         return [node.id || node.tagName, r.width, r.height, target];
@@ -209,14 +369,21 @@ def screenshot(page, name):
         return values.sort((a, b) => a[0]-b[0]);
     }''')
     assert not contrasts or contrasts[0][0] >= 4.5, (name, contrasts[:5])
-    page.screenshot(path=Path(__file__).resolve().parents[1] / 'docs' / 'screens' / f'{name}.png', animations='disabled')
+    default_screens = Path(__file__).resolve().parents[1] / 'docs' / 'screens'
+    page.screenshot(path=Path(os.getenv('MECHANIC_SCREENS') or default_screens) / f'{name}.png', animations='disabled')
 
 
 def screens(page):
     expect(page.locator('.vehicle-row').first).to_be_visible()
     screenshot(page, '01-park')
+    page.get_by_role('link', name='Как мы обрабатываем данные').click()
+    screenshot(page, '19-data-policy')
+    page.locator('#data-dialog').get_by_role('button', name='Закрыть').click()
     open_vehicle(page)
     screenshot(page, '02-vehicle')
+    page.locator('#mic').click()
+    screenshot(page, '20-voice-consent')
+    page.locator('#data-dialog').get_by_role('button', name='Отмена').click()
     page.locator('#diagnose').click()
     expect(page.locator('#chat-progress-row')).to_be_visible()
     expect(page.locator('#send-question')).to_be_hidden()
@@ -227,6 +394,7 @@ def screens(page):
     page.locator('#send-question').click()
     expect(page.locator('.inline-cite').first).to_be_visible()
     expect(page.locator('#chat-progress-row')).to_be_hidden()
+    page.get_by_role('button', name='Подробно', exact=True).click()
     screenshot(page, '06-chat-citation')
     page.locator('.inline-cite').first.click()
     expect(page.locator('#manual-image')).to_be_visible()
@@ -251,8 +419,11 @@ def screens(page):
     screenshot(page, '09-receipt')
     page.get_by_role('button', name='К списку машин').click()
     page.locator('.wide-link').click()
-    expect(page.locator('.fleet-count')).to_have_count(4)
+    expect(page.locator('.fleet-count')).to_have_count(5)
     screenshot(page, '10-fleet')
+    page.locator('[data-filter="open_ticket"]').click()
+    page.locator('[data-plate="T792HO98"]').click()
+    screenshot(page, '21-vehicle-ticket')
     page.goto(BASE)
     open_chat(page, 'M333YK47')
     screenshot(page, '04-normal')
@@ -275,6 +446,7 @@ def screens(page):
     expect(page.locator('.verdict-head')).to_contain_text('Тип отклонения не подтвержден')
     screenshot(page, '11-not-applicable')
     page.locator('#mic').click()
+    accept_voice_consent(page)
     expect(page.locator('#mic-timer')).to_have_text('0:01', timeout=4000)
     screenshot(page, '15-ru-recording')
     page.locator('#mic').click()
@@ -286,6 +458,13 @@ def screens(page):
     screenshot(page, '17-quarantine')
     page.locator('#language').click()
     screenshot(page, '18-language')
+    page.goto(BASE)
+    open_chat(page, 'K961TH198')
+    page.locator('.inspection-notice').scroll_into_view_if_needed()
+    screenshot(page, '22-inspection-verdict')
+    page.locator('[data-command="draft"]').click()
+    expect(page.locator('#confirm-ticket')).to_be_disabled()
+    screenshot(page, '23-inspection-draft')
 
 
 def real_voice(page):
@@ -304,6 +483,7 @@ def real_voice(page):
     screenshot(page, '11-not-applicable')
     mic = page.locator('#mic')
     mic.click()
+    accept_voice_consent(page)
     expect(page.locator('#mic-timer')).to_have_text('0:01', timeout=4000)
     screenshot(page, '15-ru-recording')
     expect(page.locator('#mic-timer')).to_have_text('0:04', timeout=5000)
@@ -500,13 +680,64 @@ def large_routes(page):
         no_overflow(page)
 
 
+def real_kickoff(page):
+    """Two paid requests maximum; no live ticket or speech writes."""
+    sent = []
+    expected = [
+        {'message': 'что с машиной?', 'action': 'diagnose', 'detail': 'brief'},
+        {'message': 'Какой тепловой зазор клапанов для этого двигателя?', 'action': None, 'detail': 'detailed'},
+    ]
+
+    def cap_chat(route):
+        payload = route.request.post_data_json
+        index = len(sent)
+        if (route.request.method != 'POST' or index >= len(expected)
+                or {key: payload.get(key) for key in expected[index]} != expected[index]
+                or payload['vehicle_id'] != 'B418HK98' or payload['session_id'] != 'S-0009'):
+            route.abort()
+            return
+        sent.append(payload)
+        route.continue_()
+
+    page.route('**/api/chat', cap_chat)
+    for path in ('/api/transcribe', '/api/tickets/confirm'):
+        page.route(f'**{path}', lambda route: route.abort())
+    open_vehicle(page)
+    for index, payload in enumerate(expected):
+        if index == 1:
+            page.get_by_role('button', name='Подробно', exact=True).click()
+        page.locator('#question').fill(payload['message'])
+        with page.expect_response(lambda r: r.url.endswith('/api/chat'), timeout=30_000) as response:
+            page.locator('#send-question').click()
+        res = response.value
+        assert res.ok and 'text/event-stream' in res.headers['content-type'], res.status
+        expect(page.locator('#chat-progress-row')).to_be_hidden(timeout=90_000)
+        events = [json.loads(line[6:]) for line in res.text().splitlines() if line.startswith('data: ')]
+        assert events[-1]['type'] == 'done' and not any(e['type'] == 'error' for e in events), [e for e in events if e['type'] == 'error']
+        assert any(e['type'] == 'message' and e.get('text', '').strip() for e in events)
+        expect(page.locator('.user-message').last).to_contain_text(payload['message'])
+        expect(page.get_by_role('alert')).to_have_count(0)
+        if not index:
+            assert sum(e['type'] == 'diagnosis' for e in events) == 1
+            expect(page.locator('.verdict-head')).to_be_visible()
+        else:
+            expect(page.locator('.agent-message').last).to_have_text(re.compile(r'\S'))
+        print(f"live {payload['action'] or 'question'} / {payload['detail']}: HTTP {res.status}, SSE done")
+    assert len(sent) == len(expected)
+    assert sent[0]['conversation_id'] == sent[1]['conversation_id']
+
+
 def main():
-    scenarios = {'layout': layout, 'locales': locales, 'voice': voice, 'voice_errors': voice_errors, 'auto_stop': auto_stop, 'interactions': interactions, 'network_errors': network_errors, 'large_routes': large_routes, 'screens': screens, 'real_voice': real_voice}
+    fake = (layout, locales, voice, voice_errors, auto_stop, interactions, network_errors, large_routes,
+            vehicle_voice, detail_mode, inspection_required, data_consent, fleet_tickets)
+    scenarios = {test.__name__: test for test in (*fake, screens, real_voice, real_kickoff)}
     parser = argparse.ArgumentParser()
     parser.add_argument('scenarios', nargs='*')
     parser.add_argument('--real-wav', type=Path, help='Russian speech WAV for the real_voice scenario (one paid diagnostic request)')
     args = parser.parse_args()
-    selected = args.scenarios or ['layout', 'locales', 'voice', 'voice_errors', 'auto_stop', 'interactions', 'network_errors', 'large_routes']
+    selected = args.scenarios or [test.__name__ for test in fake]
+    if 'real_kickoff' in selected and selected != ['real_kickoff']:
+        parser.error('Run real_kickoff separately (two paid chat requests).')
     if 'real_voice' in selected and (selected != ['real_voice'] or not args.real_wav or not args.real_wav.is_file()):
         parser.error('Run real_voice separately with --real-wav pointing to a WAV file.')
     with TemporaryDirectory(prefix='mechanic-', dir=os.getenv('MECHANIC_SCRATCH') or os.getenv('TMPDIR')) as temp, sync_playwright() as pw:
@@ -526,7 +757,7 @@ def main():
             page.set_default_timeout(7000)
             errors = []
             page.on('pageerror', lambda error: errors.append(str(error)))
-            page.goto('http://127.0.0.1:8000' if name == 'real_voice' else BASE)
+            page.goto('http://127.0.0.1:8000' if name in {'real_voice', 'real_kickoff'} else BASE)
             scenarios[name](page)
             assert not errors, errors
             print(f'{name}: pass')
