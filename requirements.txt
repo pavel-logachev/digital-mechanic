@@ -9,3 +9,4 @@ numpy==2.5.5
 sentence-transformers==6.3.0
 pytest==9.2.0
 socksio==1.0.0
+python-multipart==0.0.34
