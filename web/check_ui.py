@@ -213,23 +213,44 @@ def vehicle_voice(page):
 
 
 def detail_mode(page):
+    # переключателя в панели вопроса нет: ответ коротко, «Объяснить подробнее» – кнопкой под ответом,
+    # постоянный выбор – в последнем шаге инструкции
     with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
         open_chat(page)
     assert request.value.post_data_json.get('detail') == 'brief'
-    page.get_by_role('button', name='Подробно', exact=True).click()
-    hint = page.get_by_text('Подробно – каждый шаг объясняется простыми словами')
-    expect(hint).to_be_visible()
-    assert hint.evaluate('el => el.clientHeight <= Math.ceil(parseFloat(getComputedStyle(el).lineHeight))'), 'Hint wraps at the default mobile width'
+    expect(page.locator('.compose .detail-switch')).to_have_count(0)
+    more = page.locator('.more-detail')
+    expect(more).to_have_text('Объяснить подробнее')
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
+        more.click()
+    assert request.value.post_data_json['detail'] == 'detailed'
+    assert request.value.post_data_json['message'] == 'Объясните подробнее, по шагам'
+    expect(page.locator('.user-message').last).to_contain_text('Объясните подробнее, по шагам')
+    expect(page.locator('#chat-progress-row')).to_be_hidden()
+    expect(page.locator('.agent-message').last).to_be_visible()
+    expect(more).to_have_count(0)   # подробный ответ уже получен
+    page.locator('#question').fill('Какой тепловой зазор?')
+    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
+        page.locator('#send-question').click()
+    assert request.value.post_data_json['detail'] == 'brief'   # разовая просьба не меняет выбор
+    expect(page.locator('#chat-progress-row')).to_be_hidden()
+    # постоянный выбор в инструкции
+    page.goto(page.url.split('#')[0])
+    page.locator('#help').click()
+    for _ in range(5):
+        page.locator('#guide-next').click()
+    expect(page.locator('#detail-label')).to_have_text('Как объяснять ответы')
+    expect(page.locator('#detail-hint')).to_contain_text('давно работает с двигателями')
+    page.get_by_role('button', name='Подробно, по шагам', exact=True).click()
+    expect(page.get_by_role('button', name='Подробно, по шагам', exact=True)).to_have_attribute('aria-pressed', 'true')
+    expect(page.locator('#detail-hint')).to_contain_text('только начинает')
+    page.locator('#guide-next').click()
+    assert page.evaluate("localStorage.getItem('mechanic:detail')") == 'detailed'
     page.reload()
     with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
         open_chat(page)
     assert request.value.post_data_json['detail'] == 'detailed'
-    expect(page.get_by_role('button', name='Подробно', exact=True)).to_have_attribute('aria-pressed', 'true')
-    page.locator('#question').fill('Какой тепловой зазор?')
-    with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
-        page.locator('#send-question').click()
-    assert request.value.post_data_json['detail'] == 'detailed'
-    expect(page.locator('#chat-progress-row')).to_be_hidden()
+    expect(page.locator('.more-detail')).to_have_count(0)
     with page.expect_request(lambda r: r.url.endswith('/api/chat')) as request:
         page.locator('[data-command="draft"]').click()
     assert request.value.post_data_json['detail'] == 'detailed'
@@ -487,7 +508,7 @@ def screens(page):
     page.locator('#send-question').click()
     expect(page.locator('.inline-cite').first).to_be_visible()
     expect(page.locator('#chat-progress-row')).to_be_hidden()
-    page.get_by_role('button', name='Подробно', exact=True).click()
+    expect(page.locator('.more-detail')).to_be_visible()
     screenshot(page, '06-chat-citation')
     page.locator('.inline-cite').first.click()
     expect(page.locator('#manual-image')).to_be_visible()
@@ -810,8 +831,10 @@ def real_kickoff(page):
         page.route(f'**{path}', lambda route: route.abort())
     open_vehicle(page)
     for index, payload in enumerate(expected):
-        if index == 1:
-            page.get_by_role('button', name='Подробно', exact=True).click()
+        if index == 1:   # подробный режим выбирается в инструкции и хранится в браузере
+            page.evaluate("localStorage.setItem('mechanic:detail', 'detailed')")
+            page.reload()
+            expect(page.locator('#question')).to_be_visible()
         page.locator('#question').fill(payload['message'])
         with page.expect_response(lambda r: r.url.endswith('/api/chat'), timeout=30_000) as response:
             page.locator('#send-question').click()

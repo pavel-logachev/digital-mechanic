@@ -160,10 +160,11 @@ button:disabled { color: #4b5865; border-color: #8997a1; background: #e9eef1; cu
 .metric { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
 .metric + .metric { border-top: 1px solid var(--line); padding-top: 8px; }
 .fold { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--white); }
-summary { display: flex; min-height: var(--target); align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 16px; border-radius: 8px; list-style: none; cursor: pointer; font-weight: 700; }
+summary { position: relative; display: flex; min-height: var(--target); align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 40px 8px 16px; border-radius: 8px; list-style: none; cursor: pointer; font-weight: 700; }
 summary::-webkit-details-marker { display: none; }
-summary::after { content: ''; width: 9px; height: 9px; flex: none; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); margin-inline-start: auto; margin-inline-end: 3px; }
-details[open] > summary::after { transform: rotate(225deg); }
+/* стрелка всегда справа по центру строки, даже когда длинная надпись переносится на крупном шрифте */
+summary::after { content: ''; position: absolute; inset-inline-end: 19px; top: 50%; width: 9px; height: 9px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: translateY(-70%) rotate(45deg); }
+details[open] > summary::after { transform: translateY(-30%) rotate(225deg); }
 .fold-body { display: grid; gap: 8px; margin: 0; padding: 0 16px 16px; min-width: 0; }
 /* строки внутри раскрывающегося блока – список с разделителями, без рамок в рамке */
 .fold .checks { gap: 0; margin-inline: -16px; margin-bottom: -16px; }
@@ -217,7 +218,14 @@ ol.fold-body { padding-inline-start: 30px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 .compose, .question-row { display: grid; gap: 8px; }
+.detail-choice { display: grid; gap: 8px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--line); }
+.detail-choice .hint { margin: 0; }
 .detail-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.more-detail { justify-self: start; gap: 8px; }
+/* в инструкции – два варианта друг под другом: на узком экране с крупным шрифтом слово не рвется */
+.detail-choice .detail-switch { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.detail-choice .detail-switch button { border-radius: 8px !important; border: 1px solid var(--edge-line) !important; justify-content: flex-start; }
+.detail-choice .detail-switch button[aria-pressed=true] { border-color: var(--action) !important; }
 .detail-switch button:first-child { border-start-end-radius: 0; border-end-end-radius: 0; border-inline-end: 0; }
 .detail-switch button:last-child { border-start-start-radius: 0; border-end-start-radius: 0; }
 .detail-switch button[aria-pressed=true] { background: var(--action); border-color: var(--action); color: var(--white); }

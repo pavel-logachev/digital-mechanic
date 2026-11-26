@@ -227,7 +227,8 @@ function openGuide(step = 0) {
         el('p', {class: 'guide-text', id: 'guide-text'}, t(`guide${step + 1}Text`)),
         // крупный шрифт – сразу на первом шаге, а не только в конце инструкции
         step === 0 ? action([el('span', {class: 'size-face', 'aria-hidden': 'true'}, 'Aᴀ'), t(large ? 'guideSmaller' : 'guideBigger')],
-          () => { toggleLarge(); show(0); $('#guide-size', guide).focus(); }, {id: 'guide-size', 'aria-pressed': String(large)}) : null),
+          () => { toggleLarge(); show(0); $('#guide-size', guide).focus(); }, {id: 'guide-size', 'aria-pressed': String(large)}) : null,
+        last ? detailChoice(() => { $('#detail-hint', guide).textContent = t(detail === 'detailed' ? 'detailedHint' : 'briefHint'); }) : null),
       el('div', {class: 'guide-dots', 'aria-hidden': 'true'}, Array.from({length: total}, (_, i) => el('span', {class: i === step ? 'is-current' : null}))),
       el('div', {class: `guide-actions${step ? '' : ' single'}`}, step ? action([icon('prev'), t('back')], () => show(step - 1), {id: 'guide-prev'}) : null, next));
     $('.guide-body', guide).scrollTop = 0;
@@ -246,7 +247,7 @@ function toggleLarge() {
   stored('mechanic:large', String(large));
   applySettings();
   $('#font-size')?.setAttribute('aria-pressed', String(large));
-  if ($('#question')) resizeQuestion();
+  if ($('#question')) { $('#question').placeholder = questionHint(); resizeQuestion(); }
   if (state.route.page === 'chat') fitExcerpts(main);
 }
 function header() {
@@ -689,6 +690,9 @@ function renderTurn(c, turn, latestResult, opens) {
   const block = el('section', {class: 'turn'});
   if (turn.question) block.append(el('div', {class: 'user-message'}, el('strong', {}, t('mechanic')), el('p', {}, turn.question)));
   const answers = turn.messages.map((m, i) => el('article', {class: 'box agent-message'}, markdown(m.text, m.citations, `${turn.id}-${i}`, opens)));
+  // коротко – по умолчанию; кто только начинает, просит подробнее одной кнопкой под ответом, без переключателей
+  if (answers.length && turn.detail !== 'detailed' && turn.mode !== 'draft_ticket' && turn === c.turns.at(-1) && !turn.pending && !c.busy)
+    answers.push(action([t('moreDetail'), icon('down')], () => sendChat(c, null, t('moreDetailQ'), 'detailed'), {class: 'more-detail', 'data-command': 'more-detail'}));
   const log = trace(turn, opens.has(`steps-${turn.id}`));
   const diagnosisResponse = turn.diagnosis && answers.length ? el('details', {class: 'fold', open: opens.has(`answer-${turn.id}`), 'data-trace': `answer-${turn.id}`}, el('summary', {}, t('answer')), el('div', {class: 'fold-body'}, answers)) : null;
   // последний результат: объяснение помощника сразу видно под карточкой, пока его нет – место ответа с индикатором
@@ -779,21 +783,23 @@ function renderChat(v, s, c) {
   renderComposer(c);
   updateChat(c);
 }
-function detailSwitch() {
-  const group = el('div', {class: 'detail-switch', role: 'group', 'aria-label': t('answerDetail'), 'aria-describedby': 'detail-hint'});
+// «Как объяснять ответы» – один раз в инструкции; запрос в /api/chat несет выбранный уровень
+function detailChoice(onChange) {
+  const group = el('div', {class: 'detail-switch', role: 'group', 'aria-labelledby': 'detail-label'});
   for (const mode of ['brief', 'detailed']) {
     group.append(action(t(mode), () => {
       detail = mode;
       stored('mechanic:detail', mode);
       for (const button of group.children) button.setAttribute('aria-pressed', String(button.dataset.detail === mode));
+      onChange?.();
     }, {'data-detail': mode, 'aria-pressed': String(detail === mode)}));
   }
-  return [group, hint(t('detailHint'), {id: 'detail-hint', class: 'visually-hidden'})];
+  return el('div', {class: 'detail-choice'}, el('strong', {id: 'detail-label'}, t('answerDetail')), group,
+    el('p', {class: 'hint', id: 'detail-hint'}, t(detail === 'detailed' ? 'detailedHint' : 'briefHint')));
 }
 function renderComposer(c) {
   const composer = el('form', {class: 'compose', onsubmit: e => { e.preventDefault(); ask(c, c.question); }},
-    isCurrent(c) ? detailSwitch() : null,
-    el('div', {class: 'question-row'}, el('textarea', {id: 'question', name: 'question', rows: '1', placeholder: t('question'), 'aria-label': t('question'), autocomplete: 'off', maxlength: '2000', oninput: e => { c.question = e.target.value; if (c.voiceNotice === 'micReady') c.voiceNotice = ''; updateComposer(c); }}),
+    el('div', {class: 'question-row'}, el('textarea', {id: 'question', name: 'question', rows: '1', placeholder: questionHint(), 'aria-label': t('question'), autocomplete: 'off', maxlength: '2000', oninput: e => { c.question = e.target.value; if (c.voiceNotice === 'micReady') c.voiceNotice = ''; updateComposer(c); }}),
       el('div', {class: 'voice-status', id: 'voice-live', role: 'status', hidden: true}, el('span', {id: 'voice-label'}), el('span', {id: 'mic-timer', 'aria-hidden': 'true'})),
       iconButton(t('mic'), 'mic', () => toggleRecording(c), {id: 'mic'}),
       el('button', {id: 'send-question', class: 'primary', type: 'submit', 'aria-label': t('sendQuestion'), hidden: true}, t('send'))),
@@ -806,6 +812,9 @@ function renderComposer(c) {
   $('#question').value = c.question;
   updateComposer(c);
 }
+// на узком экране с крупным шрифтом длинная подсказка в поле обрезается – тогда короче
+const questionHint = () => t(large && innerWidth < 400 ? 'questionShort' : 'question');
+addEventListener('resize', () => { const q = $('#question'); if (q) q.placeholder = questionHint(); });
 function resizeQuestion() {
   const input = $('#question');
   if (!input || input.hidden) return;
@@ -995,16 +1004,16 @@ async function readEvents(response, visit) {
     reader.releaseLock();
   }
 }
-async function sendChat(c, mode, question = '') {
+async function sendChat(c, mode, question = '', level = detail) {
   if (c.busy || recording?.c === c || (mode === 'draft_ticket' && !canDraft(c.verdict))) return;
   c.busy = true;
-  const turn = {id: c.turns.length + 1, question, mode, pending: true, steps: [], messages: [], errors: []};
+  const turn = {id: c.turns.length + 1, question, mode, detail: level, pending: true, steps: [], messages: [], errors: []};
   c.turns.push(turn);
   updateChat(c, false, question ? '.user-message' : null);
   if (mode === 'diagnose' && isCurrent(c)) main.scrollTop = 0;
   let done = false;
   try {
-    const res = await fetch(`${api}/chat`, jsonPost({conversation_id: c.id, vehicle_id: c.vid, session_id: c.sid, message: question, action: mode, lang, detail}));
+    const res = await fetch(`${api}/chat`, jsonPost({conversation_id: c.id, vehicle_id: c.vid, session_id: c.sid, message: question, action: mode, lang, detail: level}));
     if (!res.ok) {
       const body = await res.json().catch(() => null);
       throw new Error(typeof body?.detail === 'string' ? body.detail : t('serviceError', {code: res.status}));
