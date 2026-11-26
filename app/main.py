@@ -8,12 +8,12 @@ import threading
 import time
 import logging
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import agent, clients, config, data
+from . import agent, clients, config, data, stt
 from .manuals import BY_ID
 
 log = logging.getLogger("mechanic")
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 app = FastAPI(title="Цифровой механик", version="1.0")
 
-# --- простая защита стенда паролем (ACCESS_PASSWORD в .env; пусто — открыт) ---
+# --- простая защита стенда паролем (ACCESS_PASSWORD в .env; пусто – открыт) ---
 COOKIE = "dm_access"
 
 
@@ -133,6 +133,7 @@ class ChatIn(BaseModel):
     session_id: str | None = None
     message: str = ""
     action: str | None = None
+    lang: str = "ru"
 
 
 ACTION_TEXT = {
@@ -157,8 +158,8 @@ def chat(body: ChatIn, request: Request):
     def work():
         t0 = time.time()
         try:
-            agent.Agent(conv, q.put).run(text[:2000])
-        except Exception as e:  # noqa: BLE001 — показываем механику понятную ошибку, детали в лог
+            agent.Agent(conv, q.put, lang=body.lang).run(text[:2000])
+        except Exception as e:  # noqa: BLE001 – показываем механику понятную ошибку, детали в лог
             log.exception("agent failed")
             q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте ещё раз."})
         finally:
@@ -180,6 +181,17 @@ def chat(body: ChatIn, request: Request):
 
     return StreamingResponse(stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/transcribe")
+async def transcribe(request: Request, audio: UploadFile = File(...), lang: str = Form("ru")):
+    _rate_limit(request)
+    data_ = await audio.read()
+    try:
+        text = stt.transcribe(data_, stt.audio_format(audio.content_type or "", audio.filename or ""), lang)
+    except stt.SttError as e:
+        raise HTTPException(502, f"Не удалось распознать речь: {e}")
+    return {"text": text, "lang": lang}
 
 
 class ConfirmIn(BaseModel):

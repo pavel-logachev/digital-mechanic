@@ -42,5 +42,6 @@ OPENROUTER_API_KEY = env("OPENROUTER_API_KEY")
 OPENROUTER_PROXY = env("OPENROUTER_PROXY")  # например socks5h://atr-sing-box:1080
 JEV_MODEL = env("JEV_MODEL", "typesafe/jev-1.13")
 EMBED_MODEL = env("EMBED_MODEL", "intfloat/multilingual-e5-small")
+STT_MODEL = env("STT_MODEL", "google/gemini-3.5-flash-lite")  # распознавание голосовых вопросов
 
 ACCESS_PASSWORD = env("ACCESS_PASSWORD")  # пусто = стенд открыт

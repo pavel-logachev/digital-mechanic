@@ -26,3 +26,8 @@ s.page_png(manual_id: str, page: int) -> pathlib.Path   # рендер стра�
   - `{"type":"error","text":str}`, `{"type":"done"}`
 - `POST /api/tickets/confirm` `{draft_id, conclusion?, urgency?, operations?, spare_parts?}` → `{"ticket_id":"TKT-0001","status":"created"}` или 4xx `{detail}`. Только этот вызов отправляет заявку в ТОиР.
 - `GET /api/health`
+
+## Дополнения 26.11 (после кик-оффа)
+- `POST /api/chat` принимает поле `lang`: `"ru"|"uz"|"tg"|"ky"|"kk"|"hi"|"en"` (по умолчанию `"ru"`). Агент отвечает на этом языке; цитаты из руководств остаются на русском (оригинал), рядом агент даёт перевод смысла. Текст карточки вердикта (`action`, `urgency_reasons`, `warnings`) пока на русском, интерфейс переводит свои подписи сам.
+- `POST /api/transcribe` (multipart/form-data, поле `audio` — webm/ogg/mp4/wav до 60 с, поле `lang` — подсказка) → `{"text": str, "lang": str}`. Голосовой вопрос: интерфейс записывает звук через MediaRecorder, получает текст, показывает его в поле ввода, механик может поправить и отправить.
+- Во всех текстах интерфейса — короткое тире «–», не длинное «—».

@@ -1,7 +1,7 @@
-"""Приоритет (urgency) заявки и рекомендуемое действие — детерминированно, в коде.
+"""Приоритет (urgency) заявки и рекомендуемое действие – детерминированно, в коде.
 
 Модель приоритет не выбирает: она только объясняет механику результат этой функции.
-Пороги — политика команды (версия PRIO-1), не норматив заказчика.
+Пороги – политика команды (версия PRIO-1), не норматив заказчика.
 """
 from __future__ import annotations
 
@@ -64,13 +64,13 @@ def _usable(s: dict) -> bool:
 
 
 def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict] | None = None) -> Verdict:
-    """result — ответ /diagnose; sessions — история этой машины по времени; tickets — уже созданные заявки."""
+    """result – ответ /diagnose; sessions – история этой машины по времени; tickets – уже созданные заявки."""
     tickets = tickets or []
     status, quality = result["status"], result.get("signal_quality")
     window = _history_window(sessions, result["session_id"]) or [result]
     past = [s for s in window if s["session_id"] != result["session_id"]]
 
-    # 1. Плохая запись — абсолютный приоритет: никаких выводов о двигателе и заявки.
+    # 1. Плохая запись – абсолютный приоритет: никаких выводов о двигателе и заявки.
     if status == "check_failed" or quality == "bad":
         return Verdict("check_failed", None, "Повторите запись звука: по этой записи выводов о двигателе нет.",
                        False, ["Запись непригодна для анализа, оценка и уверенность не используются.",
@@ -81,7 +81,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
 
     if status == "normal":
         v = Verdict("normal", None, "Можно продолжать эксплуатацию: эта проверка отклонений не выявила.", False,
-                    [f"Оценка отклонения {fmt(score)} из 1 — низкая, уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
+                    [f"Оценка отклонения {fmt(score)} из 1 – низкая, уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
                      "Это результат одной акустической проверки, а не акт технического состояния."], rule="R2-normal")
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):
             v.action = "Результат «норма» под сомнением: запись с помехами или низкая уверенность. Лучше повторить запись."
@@ -91,7 +91,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
             s = unresolved[-1]
             v.warnings.append(
                 f"Раньше ({_date(s)}, {s['session_id']}) было критичное отклонение {s['anomaly_type']} «{s['anomaly_title']}», "
-                "заявки по нему нет. Текущая «норма» не подтверждает, что неисправность устранена — нужен осмотр.")
+                "заявки по нему нет. Текущая «норма» не подтверждает, что неисправность устранена – нужен осмотр.")
             v.action = "Проверка в норме, но прошлое критичное отклонение не закрыто: осмотрите машину перед выпуском."
             v.rule = "R2-normal-unresolved"
         if hist_note:
@@ -109,7 +109,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if appl == "no":
         note = ENGINE_DRIVE_NOTE.get(code, "Такой класс неисправности не соответствует этому двигателю.")
         warnings.append(f"Класс {code} «{result.get('anomaly_title')}» не подходит к двигателю {engine}. {note} "
-                        "Вероятна ошибка ML-модели или карточки машины — нужен очный осмотр, диагноз по этой записи не подтверждён.")
+                        "Вероятна ошибка ML-модели или карточки машины – нужен очный осмотр, диагноз по этой записи не подтверждён.")
         return Verdict("anomaly", "medium", "Нужен очный осмотр: тип отклонения не соответствует двигателю этой машины.", True,
                        [f"Отклонение {fmt(score)} из 1, уверенность {fmt(conf)}, но класс {code} неприменим к {engine}.",
                         "Средний приоритет: машину стоит осмотреть, но конкретную неисправность по записи назвать нельзя."],
@@ -120,7 +120,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     strong = score is not None and conf is not None and d(score) >= SCORE_HIGH and d(conf) >= CONF_HIGH and quality == "good"
     doubtful = quality == "warning" or (conf is not None and d(conf) < CONF_MIN)
 
-    reasons.append(f"Тип: {code} «{result.get('anomaly_title')}» — {SEVERITY_RU.get(sev, 'не определена')} неисправность.")
+    reasons.append(f"Тип: {code} «{result.get('anomaly_title')}» – {SEVERITY_RU.get(sev, 'не определена')} неисправность.")
     reasons.append(f"Оценка отклонения {fmt(score)} из 1 ({_band(score)}), уверенность модели {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.")
     if repeated:
         reasons.append(f"Повторяется: то же отклонение было {len(repeated)} раз(а) в последних проверках ({', '.join(_date(s) for s in repeated)}).")
@@ -129,7 +129,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     if appl == "check":
         warnings.append(f"Убедитесь, что на этой машине есть узел «{result.get('anomaly_title')}»: для {engine} это зависит от комплектации.")
     if doubtful:
-        warnings.append("Запись с помехами или уверенность модели низкая — подтвердите повторной записью или осмотром.")
+        warnings.append("Запись с помехами или уверенность модели низкая – подтвердите повторной записью или осмотром.")
 
     if sev == "C":
         urg, rule = "high", "R4-critical"
@@ -172,7 +172,7 @@ def _history_note(past: list[dict]) -> str:
     parts = []
     for s in past[-4:]:
         st = {"normal": "норма", "anomaly": f"отклонение {s.get('anomaly_type')}", "check_failed": "сбой записи"}[s["status"]]
-        parts.append(f"{_date(s)} — {st}")
+        parts.append(f"{_date(s)} – {st}")
     return "Прошлые проверки: " + "; ".join(parts) + "."
 
 
