@@ -557,6 +557,8 @@ def screens(page):
     page.get_by_text('Прошлые проверки', exact=True).click()
     page.locator('[data-session="S-0021"]').click()
     expect(page.locator('#chat-progress-row')).to_be_hidden()
+    expect(page.locator('.verdict-head h2')).to_have_text('Результат не подходит к этому двигателю')   # не красный «Дефектовка до рейса»
+    expect(page.locator('.verdict-head')).not_to_have_class(re.compile(r'\bred\b'))
     expect(page.locator('.verdict-head')).to_contain_text('Программа ошиблась')
     expect(page.locator('.defect-note')).to_contain_text('Заявку по этой проверке не создаем')
     expect(page.locator('[data-command="draft"]')).to_have_count(0)

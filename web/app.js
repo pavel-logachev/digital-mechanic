@@ -105,7 +105,8 @@ const stageOf = d => d?.verdict || d?.status;
 function vehicleStage(v, s = v.last_check, latest = s === v.last_check) {
   const stage = stageOf(s);
   // красный «Дефектовка до рейса» – любой высокий приоритет (#102: дефектовка до выпуска), чтобы заголовок не спорил с «Что делать»
-  const critical = x => x?.severity === 'C' || x?.rule === 'R4-critical' || x?.urgency === 'high';
+  // несовместимый с двигателем класс (R3) – ошибка программы, а не тяжелая неисправность: без красного заголовка
+  const critical = x => x?.rule !== 'R3-not-applicable' && (x?.severity === 'C' || x?.rule === 'R4-critical' || x?.urgency === 'high');
   if (critical(s) || s?.fleet_status === 'quarantine' || stage === 'quarantine' || (latest && (v.fleet_status === 'quarantine' || v.last_severity === 'C' || v.last_urgency === 'high'))) return 'quarantine';
   if (stage === 'check_failed') return stage;
   if (stage === 'anomaly' || (latest && stage === 'normal' && v.fleet_status === 'attention')) return 'anomaly';
@@ -507,10 +508,11 @@ function resultStage(c, d) {
   return status === 'anomaly' && stageOf(d) === 'normal' ? 'normal' : status;
 }
 function verdict(c, d, id, opens) {
-  const status = resultStage(c, d);
-  const fail = status === 'check_failed', normal = status === 'normal';
   const incompatible = d.rule === 'R3-not-applicable';
-  const vTitle = t(status === 'quarantine' ? 'stopRelease' : fail ? 'failedTitle' : stages[status][0]);
+  const stage0 = resultStage(c, d);
+  const status = incompatible && stage0 === 'quarantine' ? 'anomaly' : stage0;
+  const fail = status === 'check_failed', normal = status === 'normal';
+  const vTitle = t(incompatible ? 'mismatchTitle' : status === 'quarantine' ? 'stopRelease' : fail ? 'failedTitle' : stages[status][0]);
   const cause = !normal && !fail && !incompatible && faultName(d);
   const entries = Array.isArray(d.urgency_reasons) ? d.urgency_reasons.filter(Boolean) : [];
   // The API sometimes sends a metrics readout as one of the reasons.
