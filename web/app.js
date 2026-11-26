@@ -246,6 +246,7 @@ async function showRoute(route, focus = false, scroll = 0) {
   dock.replaceChildren();
   main.className = route.page;
   main.scrollTop = 0;
+  if (state.me === undefined) state.me = await json(`${api}/me`).catch(() => null);
   const load = ['park', 'fleet'].includes(route.page) && !state.vehicles ? async () => { state.vehicles = await json(`${api}/vehicles`); }
     : route.vid && !state.cards.has(route.vid) ? async () => { state.cards.set(route.vid, await json(endpoint(route.vid))); }
     : null;
@@ -315,9 +316,11 @@ function renderPark() {
   update();
   main.replaceChildren(el('div', {class: 'search-group'}, el('label', {for: 'vehicle-search'}, t('search')),
     el('div', {class: 'search'}, icon('search'), input, clear)),
-    action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
+    state.me?.user?.role !== 'mechanic' && action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
     el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo'))), list,
-    el('a', {class: 'data-link', href: '#data-dialog', 'aria-haspopup': 'dialog', onclick: e => { e.preventDefault(); openDataDialog(); }}, t('dataPolicy')));
+    el('a', {class: 'data-link', href: '#data-dialog', 'aria-haspopup': 'dialog', onclick: e => { e.preventDefault(); openDataDialog(); }}, t('dataPolicy')),
+    state.me?.user && el('p', {class: 'account'}, `${state.me.user.name} – ${state.me.user.role_name.toLocaleLowerCase('ru')}`, ' ',
+      action(t('logout'), async () => { await fetch(`${api}/logout`, {method: 'POST'}); location.reload(); }, {class: 'link-button'})));
 }
 function renderFleet() {
   const items = orderedVehicles();

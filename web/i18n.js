@@ -168,6 +168,7 @@ scoreChart|Оценка отклонения по проверкам|Tekshiruvla
 scoreScale|0 – норма, 1 – сильное отклонение|0 – me’yor, 1 – kuchli og‘ish|0 – меъёр, 1 – инҳирофи сахт|0 – норма, 1 – катуу четтөө|0 – қалыпты, 1 – күшті ауытқу|0 – सामान्य, 1 – गंभीर विचलन|0 – normal, 1 – strong deviation
 noScore|нет оценки|baho yo‘q|баҳо нест|баа жок|баға жоқ|स्कोर नहीं|no score
 pageShort|стр. {page}|{page}-bet|саҳ. {page}|{page}-бет|{page}-бет|पृष्ठ {page}|p. {page}
+logout|Выйти|Chiqish|Баромадан|Чыгуу|Шығу|लॉग आउट|Log out
 checkedLabel|Проверка|Tekshiruv|Санҷиш|Текшерүү|Тексеру|जाँच|Check
 checkedAt|Дата и время проверки|Tekshiruv sanasi va vaqti|Сана ва вақти санҷиш|Текшерүүнүн күнү жана убактысы|Тексерілген күн мен уақыт|जाँच की तारीख और समय|Check date and time
 overrideLabel|Причина изменения приоритета|Ustuvorlikni o‘zgartirish sababi|Сабаби иваз кардани афзалият|Артыкчылыкты өзгөртүүнүн себеби|Басымдықты өзгерту себебі|प्राथमिकता बदलने की वजह|Reason for changing priority

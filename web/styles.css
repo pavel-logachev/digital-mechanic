@@ -276,3 +276,7 @@ dialog::backdrop { background: #172326b3; }
 .ref-pages { display: flex; flex-wrap: wrap; gap: 8px; }
 .page-chip { display: inline-flex; align-items: center; min-height: var(--target); min-width: var(--target); padding: 8px 14px; border: 1px solid var(--edge-line); border-radius: 7px; background: var(--white); color: var(--action); font-weight: 700; text-decoration: none; font-variant-numeric: tabular-nums; }
 .page-chip:active { background: var(--active); }
+
+/* кто вошел: внизу списка машин, рядом со ссылкой об обработке данных */
+.account { margin: -12px 0 0; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.link-button { min-height: var(--target); padding-inline: 0; border-color: transparent; background: none; color: var(--action); font-weight: 400; text-decoration: underline; }

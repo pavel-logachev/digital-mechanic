@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Callable
 
-from . import clients, data, llm, verify
+from . import clients, config, data, llm, verify
 from .faults import FAULTS, SEVERITY_RU, applicability
 from .manuals import BY_ID, manual_ids_for_engine, manuals_for_engine
 from .priority import evaluate
@@ -55,6 +55,7 @@ SYSTEM = """Ты «Цифровой механик», помощник меха�
 6. ML даёт гипотезу по звуку, а не диагноз. Пиши «вероятно», «признаки указывают».
 7. Если в руководстве есть порядок или последовательность (затяжки, регулировки, разборки) – перечисли её в чате нумерованным списком со ссылкой. Если порядок показан только цифрами на рисунке и текстом его прочитать нельзя – так и скажи и дай ссылку на страницу с рисунком.
 8. На вопросы не про эту машину и не про ремонт/эксплуатацию – вежливо верни разговор к машине.
+9. К механику обращайся на «вы», как к опытному коллеге: без панибратства и без сюсюканья. Букву «ё» не используй, тире – короткое «–».
 
 Карточку вердикта (статус, оценка отклонения, уверенность, качество записи, приоритет и его основания) механик уже видит на экране – не пересказывай эти цифры и не повторяй вердикт. После get_diagnosis при отклонении сразу переходи к сути, коротко (до ~180 слов), в формате:
 **Что, вероятно, не так** – 1–2 предложения.
@@ -123,6 +124,35 @@ class Conversation:
 
 _convs: dict[str, Conversation] = {}
 _searcher = None
+_confirm_lock = threading.Lock()
+
+
+# Разговоры и черновики переживают перезапуск сервиса: после каждого ответа пишем их в STATE_DIR/conversations.
+def _conv_path(cid: str):
+    safe = "".join(ch for ch in cid if ch.isalnum() or ch in "-_")[:80] or "x"
+    return config.STATE_DIR / "conversations" / f"{safe}.json"
+
+
+def save_conversation(c: Conversation) -> None:
+    try:
+        path = _conv_path(c.id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"id": c.id, "vehicle_id": c.vehicle_id, "session_id": c.session_id, "messages": c.messages,
+                                   "seen": sorted([list(x) for x in c.seen]), "diagnosis": c.diagnosis, "verdict": c.verdict,
+                                   "drafts": c.drafts}, ensure_ascii=False, default=str), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        pass  # потеря копии разговора не должна ломать ответ механику
+
+
+def _load_conversation(cid: str) -> Conversation | None:
+    try:
+        raw = json.loads(_conv_path(cid).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return Conversation(raw["id"], raw["vehicle_id"], raw.get("session_id"), raw.get("messages") or [],
+                        {tuple(x) for x in raw.get("seen") or []}, raw.get("diagnosis"), raw.get("verdict"), raw.get("drafts") or {})
 
 
 def searcher():
@@ -134,7 +164,9 @@ def searcher():
 
 
 def get_conversation(cid: str, vehicle_id: str, session_id: str | None) -> Conversation:
-    c = _convs.get(cid)
+    c = _convs.get(cid) or _load_conversation(cid)
+    if c is not None:
+        _convs[cid] = c
     if c is None or c.vehicle_id != vehicle_id or (session_id and c.session_id != session_id):
         c = Conversation(cid, vehicle_id, session_id)
         _convs[cid] = c
@@ -145,6 +177,14 @@ def find_draft(draft_id: str) -> tuple[Conversation, dict] | None:
     for c in _convs.values():
         if draft_id in c.drafts:
             return c, c.drafts[draft_id]
+    # после перезапуска сервиса черновик ищем в сохраненных разговорах
+    folder = config.STATE_DIR / "conversations"
+    if folder.exists():
+        for path in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:500]:
+            c = _load_conversation(path.stem)
+            if c and draft_id in c.drafts:
+                _convs[c.id] = c
+                return c, c.drafts[draft_id]
     return None
 
 
@@ -372,8 +412,14 @@ def _summary(name: str, out: dict) -> str:
     return "готово"
 
 
-def confirm_ticket(draft_id: str, edits: dict) -> dict:
-    """Единственный путь в ТОиР: вызывается кнопкой механика. Повторная проверка всех полей кодом."""
+def confirm_ticket(draft_id: str, edits: dict, author: str | None = None) -> dict:
+    """Единственный путь в ТОиР: вызывается кнопкой механика. Повторная проверка всех полей кодом.
+    Двойное нажатие и повтор запроса не создают вторую заявку: подтверждения идут по одному."""
+    with _confirm_lock:
+        return _confirm(draft_id, edits, author)
+
+
+def _confirm(draft_id: str, edits: dict, author: str | None = None) -> dict:
     found = find_draft(draft_id)
     if not found:
         raise ValueError("Черновик не найден или устарел. Попросите агента подготовить заявку заново.")
@@ -397,7 +443,8 @@ def confirm_ticket(draft_id: str, edits: dict) -> dict:
     manual_change = payload["urgency"] != d["urgency"]
     data.add_ticket({"ticket_id": d["ticket_id"], "vehicle_id": d["vehicle_id"], "session_id": d["session_id"],
                      "anomaly_type": d["anomaly_type"], "urgency": payload["urgency"], "conclusion": payload["conclusion"],
-                     "urgency_changed_by_mechanic": manual_change})
+                     "urgency_changed_by_mechanic": manual_change, "created_by": author})
     conv.messages.append({"role": "user", "content": f"[Система] Механик подтвердил черновик {draft_id}. "
                           f"ТОиР создал заявку {d['ticket_id']} (приоритет {payload['urgency']})."})
+    save_conversation(conv)
     return res
