@@ -323,3 +323,6 @@ dialog::backdrop { background: #172326b3; }
 /* ответ помощника никогда не раздвигает экран: длинные коды и артикулы переносятся */
 .markdown, .markdown > *, .markdown li, .fold-body > *, .message-sources, .source-excerpt { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .markdown table { display: block; max-width: 100%; overflow-x: auto; }
+
+/* кнопка «Отправить» под распознанным текстом – слово целиком, без переноса по буквам */
+#send-question { white-space: nowrap; overflow-wrap: normal; flex: none; }

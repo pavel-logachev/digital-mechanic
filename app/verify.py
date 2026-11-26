@@ -158,8 +158,7 @@ def quote_for(answer: str, mid: str, page: int, ptext: str) -> str:
         return ("…" if a else "") + flat[a:b].strip() + ("…" if b < len(flat) else "")
     words = {w for s in sents for w in re.findall(r"[а-яёa-z]{5,}", s.lower())}
     best, score = "", 0
-    for line in re.split(r"(?<=[.;:])\s+|\n(?=\s*(?:[А-ЯЁA-Z0-9•–-]))", ptext):
-        line = " ".join(line.split())
+    for line in re.split(r"(?<=[.;:])\s+|\n", ptext):
         lw = set(re.findall(r"[а-яёa-z]{5,}", line.lower()))
         sc = len(words & lw)
         if sc > score and 20 < len(line) < 400:

@@ -464,7 +464,8 @@ function verdict(c, d, id, opens) {
     fail && (d.description || d.reason) && el('p', {}, t('rejectReason', {reason: lowerStart(cleanQuote(d.description || d.reason).replace(/^запись отбракована:\s*/iu, ''))})),
     el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
       el('p', {}, d.action || t(fail ? 'nextFail' : normal ? 'nextNormal' : 'nextAnomaly')),
-      fail && reasons(recordTips(d.description || d.reason).map(key => t(key)))),
+      fail && reasons(recordTips(d.description || d.reason).map(key => t(key))),
+      fail && hint(t('rerecordWhere'))),
     !fail && whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t(normal ? 'note' : 'why')), reasons(whyLines.map(index => entries[index]))) : null,
     priorityLabel(d.urgency) && el('p', {class: 'priority-label'}, priorityLine(d.urgency)));
   const metrics = el('dl', {class: 'metrics'}, metric(t('score'), score(d.anomaly_score) ? `${scoreText(d.anomaly_score)} / 1` : null),
