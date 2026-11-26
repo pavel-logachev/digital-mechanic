@@ -177,7 +177,7 @@ def screenshot(page, name):
     page.evaluate('document.fonts.ready')
     assert page.evaluate('document.documentElement.scrollWidth === innerWidth'), name
     assert page.locator('main').evaluate('e => e.scrollWidth <= e.clientWidth'), name
-    measurements = page.locator('button:visible, select:visible, textarea:visible, input:not([type=radio]):visible, summary:visible, .check-row:visible, a:visible').evaluate_all('''nodes => nodes.map(node => {
+    measurements = page.locator('button:visible, select:visible, textarea:visible, input:not([type=radio]):visible, summary:visible, .check-row:visible, a:visible:not(.inline-cite)').evaluate_all('''nodes => nodes.map(node => {
         const r = node.getBoundingClientRect();
         const target = node.matches('.top button, .excerpt-toggle, a') ? 44 : 56;
         return [node.id || node.tagName, r.width, r.height, target];

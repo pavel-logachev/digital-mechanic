@@ -159,6 +159,7 @@ priorityLine|Приоритет: {level}|Ustuvorlik: {level}|Афзалият: {
 more|Еще|Ko‘proq|Бештар|Дагы|Толығырақ|और पढ़ें|More
 less|Свернуть|Yig‘ish|Пинҳон кардан|Жыйноо|Жию|कम दिखाएँ|Show less
 zoom|Масштаб|Masshtab|Миқёс|Масштаб|Масштаб|ज़ूम|Zoom
+note|Учтите|E’tibor bering|Диққат кунед|Эске алыңыз|Ескеріңіз|ध्यान दें|Keep in mind
 checkedLabel|Проверка|Tekshiruv|Санҷиш|Текшерүү|Тексеру|जाँच|Check
 checkedAt|Дата и время проверки|Tekshiruv sanasi va vaqti|Сана ва вақти санҷиш|Текшерүүнүн күнү жана убактысы|Тексерілген күн мен уақыт|जाँच की तारीख और समय|Check date and time
 overrideLabel|Причина изменения приоритета|Ustuvorlikni o‘zgartirish sababi|Сабаби иваз кардани афзалият|Артыкчылыкты өзгөртүүнүн себеби|Басымдықты өзгерту себебі|प्राथमिकता बदलने की वजह|Reason for changing priority

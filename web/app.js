@@ -353,7 +353,7 @@ function verdict(c, d, id, opens) {
   const cause = !normal && !fail && !incompatible && d.anomaly_title;
   const entries = Array.isArray(d.urgency_reasons) ? d.urgency_reasons.filter(Boolean) : [];
   // The API sometimes sends a metrics readout as one of the reasons.
-  const isMetricsLine = line => /^(?:оценка отклонения|отклонение|(?:anomaly )?score)\s+\d/i.test(line) && /(?:уверенность|confidence)/i.test(line);
+  const isMetricsLine = line => (/^(?:оценка отклонения|отклонение|(?:anomaly )?score)\s+\d/i.test(line) && /(?:уверенность|confidence)/i.test(line)) || /^код по справочнику/i.test(line);
   const whyLines = entries.map((line, index) => isMetricsLine(line) ? -1 : index).filter(index => index >= 0).slice(0, 2);
   const otherReasons = entries.filter((_, index) => !whyLines.includes(index));
   const card = el('div', {class: `verdict-head ${stages[status][1]}`}, el('h2', {}, vTitle),
@@ -363,7 +363,7 @@ function verdict(c, d, id, opens) {
     el('div', {class: 'next-action'}, !normal && el('h3', {}, t('next')),
       el('p', {}, d.action || t(fail ? 'nextFail' : normal ? 'nextNormal' : 'nextAnomaly')),
       fail && reasons(['recordTip1', 'recordTip2', 'recordTip3'].map(key => t(key)))),
-    whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t('why')), reasons(whyLines.map(index => entries[index]))) : null,
+    !fail && whyLines.length ? el('div', {class: 'verdict-why'}, el('h3', {}, t(normal ? 'note' : 'why')), reasons(whyLines.map(index => entries[index]))) : null,
     priorityLabel(d.urgency) && el('p', {class: 'priority-label'}, priorityLine(d.urgency)));
   const metrics = el('dl', {class: 'metrics'}, metric(t('score'), score(d.anomaly_score) ? `${scoreText(d.anomaly_score)} / 1` : null),
     metric(t('confidence'), score(d.confidence) ? `${scoreText(d.confidence)} / 1` : null), metric(t('quality'), qualities[d.signal_quality] && t(qualities[d.signal_quality])));
@@ -796,8 +796,10 @@ async function sendChat(c, mode, question = '') {
 }
 
 function field(c, name, label, rows, placeholder = '') {
-  const input = el('textarea', {name, rows, placeholder, required: name === 'conclusion', oninput: e => { c.edits[name] = e.target.value; }});
+  const grow = node => { node.style.height = 'auto'; node.style.height = `${node.scrollHeight + 2}px`; };
+  const input = el('textarea', {name, rows, placeholder, required: name === 'conclusion', oninput: e => { c.edits[name] = e.target.value; grow(e.target); }});
   input.value = displayText(c.edits[name]);
+  requestAnimationFrame(() => grow(input));
   return el('label', {class: 'field'}, el('span', {}, label), input);
 }
 function renderDraft(v, s, c) {
@@ -812,11 +814,11 @@ function renderDraft(v, s, c) {
   syncOverride();
   const references = (d.references ?? []).filter(r => r.manual_id && Number.isInteger(r.pdf_page) && r.pdf_page > 0);
   const form = el('form', {class: 'stack', id: 'draft-form', onsubmit: e => { e.preventDefault(); confirmTicket(c); }},
-    el('section', {class: 'box stack'}, d.anomaly_type || c.verdict?.anomaly_title ? el('p', {class: 'muted'}, `${t('faultType')}: `, el('strong', {}, [d.anomaly_type, c.verdict?.anomaly_title].filter(Boolean).join(' – '))) : null, field(c, 'conclusion', t('conclusion'), 2)),
+    el('section', {class: 'box stack'}, d.anomaly_type || c.verdict?.anomaly_title ? el('div', {class: 'field-static'}, el('span', {}, t('faultType')), el('strong', {}, [d.anomaly_type, c.verdict?.anomaly_title].filter(Boolean).join(' – '))) : null, field(c, 'conclusion', t('conclusion'), 2)),
     el('section', {class: 'box stack'}, el('label', {class: 'field'}, el('span', {}, t('priority')), urgency), overrideField,
       details(t('whyPriority'), reasons(d.urgency_reasons))),
     el('section', {class: 'box stack'}, field(c, 'operations', t('work'), 2, t('newLine')), field(c, 'spare_parts', t('parts'), 1, t('newLine'))),
-    references.length ? el('section', {class: 'box stack'}, el('h2', {}, t('sources')), references.map(r => citationLink({manual_id: r.manual_id, title: r.title || r.manual, page: r.pdf_page}, [icon('book'), t('pageRef', {name: r.title || r.manual, page: r.pdf_page}), icon('next')], {class: 'source-link'}))) : null,
+    references.length ? el('section', {class: 'box stack'}, el('h3', {}, t('sources')), references.map(r => citationLink({manual_id: r.manual_id, title: r.title || r.manual, page: r.pdf_page}, [icon('book'), t('pageRef', {name: r.title || r.manual, page: r.pdf_page}), icon('next')], {class: 'source-link'}))) : null,
     el('p', {id: 'ticket-error', role: 'alert', class: 'notice red', hidden: !c.confirmError}, c.confirmError || ''),
   );
   const warning = warnings(d.warnings);
