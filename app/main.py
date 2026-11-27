@@ -185,7 +185,8 @@ p{margin:0;color:#4d5b68;font-size:15px}#m{color:#a1261b;min-height:1.2em}</styl
 
 
 def _client_ip(request: Request) -> str:
-    # адрес клиента уже восстановлен uvicorn из X-Forwarded-For (--proxy-headers); сам заголовок не читаем – его можно подделать
+    # адрес клиента восстанавливает uvicorn (--proxy-headers): из X-Forwarded-For берется адрес, который добавил
+    # доверенный прокси из частной сети (Dockerfile), а не подставленный клиентом
     return request.client.host if request.client else "?"
 
 
