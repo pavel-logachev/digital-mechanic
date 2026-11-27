@@ -1,0 +1,255 @@
+{
+ "schema_version": "1",
+ "synthetic": true,
+ "note": "Собственный тестовый набор проекта, не данные заказчика.",
+ "vehicles": [
+  {
+   "vehicle_id": "A101AA00",
+   "garage_no": "Т-01",
+   "make": "МАЗ",
+   "model": "МАЗ-5337",
+   "vehicle_type": "грузовой автомобиль",
+   "engine_model": "ЯМЗ-236М2",
+   "fuel": "дизель",
+   "sessions": [
+    {
+     "session_id": "S-T01",
+     "checked_at": "2026-11-01T10:00:00+03:00",
+     "vehicle_id": "A101AA00",
+     "status": "normal",
+     "anomaly_type": null,
+     "anomaly_title": null,
+     "anomaly_score": 0.1,
+     "confidence": 0.82,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T02",
+     "checked_at": "2026-11-05T10:00:00+03:00",
+     "vehicle_id": "A101AA00",
+     "status": "anomaly",
+     "anomaly_type": "F02",
+     "anomaly_title": "Низкое давление масла",
+     "anomaly_score": 0.86,
+     "confidence": 0.84,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T03",
+     "checked_at": "2026-11-09T10:00:00+03:00",
+     "vehicle_id": "A101AA00",
+     "status": "normal",
+     "anomaly_type": null,
+     "anomaly_title": null,
+     "anomaly_score": 0.15,
+     "confidence": 0.8,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    }
+   ]
+  },
+  {
+   "vehicle_id": "B202BB00",
+   "garage_no": "Т-02",
+   "make": "МАЗ",
+   "model": "МАЗ-5551",
+   "vehicle_type": "грузовой автомобиль",
+   "engine_model": "ЯМЗ-236М2",
+   "fuel": "дизель",
+   "sessions": [
+    {
+     "session_id": "S-T04",
+     "checked_at": "2026-11-02T10:00:00+03:00",
+     "vehicle_id": "B202BB00",
+     "status": "normal",
+     "anomaly_type": null,
+     "anomaly_title": null,
+     "anomaly_score": 0.07,
+     "confidence": 0.8,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T05",
+     "checked_at": "2026-11-06T10:00:00+03:00",
+     "vehicle_id": "B202BB00",
+     "status": "check_failed",
+     "anomaly_type": null,
+     "anomaly_title": null,
+     "anomaly_score": null,
+     "confidence": null,
+     "signal_quality": "bad",
+     "description": "Запись не подходит для оценки",
+     "model_version": "test-fixture"
+    }
+   ]
+  },
+  {
+   "vehicle_id": "C303CC00",
+   "garage_no": "Т-03",
+   "make": "МАЗ",
+   "model": "МАЗ-6312",
+   "vehicle_type": "грузовой автомобиль",
+   "engine_model": "ЯМЗ-536",
+   "fuel": "дизель",
+   "sessions": [
+    {
+     "session_id": "S-T06",
+     "checked_at": "2026-11-03T10:00:00+03:00",
+     "vehicle_id": "C303CC00",
+     "status": "anomaly",
+     "anomaly_type": "F09",
+     "anomaly_title": "Турбокомпрессор",
+     "anomaly_score": 0.62,
+     "confidence": 0.55,
+     "signal_quality": "warning",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T07",
+     "checked_at": "2026-11-07T10:00:00+03:00",
+     "vehicle_id": "C303CC00",
+     "status": "anomaly",
+     "anomaly_type": "F04",
+     "anomaly_title": "Ремень привода агрегатов",
+     "anomaly_score": 0.4,
+     "confidence": 0.9,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    }
+   ]
+  },
+  {
+   "vehicle_id": "E404EE00",
+   "garage_no": "Т-04",
+   "make": "ГАЗ",
+   "model": "ГАЗель",
+   "vehicle_type": "легкий коммерческий",
+   "engine_model": "ЗМЗ-40905.10",
+   "fuel": "бензин",
+   "sessions": [
+    {
+     "session_id": "S-T08",
+     "checked_at": "2026-11-04T10:00:00+03:00",
+     "vehicle_id": "E404EE00",
+     "status": "anomaly",
+     "anomaly_type": "F14",
+     "anomaly_title": "Цепь ГРМ",
+     "anomaly_score": 0.7,
+     "confidence": 0.8,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T09",
+     "checked_at": "2026-11-08T10:00:00+03:00",
+     "vehicle_id": "E404EE00",
+     "status": "anomaly",
+     "anomaly_type": "F12",
+     "anomaly_title": "Зажигание",
+     "anomaly_score": 0.55,
+     "confidence": 0.75,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    }
+   ]
+  },
+  {
+   "vehicle_id": "K505KK00",
+   "garage_no": "Т-05",
+   "make": "МАЗ",
+   "model": "МАЗ-5551",
+   "vehicle_type": "грузовой автомобиль",
+   "engine_model": "ЯМЗ-236М2",
+   "fuel": "дизель",
+   "sessions": [
+    {
+     "session_id": "S-T10",
+     "checked_at": "2026-11-03T10:00:00+03:00",
+     "vehicle_id": "K505KK00",
+     "status": "anomaly",
+     "anomaly_type": "F14",
+     "anomaly_title": "Цепь ГРМ",
+     "anomaly_score": 0.69,
+     "confidence": 0.66,
+     "signal_quality": "warning",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T11",
+     "checked_at": "2026-11-08T10:00:00+03:00",
+     "vehicle_id": "K505KK00",
+     "status": "anomaly",
+     "anomaly_type": "F12",
+     "anomaly_title": "Зажигание",
+     "anomaly_score": 0.6,
+     "confidence": 0.7,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    }
+   ]
+  },
+  {
+   "vehicle_id": "M606MM00",
+   "garage_no": "Т-06",
+   "make": "УАЗ",
+   "model": "УАЗ Профи",
+   "vehicle_type": "легкий коммерческий",
+   "engine_model": "ЗМЗ-5234.10",
+   "fuel": "бензин",
+   "sessions": [
+    {
+     "session_id": "S-T12",
+     "checked_at": "2026-11-01T10:00:00+03:00",
+     "vehicle_id": "M606MM00",
+     "status": "anomaly",
+     "anomaly_type": "F01",
+     "anomaly_title": "Клапанный механизм",
+     "anomaly_score": 0.3,
+     "confidence": 0.8,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T13",
+     "checked_at": "2026-11-05T10:00:00+03:00",
+     "vehicle_id": "M606MM00",
+     "status": "anomaly",
+     "anomaly_type": "F01",
+     "anomaly_title": "Клапанный механизм",
+     "anomaly_score": 0.5,
+     "confidence": 0.82,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    },
+    {
+     "session_id": "S-T14",
+     "checked_at": "2026-11-09T10:00:00+03:00",
+     "vehicle_id": "M606MM00",
+     "status": "anomaly",
+     "anomaly_type": "F01",
+     "anomaly_title": "Клапанный механизм",
+     "anomaly_score": 0.75,
+     "confidence": 0.85,
+     "signal_quality": "good",
+     "description": "Синтетическая проверка для тестов",
+     "model_version": "test-fixture"
+    }
+   ]
+  }
+ ]
+}

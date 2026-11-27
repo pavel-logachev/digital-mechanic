@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
  && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-small')"
 COPY app ./app
 COPY web ./web
+# заглушки заказчика: перед сборкой python -m tools.fetch_materials (в Git их нет)
 COPY mocks ./mocks
 # сервис работает не от root; данные (руководства, индекс, журнал) монтируются томом /app/data
 ARG APP_UID=1000

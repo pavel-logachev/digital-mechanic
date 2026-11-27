@@ -1,4 +1,7 @@
 """Тесты правил, которые держит код, а не модель: приоритет, плохая запись, применимость, ссылки и цифры, заявка."""
+import json
+from pathlib import Path
+
 import pytest
 
 from app import data, verify
@@ -63,8 +66,19 @@ def test_future_sessions_ignored():
     assert evaluate(now, "ЯМЗ-536", [now, later]).urgency == "medium"
 
 
-def test_all_customer_sessions_evaluate():
-    for v in data.vehicles():
+CUSTOMER_FLEET = Path(__file__).resolve().parent.parent / "mocks" / "data" / "vehicles.json"
+
+
+@pytest.mark.parametrize("source", ["fixture", "customer"])
+def test_all_sessions_evaluate(source):
+    """Каждая проверка парка разбирается правилами. Данные заказчика – только если скачаны локально (в Git их нет)."""
+    if source == "customer":
+        if not CUSTOMER_FLEET.exists():
+            pytest.skip("данные заглушек заказчика не скачаны: python -m tools.fetch_materials")
+        fleet = json.loads(CUSTOMER_FLEET.read_text(encoding="utf-8"))["vehicles"]
+    else:
+        fleet = data.vehicles()
+    for v in fleet:
         for s in v["sessions"]:
             r = evaluate(s, v["engine_model"], v["sessions"])
             # без приоритета: норма, сбой записи и класс, неприменимый к двигателю (заявку продукт не отправляет)

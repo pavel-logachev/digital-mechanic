@@ -30,7 +30,7 @@ def stubs(monkeypatch, tmp_path):
 
 
 def _agent():
-    conv = agent.get_conversation("t1", "E549YT198", "S-0011")
+    conv = agent.get_conversation("t1", "A101AA00", "S-T02")
     return agent.Agent(conv, lambda ev: None), conv
 
 
@@ -60,7 +60,7 @@ def test_no_ticket_for_check_failed(monkeypatch, stubs):
     monkeypatch.setattr(clients, "diagnose", lambda v, s: {
         "vehicle_id": v, "session_id": s, "status": "check_failed", "anomaly_type": None, "anomaly_title": None,
         "anomaly_score": None, "confidence": None, "signal_quality": "bad", "description": "", "model_version": "mock-v1"})
-    conv = agent.get_conversation("t2", "P456AT178", "S-0003")
+    conv = agent.get_conversation("t2", "B202BB00", "S-T05")
     a = agent.Agent(conv, lambda ev: None)
     a.t_search_manual(["x"])
     out = a.t_prepare_ticket("x", ["y"], [], [{"manual_id": "yamz-236_rk_2014", "page": 40}])
@@ -74,7 +74,7 @@ def test_foreign_manual_page_rejected():
 
 def test_no_draft_without_instruction_for_the_unit(stubs):
     """#103: ссылка есть, но страница не про узел из типа неисправности – черновика нет, механику объясняем почему."""
-    conv = agent.get_conversation("t-unit", "E549YT198", "S-0011")
+    conv = agent.get_conversation("t-unit", "A101AA00", "S-T02")
     a = agent.Agent(conv, lambda ev: None)
     a.t_search_manual(["коренные подшипники"])
     agent._searcher.pages[("yamz-236_rk_2014", 40)] = " ".join(["Регулировка тепловых зазоров клапанов коромысла."] * 10)
@@ -89,7 +89,7 @@ def test_not_applicable_class_gives_defect_note(monkeypatch, stubs):
     monkeypatch.setattr(clients, "diagnose", lambda v, s: {
         "vehicle_id": v, "session_id": s, "status": "anomaly", "anomaly_type": "F14", "anomaly_title": "Цепь ГРМ, гидронатяжитель",
         "anomaly_score": 0.8, "confidence": 0.8, "signal_quality": "good", "description": "", "model_version": "mock-v1"})
-    conv = agent.get_conversation("t-f14", "E549YT198", "S-0011")   # E549YT198 – ЯМЗ-236М2: цепи ГРМ нет
+    conv = agent.get_conversation("t-f14", "A101AA00", "S-T02")   # A101AA00 – ЯМЗ-236М2: цепи ГРМ нет
     a = agent.Agent(conv, lambda ev: None)
     a.t_search_manual(["цепь"])
     out = a.t_prepare_ticket("Цепь", ["Осмотр"], [], [{"manual_id": "yamz-236_rk_2014", "page": 40}])
@@ -98,7 +98,7 @@ def test_not_applicable_class_gives_defect_note(monkeypatch, stubs):
 
 def test_ticket_only_on_request(stubs):
     """Черновик – только по просьбе механика: при объяснении результата инструмент отказывает, заявки нет."""
-    conv = agent.get_conversation("t-req", "E549YT198", "S-0011")
+    conv = agent.get_conversation("t-req", "A101AA00", "S-T02")
     a = agent.Agent(conv, lambda ev: None)
     a.ticket_requested = False
     a.t_search_manual(["давление масла"])

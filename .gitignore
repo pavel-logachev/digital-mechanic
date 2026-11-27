@@ -14,3 +14,6 @@ docs/screens/07-manual-page.png
 demo/build/
 demo/*.mp4
 demo/timeline.json
+
+# материалы задачи (заглушки и данные парка заказчика) – скачиваются python -m tools.fetch_materials, в Git не хранятся
+mocks/

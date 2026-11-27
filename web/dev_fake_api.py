@@ -31,6 +31,7 @@ Q31 = (
     'распределительного механизма тепловые зазоры после проворачивания коленчатого вала должны укладываться в пределы 0,20-0,40 мм.'
 )
 Q33 = 'При правильно отрегулированном зазоре щуп толщиной 0,25 мм должен входить при легком нажиме, а толщиной 0,30 мм - с усилием.'
+# Данные парка – из материалов задачи (python -m tools.fetch_materials), в Git их нет
 VEHICLES = {v['vehicle_id']: v for v in json.loads((ROOT / 'mocks/data/vehicles.json').read_text(encoding='utf-8'))['vehicles']}
 TICKETS = {
     'B418HK98': [{'ticket_id': 'TKT-0001', 'session_id': 'S-0008', 'anomaly_type': 'F01', 'urgency': 'medium', 'created_at': '2026-10-30T10:10:00+03:00'}],
