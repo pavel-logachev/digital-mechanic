@@ -112,3 +112,28 @@ def test_reference_as_string(stubs):
     assert agent._ref("{yamz-236_rk_2014#40}") == ("yamz-236_rk_2014", 40)
     assert agent._ref({"manual_id": "yamz-236_rk_2014", "page": "41"}) == ("yamz-236_rk_2014", 41)
     assert agent._ref("мусор") == (None, 0)
+
+
+def test_step_budget_ends_with_answer_not_apology(monkeypatch, stubs):
+    """Если модель все шаги зовет инструменты, последний шаг – только ответ текстом: механик получает ответ, а не «не успел»."""
+    from types import SimpleNamespace
+
+    from app import llm
+    calls = []
+
+    def fake_chat(msgs, tools=None, usage=None, tool_choice=None, **kw):
+        calls.append(tool_choice)
+        if tool_choice == "none":
+            return SimpleNamespace(content="Проверьте давление масла манометром на прогретом двигателе.", tool_calls=None)
+        fn = SimpleNamespace(name="search_manual", arguments='{"queries": ["давление масла"]}')
+        tc = SimpleNamespace(id=f"c{len(calls)}", function=fn, model_dump=lambda: {"id": "c", "type": "function",
+                             "function": {"name": "search_manual", "arguments": "{}"}})
+        return SimpleNamespace(content="", tool_calls=[tc])
+
+    monkeypatch.setattr(llm, "chat", fake_chat)
+    events = []
+    conv = agent.get_conversation("t-budget", "A101AA00", "S-T02")
+    agent.Agent(conv, events.append).run("Что проверить?")
+    assert calls[-1] == "none" and calls.count("none") == 1 and len(calls) == agent.MAX_STEPS
+    message = [e for e in events if e["type"] == "message"][-1]
+    assert "манометром" in message["text"] and "Не успел" not in message["text"]

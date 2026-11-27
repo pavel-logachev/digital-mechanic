@@ -390,23 +390,28 @@ class Agent:
                          "чем откручивать и что должно получиться; термины поясняй в скобках. Объём можно больше, точность и ссылки – те же.]")
             msgs.append({"role": "user", "content": user_text + note})
             retried = False
+            prev_answer = ""   # ответ до исправления: если модель не пришлет исправленный, механик получит его с пометкой
             first_problems: list[str] = []
-            for _ in range(MAX_STEPS):
-                m = llm.chat(msgs, TOOLS, self.c.usage)
-                if m.tool_calls:
+            for step in range(MAX_STEPS):
+                # последний шаг – только ответ: механик получает собранный ответ, а не «не успел»
+                m = llm.chat(msgs, TOOLS, self.c.usage, tool_choice="none" if step == MAX_STEPS - 1 else None)
+                if m.tool_calls and step < MAX_STEPS - 1:
                     msgs.append({"role": "assistant", "content": m.content or "",
                                  "tool_calls": [tc.model_dump() for tc in m.tool_calls]})
                     for tc in m.tool_calls:
                         msgs.append({"role": "tool", "tool_call_id": tc.id, "content": self._call(tc)})
                     continue
-                answer = (m.content or "").strip()
+                answer = (m.content or "").strip() or prev_answer
+                if not answer:
+                    break
                 # цифры из вопросов механика – его данные, а не нормативы: их не требуем подтверждать страницей
                 asked = " ".join(m["content"] for m in msgs if m["role"] == "user" and isinstance(m.get("content"), str)
                                  and not m["content"].startswith("[Проверка программы]"))
                 checked = verify.check(answer, self.allowed, self.c.seen, searcher().page_text,
                                        self._context_numbers() | verify.page_numbers(asked))
-                if checked.problems and not retried:
+                if checked.problems and not retried and step < MAX_STEPS - 1:
                     retried = True
+                    prev_answer = answer
                     first_problems = checked.problems
                     msgs.append({"role": "assistant", "content": answer})
                     self.emit({"type": "step", "tool": "verify", "title": "Проверка цифр и ссылок", "status": "error",

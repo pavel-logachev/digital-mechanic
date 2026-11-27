@@ -66,11 +66,13 @@ class Usage:
 
 
 def chat(messages: list[dict], tools: list[dict] | None = None, usage: Usage | None = None,
-         temperature: float = 0.2, max_tokens: int = 1800):
+         temperature: float = 0.2, max_tokens: int = 1800, tool_choice: str | None = None):
     t0 = time.time()
     kw = {"model": config.LLM_MODEL, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
     if tools:
         kw["tools"] = tools
+        if tool_choice:
+            kw["tool_choice"] = tool_choice   # "none" – только ответ текстом, инструменты остаются описанными
     if "deepseek" in config.LLM_BASE_URL:
         kw["extra_body"] = {"thinking": {"type": "disabled"}}
     try:
