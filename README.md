@@ -58,7 +58,7 @@ git clone https://github.com/pavel-logachev/digital-mechanic && cd digital-mecha
 cp .env.example .env            # впишите LLM_API_KEY и MATERIALS_URL; OPENROUTER_API_KEY – по желанию (Jev)
 python -m tools.fetch_materials # 6 PDF заказчика в data/manuals/, заглушки ML и ТОиР в mocks/
 docker compose build
-docker compose run --rm app python -m app.ingest   # индекс руководств, ~2–5 мин; OCR ~$0,16 один раз
+docker compose run --rm app python -m app.ingest   # индекс руководств: ~10 мин на 1,5 ядра, OCR сканов ~$0,05–0,09 один раз
 docker compose up -d
 ```
 
