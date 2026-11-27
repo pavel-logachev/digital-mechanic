@@ -156,7 +156,9 @@ function scoreChart(v, sessions) {
     hint(t('scoreScale')));
 }
 const endpoint = id => `${api}/vehicles/${encodeURIComponent(id)}`;
-const manualPath = (id, page) => `${api}/manuals/${encodeURIComponent(id)}/pages/${page}`;
+// страница руководства открывается в рамках разговора: сервер отдает только страницы, найденные помощником в нем
+const manualPath = (id, page, cid, ext = '') => `${api}/manuals/${encodeURIComponent(id)}/pages/${page}${ext}?conversation_id=${encodeURIComponent(cid ?? '')}`;
+const currentChatId = () => state.chats.get(JSON.stringify([state.route.vid, state.route.sid ?? null]))?.id;
 const jsonPost = body => ({method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
 
 async function json(path, options) {
@@ -593,7 +595,7 @@ function defectNote(text) {
 }
 
 function citationLink(cite, label, attrs = {}) {
-  return el('a', {href: manualPath(cite.manual_id, cite.page), ...attrs, onclick: e => {
+  return el('a', {href: manualPath(cite.manual_id, cite.page, currentChatId()), ...attrs, onclick: e => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
     e.preventDefault();
     openManual(cite);
@@ -1213,6 +1215,7 @@ function render() {
 
 let viewer;
 function openManual(cite, push = true) {
+  cite = cite.cid ? cite : {...cite, cid: currentChatId()};
   if (push) history.pushState({...state.route, manualCite: cite}, '', location.pathname);
   viewer = {cite, serial: 0, trigger: document.activeElement};
   manual.replaceChildren();
@@ -1249,7 +1252,7 @@ async function loadManual(page) {
   manual.scrollTop = 0;
   $('#close-manual').focus({preventScroll: true});
   try {
-    const meta = await json(manualPath(cite.manual_id, page));
+    const meta = await json(manualPath(cite.manual_id, page, cite.cid));
     if (viewer !== active || seq !== active.serial) return;
     const quote = page === cite.page ? cleanQuote(cite.quote) : '';
     const {copy, found} = pageText(meta.text || '', quote);
@@ -1284,14 +1287,14 @@ async function loadManual(page) {
     image.addEventListener('dblclick', () => { if (performance.now() > suppressDoubleClickUntil) toggleZoom(); });
     body.replaceChildren(...[el('div', {class: 'intro'}, el('h2', {id: 'manual-heading'}, meta.title || cite.title)),
       el('div', {class: 'manual-controls'}, el('div', {class: 'page-navigation'},
-        iconButton(t('prevPage'), 'prev', () => loadManual(page - 1), {id: 'manual-prev', disabled: page <= 1}), el('strong', {'aria-live': 'polite'}, t('pageNumber', {page: meta.page, total: meta.pages_total})),
-        iconButton(t('nextPage'), 'next', () => loadManual(page + 1), {id: 'manual-next', disabled: page >= meta.pages_total})),
+        iconButton(t('prevPage'), 'prev', () => loadManual(meta.prev), {id: 'manual-prev', disabled: !meta.prev}), el('strong', {'aria-live': 'polite'}, t('pageNumber', {page: meta.page, total: meta.pages_total})),
+        iconButton(t('nextPage'), 'next', () => loadManual(meta.next), {id: 'manual-next', disabled: !meta.next})),
         el('div', {class: 'zoom-group', role: 'group', 'aria-label': t('zoom')}, el('span', {}, t('zoom')), zoomOut, zoomLevel, zoomIn)),
       quote ? el('section', {class: 'box manual-text'}, el('h3', {}, t('quote')), el('blockquote', {class: found ? 'matched-quote' : null}, `«${quote}»`)) : null,
       viewport,
       meta.text ? details(t('pageText'), copy) : null,
     ].filter(Boolean));
-    image.src = `${manualPath(cite.manual_id, page)}.png`;
+    image.src = manualPath(cite.manual_id, page, cite.cid, '.png');
     const target = initialFocus && document.getElementById(initialFocus);
     (target && !target.disabled ? target : $('#close-manual')).focus({preventScroll: true});
   } catch (error) {

@@ -185,8 +185,12 @@ def fleet():
 
 
 @app.get('/api/manuals/{manual_id}/pages/{page}.png')
+def page_png(manual_id: str, page: int, conversation_id: str = ''):
+    return _page_png(manual_id, page)
+
+
 @lru_cache(maxsize=12)
-def page_png(manual_id: str, page: int):
+def _page_png(manual_id: str, page: int):
     with open_page(manual_id, page) as doc:
         sheet = doc[page - 1]
         if manual_id == YAMZ and page == 31:
@@ -198,10 +202,12 @@ def page_png(manual_id: str, page: int):
 
 
 @app.get('/api/manuals/{manual_id}/pages/{page}')
-def page_metadata(manual_id: str, page: int):
+def page_metadata(manual_id: str, page: int, conversation_id: str = ''):
+    # тестовый сервер не ведет разговоры: листать можно по соседним страницам (рабочий сервер – только по найденным)
     info = manual_info(manual_id)
     with open_page(manual_id, page) as doc:
-        return {'manual_id': manual_id, 'title': info['title'], 'designation': info['designation'], 'page': page, 'pages_total': len(doc), 'text': doc[page - 1].get_text()}
+        return {'manual_id': manual_id, 'title': info['title'], 'designation': info['designation'], 'page': page, 'pages_total': len(doc),
+                'text': doc[page - 1].get_text(), 'prev': page - 1 if page > 1 else None, 'next': page + 1 if page < len(doc) else None}
 
 
 def step(tool, title, status, detail=''):

@@ -200,6 +200,17 @@ def get_conversation(cid: str, vehicle_id: str, session_id: str | None) -> Conve
     return c
 
 
+def pages_seen(cid: str, manual_id: str) -> list[int]:
+    """Страницы руководства, которые агент нашел или открыл в этом разговоре.
+
+    Открытый стенд показывает механику только их: руководства – материал заказчика под авторским правом,
+    целиком их не раздаем (требование организаторов, чат задачи #80, #167)."""
+    if not cid:
+        return []
+    c = _convs.get(cid) or _load_conversation(cid)
+    return sorted({p for m, p in c.seen if m == manual_id}) if c else []
+
+
 def find_draft(draft_id: str) -> tuple[Conversation, dict] | None:
     for c in list(_convs.values()):
         if draft_id in c.drafts:

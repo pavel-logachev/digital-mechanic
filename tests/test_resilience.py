@@ -263,3 +263,26 @@ def test_conversations_in_memory_are_bounded(monkeypatch):
         agent.get_conversation(f"c{i}", "A", "S")
     agent.get_conversation("c2", "A", "S")      # обращение поднимает разговор в конец очереди
     assert list(agent._convs) == ["c3", "c4", "c2"]
+
+
+def test_manual_pages_only_from_this_conversation(tmp_path, monkeypatch):
+    """Открытый стенд не раздает руководство целиком: только страницы, найденные помощником в разговоре."""
+    from fastapi.testclient import TestClient
+
+    from app import agent, config, main
+    monkeypatch.setattr(config, "STATE_DIR", tmp_path)
+    conv = agent.Conversation("conv-p", "A", "S")
+    conv.seen.update({("yamz-236_re_2010", 19), ("yamz-236_re_2010", 41)})
+    monkeypatch.setattr(agent, "_convs", {"conv-p": conv})
+
+    class Pages:
+        def page_text(self, manual_id, page):
+            return f"страница {page}"
+
+    monkeypatch.setattr(agent, "searcher", Pages)
+    c = TestClient(main.app)
+    ok = c.get("/api/manuals/yamz-236_re_2010/pages/19", params={"conversation_id": "conv-p"}).json()
+    assert ok["text"] == "страница 19" and ok["prev"] is None and ok["next"] == 41
+    assert c.get("/api/manuals/yamz-236_re_2010/pages/20", params={"conversation_id": "conv-p"}).status_code == 403
+    assert c.get("/api/manuals/yamz-236_re_2010/pages/19").status_code == 403
+    assert c.get("/api/manuals/yamz-236_re_2010/pages/19.png", params={"conversation_id": "чужой"}).status_code == 403

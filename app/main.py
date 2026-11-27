@@ -227,23 +227,30 @@ def fleet(request: Request):
 
 
 @app.get("/api/manuals/{manual_id}/pages/{page}.png")
-def page_png(manual_id: str, page: int):
-    _check_page(manual_id, page)
+def page_png(manual_id: str, page: int, conversation_id: str = ""):
+    _check_page(manual_id, page, conversation_id)
     return FileResponse(agent.searcher().page_png(manual_id, page), media_type="image/png",
-                        headers={"Cache-Control": "public, max-age=86400"})
+                        headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/api/manuals/{manual_id}/pages/{page}")
-def page_json(manual_id: str, page: int):
-    _check_page(manual_id, page)
+def page_json(manual_id: str, page: int, conversation_id: str = ""):
+    seen = _check_page(manual_id, page, conversation_id)
     m = BY_ID[manual_id]
+    i = seen.index(page)
     return {"manual_id": manual_id, "title": m.title, "designation": m.designation, "page": page,
-            "pages_total": m.pages, "text": agent.searcher().page_text(manual_id, page)}
+            "pages_total": m.pages, "text": agent.searcher().page_text(manual_id, page),
+            # листать можно только по страницам, найденным в этом разговоре, а не по всей книге
+            "prev": seen[i - 1] if i > 0 else None, "next": seen[i + 1] if i + 1 < len(seen) else None}
 
 
-def _check_page(manual_id: str, page: int):
+def _check_page(manual_id: str, page: int, conversation_id: str) -> list[int]:
     if manual_id not in BY_ID or not 1 <= page <= BY_ID[manual_id].pages:
         raise HTTPException(404, "Нет такой страницы")
+    seen = agent.pages_seen(conversation_id, manual_id)
+    if page not in seen:
+        raise HTTPException(403, "Страница открывается по ссылке из ответа помощника")
+    return seen
 
 
 # --- агент ---
