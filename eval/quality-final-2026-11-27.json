@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-27",
+  "dataset": "control-questions-v2 (72 вопроса: 63 с ответом в руководствах, 9 без данных)",
+  "judge": "google/gemini-3.1-pro-preview",
+  "code": "коммит с этим файлом: отказ с конкретным действием по #123, противоречия коренных подшипников и давления масла ЯМЗ-236",
+  "models": {
+    "deepseek-flash": {
+      "n": 72,
+      "n_answerable": 63,
+      "n_absent": 9,
+      "verdicts": {
+        "correct": 62,
+        "refused_ok": 9,
+        "wrong": 1
+      },
+      "correct_pct": 98.41,
+      "strict_task_success_pct": 98.61,
+      "citation_supported_pct": 100.0,
+      "displayed_quote_supported_pct": 100.0,
+      "p50_seconds": 6.02,
+      "agent_mean_usd": 0.00820811,
+      "rerank_mean_usd": 0.00532,
+      "not_passed": [
+        {
+          "id": "КВ-43",
+          "verdict": "wrong",
+          "failure": "possible_gold_issue"
+        }
+      ]
+    }
+  }
+}
