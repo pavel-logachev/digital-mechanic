@@ -52,7 +52,7 @@ SYSTEM = """Ты «Цифровой механик», помощник меха�
 1. После каждого существенного факта о норме, устройстве, причине или порядке работ ставь ссылку {{manual_id#страница}}, например {{yamz-236_rk_2014#123}}. Бери строки именно про запрошенную деталь, модификацию и режим; сверяй единицы, знаки, условия и исключения. Не добавляй лишние нормы, которых не спросили. Не смешивай одноимённые болты, соседние строки таблиц и эксплуатационные пределы с ремонтными.
 2. Не придумывай. Различай: «этого нет в руководстве» (например, индивидуальное измерение, склад, ресурс по звуку, другой двигатель) и «не нашёл в доступных страницах». Если возможно, ответь на подтверждённую часть вопроса и явно назови недостающую. Когда технического ответа по двигателю (норматива, предела, причины) в руководстве нет, так и скажи и дай конкретное действие: дефектовка узла – осмотр и замеры на посту, при необходимости заявка, и/или раздел руководства, который ближе всего к вопросу, со ссылкой. Не отсылай «к специалисту» – механик сам специалист. Все, что берешь не из страниц руководства (типовые признаки износа, что обычно осматривают), пиши только отдельным абзацем, который начинается словами «Не из руководства:», – без чисел (нормативов, допусков, моментов, давлений) и без порядка работ. Для вопросов не про двигатель (пароли, цены, склад) дефектовку не советуй. Не выдавай диагностическую гипотезу за причину, установленную у этой машины.
 3. Приоритет и действие по выбранной акустической проверке берёшь из get_diagnosis – не меняй. Это рекомендации программы: высокий – дефектовка до выпуска в рейс, средний – дефектовка на ближайшем ТО, машина работает под наблюдением, низкий – узел проверяется на следующей проверке. Приоритет механику называй словами «высокий», «средний», «низкий», а не кодами high/medium/low. Слова «нельзя», «запрещено», «эксплуатация не допускается» пиши, только если руководство на этот двигатель прямо запрещает эксплуатацию в таком состоянии, – и тогда ссылайся на эту страницу. Прежде чем написать, что прямого запрета нет, сделай целевой поиск запрета по этому узлу или признаку (search_manual: «не допускается эксплуатация …», «запрещается …», «немедленно остановить двигатель …»): если запрет нашелся – это запрет со ссылкой на страницу. Если и после поиска запрета нет – формулируй как рекомендацию («не рекомендую», «рекомендация – дефектовка до выпуска») и прямо скажи, что прямого запрета в руководстве нет. Не вызывай его и не рассказывай о текущей записи, когда спрашивают только о правилах из книги или возможных причинах описанного симптома. Для смешанного вопроса разделяй данные записи и справку: сбой записи не запрещает отвечать на отдельный вопрос о руководстве.
-4. Если проверка «check_failed» или запись непригодна – никаких выводов о двигателе по этой записи и никакой заявки; попроси повторить запись. Для явно опасного предложенного действия сначала скажи, можно ли так делать, затем приведи предупреждение или условия из руководства. Не советуй работы на работающем двигателе или тестовую поездку по общей таблице неисправностей, если процедура этого не разрешает. Если страницы руководств этого двигателя противоречат друг другу, не выбирай одну формулировку как бесспорную: приведи обе со ссылками, прямо назови противоречие, дай безопасное правило – более осторожный вариант, а если его можно вывести из самого руководства (единицы, ссылка одного раздела на другой, раздел с полной процедурой) – выведи и объясни; к «специалисту» не отсылай; если условия безопасности неясны, не советуй начинать работу. Если search_manual вернул conflicts – это противоречие уже подтверждено заказчиком: покажи обе формулировки со ссылками refs и назови принятое правило из rule как консервативный вариант, а не как цитату руководства.
+4. Если проверка «check_failed» или запись непригодна – никаких выводов о двигателе по этой записи и никакой заявки; попроси повторить запись. Для явно опасного предложенного действия сначала скажи, можно ли так делать, затем приведи предупреждение или условия из руководства. Не советуй работы на работающем двигателе или тестовую поездку по общей таблице неисправностей, если процедура этого не разрешает. Если страницы руководств этого двигателя противоречат друг другу, не выбирай одну формулировку как бесспорную: приведи обе со ссылками, прямо назови противоречие, дай безопасное правило – более осторожный вариант, а если его можно вывести из самого руководства (единицы, ссылка одного раздела на другой, раздел с полной процедурой) – выведи и объясни; к «специалисту» не отсылай; если условия безопасности неясны, не советуй начинать работу. Если search_manual вернул conflicts – это противоречие уже найдено и разобрано: покажи обе формулировки со ссылками refs и дай безопасное правило из rule – как вывод, а не как цитату руководства.
 5. Если программа сообщила, что класс неисправности не подходит к двигателю – карточка машины верна, а это ошибка ML-модели, а не диагноз. Сообщи механику о расхождении и не ставь диагноз по этому классу. Не подставляй нормативы и процедуры для такого узла: ни из руководства на другой двигатель, ни заменяя класс на «похожий» из этого двигателя. Порекомендуй повторить проверку или провести дефектовку; заявку не готовь.
 6. ML даёт гипотезу по звуку, а не диагноз. Пиши «вероятно», «признаки указывают». Гипотезы о причинах и рисках явно помечай («вероятно», «возможная причина») и отделяй от того, что взято из руководства; гипотезу не оформляй как цитату и не ставь к ней ссылку. Числа (нормативы, допуски, моменты затяжки, давления) и порядок работ – только из руководства этого двигателя со ссылкой.
 7. Если в руководстве есть порядок или последовательность (затяжки, регулировки, разборки) – перечисли её в чате нумерованным списком со ссылкой. Если порядок показан только цифрами на рисунке и текстом его прочитать нельзя – так и скажи и дай ссылку на страницу с рисунком.
@@ -138,9 +138,20 @@ class Conversation:
 
 
 URGENCY_RU = {"low": "низкий", "medium": "средний", "high": "высокий"}
-_convs: dict[str, Conversation] = {}
+MAX_CONVS_IN_MEMORY = 300   # остальные разговоры лежат на диске и поднимаются по запросу
+_convs: dict[str, Conversation] = {}   # порядок вставки = порядок последнего обращения
+_convs_lock = threading.Lock()
 _searcher = None
+_searcher_lock = threading.Lock()
 _confirm_lock = threading.Lock()
+
+
+def _remember(c: Conversation) -> None:
+    with _convs_lock:
+        _convs.pop(c.id, None)
+        _convs[c.id] = c
+        while len(_convs) > MAX_CONVS_IN_MEMORY:
+            del _convs[next(iter(_convs))]
 
 
 # Разговоры и черновики переживают перезапуск сервиса: после каждого ответа пишем их в STATE_DIR/conversations.
@@ -174,23 +185,23 @@ def _load_conversation(cid: str) -> Conversation | None:
 def searcher():
     global _searcher
     if _searcher is None:
-        from .search import Searcher
-        _searcher = Searcher.load()
+        with _searcher_lock:   # первый запрос и прогрев при старте не грузят индекс дважды
+            if _searcher is None:
+                from .search import Searcher
+                _searcher = Searcher.load()
     return _searcher
 
 
 def get_conversation(cid: str, vehicle_id: str, session_id: str | None) -> Conversation:
     c = _convs.get(cid) or _load_conversation(cid)
-    if c is not None:
-        _convs[cid] = c
     if c is None or c.vehicle_id != vehicle_id or (session_id and c.session_id != session_id):
         c = Conversation(cid, vehicle_id, session_id)
-        _convs[cid] = c
+    _remember(c)
     return c
 
 
 def find_draft(draft_id: str) -> tuple[Conversation, dict] | None:
-    for c in _convs.values():
+    for c in list(_convs.values()):
         if draft_id in c.drafts:
             return c, c.drafts[draft_id]
     # после перезапуска сервиса черновик ищем в сохраненных разговорах
@@ -199,7 +210,7 @@ def find_draft(draft_id: str) -> tuple[Conversation, dict] | None:
         for path in sorted(folder.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:500]:
             c = _load_conversation(path.stem)
             if c and draft_id in c.drafts:
-                _convs[c.id] = c
+                _remember(c)
                 return c, c.drafts[draft_id]
     return None
 
@@ -296,6 +307,8 @@ class Agent:
         if not self.c.diagnosis or self.c.diagnosis.get("session_id") != self.c.session_id:
             self.t_get_diagnosis()
         res, verdict = self.c.diagnosis, self.c.verdict
+        if not res or not verdict:
+            return {"error": "Нет результата проверки по выбранной записи – черновик заявки не готовлю."}
         if res["status"] != "anomaly" or not verdict["ticket_allowed"]:
             if verdict.get("defect_note"):
                 return {"error": "Заявку продукт не отправляет: в руководстве на этот двигатель нет инструкции по этому узлу. "
@@ -470,18 +483,26 @@ def _confirm(draft_id: str, edits: dict, author: str | None = None) -> dict:
     conv, d = found
     if d.get("ticket_id"):
         return {"ticket_id": d["ticket_id"], "status": "created", "duplicate": True}
+    urgency = edits.get("urgency") or d["urgency"]
+    reason = (edits.get("urgency_reason") or "").strip()[:350]
+    conclusion = (edits.get("conclusion") or d["conclusion"]).strip()
+    if urgency not in ("low", "medium", "high"):
+        raise ValueError("Приоритет должен быть low, medium или high.")
+    if urgency != d["urgency"]:
+        # приоритет программы механик вправе изменить, но только с причиной (#111); причина уходит в ТОиР в заключении
+        if not reason:
+            raise ValueError("Укажите причину изменения приоритета.")
+        conclusion = f"{conclusion}\nПричина изменения приоритета: {reason}"
     payload = {
         "vehicle_id": d["vehicle_id"], "session_id": d["session_id"], "anomaly_type": d["anomaly_type"],
-        "conclusion": (edits.get("conclusion") or d["conclusion"]).strip(),
-        "urgency": edits.get("urgency") or d["urgency"],
+        "conclusion": conclusion,
+        "urgency": urgency,
         "operations": [o for o in (edits.get("operations") or d["operations"]) if str(o).strip()],
         "spare_parts": [p for p in (edits.get("spare_parts") if edits.get("spare_parts") is not None else d["spare_parts"]) if str(p).strip()],
         "references": [{"manual": r["manual"], "pdf_page": r["pdf_page"]} for r in d["references"]],
     }
     if d.get("needs_inspection") and edits.get("inspection_confirmed") is not True:
         raise ValueError("Сигнал сомнительный: сначала осмотрите узел и отметьте, что осмотр подтвердил признак.")
-    if payload["urgency"] not in ("low", "medium", "high"):
-        raise ValueError("Приоритет должен быть low, medium или high.")
     if not payload["operations"] or not payload["conclusion"]:
         raise ValueError("Нужны диагноз и хотя бы одна работа.")
     res = clients.create_ticket(payload)
@@ -489,7 +510,8 @@ def _confirm(draft_id: str, edits: dict, author: str | None = None) -> dict:
     manual_change = payload["urgency"] != d["urgency"]
     data.add_ticket({"ticket_id": d["ticket_id"], "vehicle_id": d["vehicle_id"], "session_id": d["session_id"],
                      "anomaly_type": d["anomaly_type"], "urgency": payload["urgency"], "conclusion": payload["conclusion"],
-                     "urgency_changed_by_mechanic": manual_change, "created_by": author,
+                     "urgency_changed_by_mechanic": manual_change, "urgency_reason": reason if manual_change else None,
+                     "created_by": author,
                      "inspection_confirmed": bool(edits.get("inspection_confirmed"))})
     conv.messages.append({"role": "user", "content": f"[Система] Механик подтвердил черновик {draft_id}. "
                           f"ТОиР создал заявку {d['ticket_id']} (приоритет {URGENCY_RU.get(payload['urgency'], payload['urgency'])})."})

@@ -200,3 +200,66 @@ def test_demo_video_open_even_with_login(tmp_path, monkeypatch):
     r = c.get("/demo.mp4")
     assert r.status_code == 200 and r.headers["content-type"] == "video/mp4"
     assert c.get("/api/vehicles").status_code == 401  # остальное по-прежнему за входом
+
+
+def test_changed_priority_needs_reason_and_reason_reaches_toir(monkeypatch):
+    """#111: механик вправе изменить приоритет программы, но сервер требует причину – даже в обход интерфейса."""
+    from app import agent, clients, data
+    conv = agent.Conversation("conv-4", "A", "S")
+    conv.drafts["D-4"] = {"vehicle_id": "A", "session_id": "S", "anomaly_type": "F04", "conclusion": "Износ ремня", "urgency": "medium",
+                          "operations": ["осмотр ремня"], "spare_parts": [], "references": [{"manual": "m", "pdf_page": 1}]}
+    monkeypatch.setattr(agent, "_convs", {"conv-4": conv})
+    monkeypatch.setattr(agent, "save_conversation", lambda c: None)
+    saved, sent = [], []
+    monkeypatch.setattr(data, "add_ticket", saved.append)
+    monkeypatch.setattr(clients, "create_ticket", lambda p: sent.append(p) or {"ticket_id": "TKT-7", "status": "created"})
+    with pytest.raises(ValueError, match="причину"):
+        agent.confirm_ticket("D-4", {"urgency": "high"})
+    with pytest.raises(ValueError, match="Приоритет"):
+        agent.confirm_ticket("D-4", {"urgency": "срочно", "urgency_reason": "x"})
+    assert not sent
+    agent.confirm_ticket("D-4", {"urgency": "high", "urgency_reason": "Ремень с трещинами при осмотре"})
+    assert sent[0]["urgency"] == "high"
+    assert sent[0]["conclusion"] == "Износ ремня\nПричина изменения приоритета: Ремень с трещинами при осмотре"
+    assert saved[0]["urgency_changed_by_mechanic"] is True and saved[0]["urgency_reason"] == "Ремень с трещинами при осмотре"
+
+
+def test_rate_limit_window_and_total(monkeypatch):
+    from app import main
+    now = [1000.0]
+    monkeypatch.setattr(main.time, "monotonic", lambda: now[0])
+    rl = main.RateLimit(per_key=2, window=60, total=3, total_window=100)
+    for ip in ("a", "a", "b"):
+        assert not rl.blocked(ip)
+        rl.hit(ip)
+    assert rl.blocked("a")          # лимит адреса
+    assert rl.blocked("c")          # общий лимит
+    now[0] += 61
+    assert rl.blocked("a")          # окно адреса прошло, но общий лимит еще в своем окне
+    now[0] += 40
+    assert not rl.blocked("a") and not rl.blocked("c")
+    rl2 = main.RateLimit(per_key=2, window=60)
+    rl2.hit("x")
+    rl2.hit("x")
+    assert rl2.blocked("x") and not rl2.blocked("y")
+
+
+def test_ticket_journal_written_atomically(tmp_path, monkeypatch):
+    from app import config, data
+    monkeypatch.setattr(config, "STATE_DIR", tmp_path)
+    data.add_ticket({"ticket_id": "TKT-1", "vehicle_id": "A", "session_id": "S"})
+    data.add_ticket({"ticket_id": "TKT-2", "vehicle_id": "B", "session_id": "S2"})
+    assert [t["ticket_id"] for t in data.tickets()] == ["TKT-1", "TKT-2"]
+    assert [t["ticket_id"] for t in data.tickets("B")] == ["TKT-2"]
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_conversations_in_memory_are_bounded(monkeypatch):
+    from app import agent
+    monkeypatch.setattr(agent, "_convs", {})
+    monkeypatch.setattr(agent, "MAX_CONVS_IN_MEMORY", 3)
+    monkeypatch.setattr(agent, "_load_conversation", lambda cid: None)
+    for i in range(5):
+        agent.get_conversation(f"c{i}", "A", "S")
+    agent.get_conversation("c2", "A", "S")      # обращение поднимает разговор в конец очереди
+    assert list(agent._convs) == ["c3", "c4", "c2"]

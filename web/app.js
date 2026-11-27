@@ -207,8 +207,17 @@ const replica = (label, cls = 'primary', symbol = null) => el('span', {class: `r
 // stacked – широкая кнопка над пояснением, чтобы на узком экране текст не вылезал за край
 const guideRow = (control, text, stacked = false) => el('li', {class: stacked ? 'stacked' : null},
   el('span', {class: 'guide-step'}, el('span', {class: 'guide-control'}, control), el('span', {}, text)));
-const sampleSearch = () => el('span', {class: 'replica search-replica'}, icon('search'), el('span', {}, 'Т792'));
-const sampleCar = () => el('span', {class: 'sample-car'}, plate('T792HO98'), el('span', {class: 'row-model'}, el('strong', {class: 'garage'}, 'Г-112'), el('span', {}, 'Урал‑5557‑10')), stagePill('quarantine'));
+// примеры в инструкции и подсказке поиска – машина из этого парка (первая в очереди), а не зашитый номер
+const sampleVehicle = () => (state.vehicles?.length ? orderedVehicles()[0] : null);
+const sampleRefs = () => {
+  const v = sampleVehicle();
+  return {plate: v?.vehicle_id.slice(0, 4) ?? 'А123', garage: (v && garage(v)) || v?.vehicle_id || 'Г-1'};
+};
+const sampleSearch = () => el('span', {class: 'replica search-replica'}, icon('search'), el('span', {}, sampleRefs().plate));
+const sampleCar = () => {
+  const v = sampleVehicle();
+  return el('span', {class: 'sample-car'}, plate(v?.vehicle_id ?? 'А123ВС77'), v ? vehicleModel(v) : null, stagePill(v ? vehicleStage(v) : 'quarantine'));
+};
 const guideSteps = [
   () => el('ul', {class: 'guide-points'}, ['guide1a', 'guide1b', 'guide1c'].map(key => el('li', {}, icon('check'), el('span', {}, t(key))))),
   () => el('div', {class: 'guide-stack'}, sampleSearch(), el('p', {class: 'guide-caption'}, t('guideLabels')), el('ul', {class: 'guide-legend'}, [['quarantine', 'guideRed'], ['anomaly', 'guideAmber'], ['check_failed', 'guideViolet'], ['normal', 'guideGreen']]
@@ -232,7 +241,7 @@ function openGuide(step = 0) {
         last ? null : action(t('guideSkip'), closeGuide, {class: 'link-button', id: 'guide-skip'})),
       el('div', {class: 'guide-body'}, el('h2', {id: 'guide-heading'}, t(`guide${step + 1}Title`)),
         el('div', {class: 'guide-visual', 'aria-hidden': 'true', inert: true}, guideSteps[step]()),
-        el('p', {class: 'guide-text', id: 'guide-text'}, t(`guide${step + 1}Text`)),
+        el('p', {class: 'guide-text', id: 'guide-text'}, t(`guide${step + 1}Text`, sampleRefs())),
         // крупный шрифт – сразу на первом шаге, а не только в конце инструкции
         step === 0 ? action([el('span', {class: 'size-face', 'aria-hidden': 'true'}, 'Aᴀ'), t(large ? 'guideSmaller' : 'guideBigger')],
           () => { toggleLarge(); show(0); $('#guide-size', guide).focus(); }, {id: 'guide-size', 'aria-pressed': String(large)}) : null,
@@ -381,7 +390,7 @@ function renderPark() {
   input.value = state.query;
   update();
   main.replaceChildren(el('div', {class: 'search-group'}, el('label', {for: 'vehicle-search'}, t('search')),
-    el('div', {class: 'search'}, icon('search'), input, clear), hint(t('searchExample'), {id: 'search-example'})),
+    el('div', {class: 'search'}, icon('search'), input, clear), hint(t('searchExample', sampleRefs()), {id: 'search-example'})),
     state.me?.user?.role !== 'mechanic' && action([icon('chart'), t('fleet'), icon('next')], () => { state.fleetFilter = ''; state.fleetNormal = false; navigate({page: 'fleet'}); }, {class: 'wide-link'}),
     el('div', {class: 'between list-heading'}, count, state.demo && el('span', {class: 'demo'}, t('demo')),
       // инструкция – словами, а не значком: строка уже есть, места в списке не занимает
@@ -1133,7 +1142,9 @@ async function confirmTicket(c) {
   const lines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const conclusion = c.edits.conclusion.trim();
   const override = c.edits.urgency !== c.draft.urgency ? (c.edits.urgencyReason || '').trim() : '';
-  const payload = {draft_id: c.draft.draft_id, conclusion: override ? `${conclusion}\n${t('reasonLine', {reason: override})}` : conclusion, urgency: c.edits.urgency, operations: lines(c.edits.operations), spare_parts: lines(c.edits.spare_parts),
+  // причину изменения приоритета сервер проверяет сам и добавляет в заключение для ТОиР
+  const payload = {draft_id: c.draft.draft_id, conclusion, urgency: c.edits.urgency, operations: lines(c.edits.operations), spare_parts: lines(c.edits.spare_parts),
+    ...(override ? {urgency_reason: override} : {}),
     ...(c.draftNeedsInspection ? {inspection_confirmed: Boolean(c.edits.inspectionConfirmed)} : {})};
   const invalid = !conclusion ? t('needConclusion') : c.edits.urgency !== c.draft.urgency && !override ? t('needReason') : '';
   if (invalid) { $('#ticket-error').hidden = false; $('#ticket-error').textContent = invalid; return; }

@@ -81,6 +81,8 @@ class Confirm(BaseModel):
     urgency: Literal['low', 'medium', 'high'] | None = None
     operations: list[str] | None = None
     spare_parts: list[str] | None = None
+    inspection_confirmed: bool | None = None
+    urgency_reason: str | None = None
 
 
 def vehicle(vehicle_id):
@@ -282,6 +284,8 @@ async def confirm(req: Confirm):
     data = DRAFTS[req.draft_id] | req.model_dump(exclude_none=True)
     if not data['conclusion'].strip():
         raise HTTPException(422, 'Введите заключение')
+    if data['urgency'] != DRAFTS[req.draft_id]['urgency'] and not (req.urgency_reason or '').strip():
+        raise HTTPException(400, 'Укажите причину изменения приоритета.')   # как на сервере (#111)
     ticket_id = f"TKT-{sum(map(len, TICKETS.values())) + 1:04d}"
     TICKETS.setdefault(data['vehicle_id'], []).append({'ticket_id': ticket_id, 'session_id': data['session_id'], 'anomaly_type': data['anomaly_type'], 'urgency': data['urgency'], 'created_at': datetime.now(UTC).isoformat()})
     result = {'ticket_id': ticket_id, 'status': 'created'}

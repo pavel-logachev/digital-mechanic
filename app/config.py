@@ -53,7 +53,7 @@ USERS_FILE = Path(env("USERS_FILE", str(STATE_DIR / "users.json")))
 SESSION_DAYS = int(env("SESSION_DAYS", "30"))
 
 # Резервная модель: если основная LLM не ответила (сбой, таймаут, лимит), запрос уходит сюда через OpenRouter.
-# Пусто – резерв выключен. На контрольном наборе Gemini 3.5 Flash Lite дала 24/25 против 25/25 у DeepSeek Flash.
+# Пусто – резерв выключен. На контрольном наборе (72 вопроса) Gemini 3.5 Flash Lite – 69/72, DeepSeek Flash – 71/72 (eval/QUALITY.md).
 LLM_FALLBACK_MODEL = env("LLM_FALLBACK_MODEL", "google/gemini-3.5-flash-lite")
 # Сколько дней хранить журнал работы (STATE_DIR/audit/ГГГГ-ММ.jsonl, файл на месяц); старые файлы удаляются
 AUDIT_RETENTION_DAYS = int(env("AUDIT_RETENTION_DAYS", "180"))

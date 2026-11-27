@@ -51,4 +51,4 @@ def transcribe(data: bytes, fmt: str, lang: str = "ru") -> str:
     if r.status_code != 200:
         raise SttError(f"сервис распознавания ответил {r.status_code}")
     text = (r.json()["choices"][0]["message"].get("content") or "").strip().strip('"«»')
-    return text.replace("–", "–")
+    return text.replace(" — ", " – ").replace("—", "–")

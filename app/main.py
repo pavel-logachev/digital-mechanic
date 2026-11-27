@@ -1,12 +1,15 @@
 """HTTP API и веб-интерфейс «Цифрового механика» (FastAPI). Контракт: docs/CONTRACT.md."""
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import queue
 import secrets
 import threading
 import time
+from collections import deque
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
@@ -19,7 +22,24 @@ from .manuals import BY_ID
 log = logging.getLogger("mechanic")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-app = FastAPI(title="Цифровой механик", version="1.0")
+
+
+def _warm_up() -> None:
+    try:
+        agent.searcher()
+        log.info("индекс руководств загружен")
+    except Exception:   # без индекса сервис работает (карточки, заявки), поиск сообщит об ошибке сам
+        log.exception("индекс руководств не загружен")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # индекс руководств и модель E5 грузятся в фоне при старте, а не на первом вопросе механика
+    threading.Thread(target=_warm_up, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Цифровой механик", version="1.0", lifespan=lifespan)
 
 # --- заголовки безопасности: только свои скрипты и стили, без встраивания в чужие сайты ---
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
@@ -67,8 +87,41 @@ async def access_gate(request: Request, call_next):
 
 
 def _token(pw: str) -> str:
-    import hashlib
     return hashlib.sha256(("dm:" + pw).encode()).hexdigest()
+
+
+class RateLimit:
+    """Скользящее окно по адресу и суммарно. Потокобезопасно; адреса без событий в окне забываются."""
+
+    def __init__(self, per_key: int, window: float, total: int | None = None, total_window: float = 0):
+        self.per_key, self.window, self.total, self.total_window = per_key, window, total, total_window
+        self._keys: dict[str, deque] = {}
+        self._all: deque = deque()
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _trim(q: deque, horizon: float) -> None:
+        while q and q[0] < horizon:
+            q.popleft()
+
+    def blocked(self, key: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            q = self._keys.get(key)
+            if q is not None:
+                self._trim(q, now - self.window)
+            self._trim(self._all, now - self.total_window)
+            return bool((q and len(q) >= self.per_key) or (self.total and len(self._all) >= self.total))
+
+    def hit(self, key: str) -> None:
+        now = time.monotonic()
+        with self._lock:
+            self._keys.setdefault(key, deque()).append(now)
+            if self.total:
+                self._all.append(now)
+            if len(self._keys) > 10_000:   # не копим память на разовых адресах
+                horizon = now - self.window
+                self._keys = {k: q for k, q in self._keys.items() if q and q[-1] >= horizon}
 
 
 class LoginIn(BaseModel):
@@ -76,14 +129,13 @@ class LoginIn(BaseModel):
     password: str
 
 
-_fails: dict[str, list[float]] = {}
+LOGIN_FAILS = RateLimit(per_key=10, window=900)
 
 
 @app.post("/api/login")
 def login(body: LoginIn, request: Request):
     ip = _client_ip(request)
-    recent = [t for t in _fails.get(ip, []) if time.time() - t < 900]
-    if len(recent) >= 10:
+    if LOGIN_FAILS.blocked(ip):
         raise HTTPException(429, "Слишком много попыток входа, подождите 15 минут")
     if users.enabled():
         user = users.authenticate(body.login, body.password)
@@ -93,7 +145,7 @@ def login(body: LoginIn, request: Request):
     else:
         token = None
     if not token:
-        _fails[ip] = [*recent, time.time()]
+        LOGIN_FAILS.hit(ip)
         raise HTTPException(401, "Неверный логин или пароль")
     audit.write("login", user=body.login or None, ip=ip)
     r = JSONResponse({"ok": True})
@@ -133,7 +185,8 @@ p{margin:0;color:#4d5b68;font-size:15px}#m{color:#a1261b;min-height:1.2em}</styl
 
 
 def _client_ip(request: Request) -> str:
-    return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    # адрес клиента уже восстановлен uvicorn из X-Forwarded-For (--proxy-headers); сам заголовок не читаем – его можно подделать
+    return request.client.host if request.client else "?"
 
 
 @app.api_route("/demo.mp4", methods=["GET", "HEAD"])   # HEAD – для проверок ссылки и предпросмотра в мессенджерах
@@ -153,7 +206,7 @@ def health():
 
 @app.get("/api/vehicles")
 def vehicles():
-    return [data.summary(v) for v in data.vehicles()]
+    return data.summaries()
 
 
 @app.get("/api/vehicles/{vehicle_id}")
@@ -194,22 +247,15 @@ def _check_page(manual_id: str, page: int):
 
 # --- агент ---
 # Стенд открыт для жюри без пароля, поэтому ограничиваем частоту запросов к LLM: с одного адреса и суммарно.
-_hits: dict[str, list[float]] = {}
-_all: list[float] = []
-PER_IP_10MIN = int(config.env("RATE_PER_IP_10MIN", "40"))
-GLOBAL_PER_HOUR = int(config.env("RATE_GLOBAL_PER_HOUR", "600"))
+LLM_RATE = RateLimit(per_key=int(config.env("RATE_PER_IP_10MIN", "40")), window=600,
+                     total=int(config.env("RATE_GLOBAL_PER_HOUR", "600")), total_window=3600)
 
 
 def _rate_limit(request: Request) -> None:
-    now = time.time()
     ip = _client_ip(request)
-    h = [t for t in _hits.get(ip, []) if now - t < 600]
-    _all[:] = [t for t in _all if now - t < 3600]
-    if len(h) >= PER_IP_10MIN or len(_all) >= GLOBAL_PER_HOUR:
+    if LLM_RATE.blocked(ip):
         raise HTTPException(429, "Слишком много запросов, подождите несколько минут.")
-    h.append(now)
-    _hits[ip] = h
-    _all.append(now)
+    LLM_RATE.hit(ip)
 
 
 class ChatIn(BaseModel):
@@ -303,7 +349,7 @@ def chat(body: ChatIn, request: Request):
 @app.post("/api/transcribe")
 async def transcribe(request: Request, audio: UploadFile = File(...), lang: str = Form("ru")):
     _rate_limit(request)
-    data_ = await audio.read()
+    data_ = await audio.read(stt.MAX_BYTES + 1)   # больше лимита не читаем: запись длиннее отклоняет stt
     try:
         text = stt.transcribe(data_, stt.audio_format(audio.content_type or "", audio.filename or ""), lang)
         audit.write("voice", user=current_user(request).login if current_user(request) else None, lang=lang, bytes=len(data_), text=text)
@@ -319,6 +365,7 @@ class ConfirmIn(BaseModel):
     operations: list[str] | None = None
     spare_parts: list[str] | None = None
     inspection_confirmed: bool | None = None
+    urgency_reason: str | None = None   # обязательна, если механик изменил приоритет программы (#111)
 
 
 @app.post("/api/tickets/confirm")

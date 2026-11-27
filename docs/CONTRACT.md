@@ -24,7 +24,7 @@ s.page_png(manual_id: str, page: int) -> pathlib.Path   # рендер стра�
   - `{"type":"message","text":markdown,"citations":[{"n":1,"manual_id":str,"title":str,"designation":str,"page":int,"quote":str}]}` – ответ агента; в тексте ссылки вида `[1]`
   - `{"type":"draft","draft":{"draft_id":str,"vehicle_id","session_id","anomaly_type","conclusion","urgency","urgency_reasons":[str],"operations":[str],"spare_parts":[str],"references":[{"manual","pdf_page","manual_id","title"}]}}` – черновик заявки, требует подтверждения человеком
   - `{"type":"error","text":str}`, `{"type":"done"}`
-- `POST /api/tickets/confirm` `{draft_id, conclusion?, urgency?, operations?, spare_parts?}` → `{"ticket_id":"TKT-0001","status":"created"}` или 4xx `{detail}`. Только этот вызов отправляет заявку в ТОиР.
+- `POST /api/tickets/confirm` `{draft_id, conclusion?, urgency?, urgency_reason?, operations?, spare_parts?, inspection_confirmed?}` → `{"ticket_id":"TKT-0001","status":"created"}` или 4xx `{detail}`. Только этот вызов отправляет заявку в ТОиР. Сервер сам проверяет: при измененном приоритете нужна `urgency_reason` (она добавляется в заключение для ТОиР), при сомнительном сигнале – `inspection_confirmed: true`; повтор того же черновика возвращает уже созданную заявку.
 - `GET /api/health`
 
 ## Дополнения 26.11 (после кик-оффа)

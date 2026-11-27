@@ -73,17 +73,20 @@ def tickets(vehicle_id: str | None = None) -> list[dict]:
 
 
 def add_ticket(record: dict) -> None:
+    """Журнал пишется атомарно: временный файл и замена, чтобы сбой посреди записи не испортил историю заявок."""
     with _lock:
         items = tickets()
-        record = {**record, "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
-        items.append(record)
-        _tickets_path().write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
+        items.append({**record, "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
+        path = _tickets_path()
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(path)
 
 
 # ---------- сводки ----------
-def summary(v: dict) -> dict:
+def summary(v: dict, all_tickets: list[dict] | None = None) -> dict:
     last = v["sessions"][-1] if v["sessions"] else None
-    t = tickets(v["vehicle_id"])
+    t = tickets(v["vehicle_id"]) if all_tickets is None else [x for x in all_tickets if x["vehicle_id"] == v["vehicle_id"]]
     verdict = evaluate(last, v["engine_model"], v["sessions"], t) if last else None
     open_t = next((x["ticket_id"] for x in reversed(t) if last and x["session_id"] == last["session_id"]), None)
     if verdict is None:
@@ -121,8 +124,14 @@ _ORDER = {"quarantine": 0, "attention": 1, "ok": 2}
 _URG = {"high": 0, "medium": 1, "low": 2, None: 3}
 
 
+def summaries() -> list[dict]:
+    """Сводки по всем машинам за одно чтение журнала заявок."""
+    all_tickets = tickets()
+    return [summary(v, all_tickets) for v in vehicles()]
+
+
 def fleet() -> dict:
-    items = [summary(v) for v in vehicles()]
+    items = summaries()
     counts = {k: sum(1 for i in items if i["fleet_status"] == k) for k in ("ok", "attention", "quarantine")}
     items.sort(key=lambda i: (_ORDER[i["fleet_status"]], _URG[i["last_urgency"]],
                               -(i["last_check"] or {}).get("anomaly_score", 0) if (i["last_check"] or {}).get("anomaly_score") is not None else 0))
