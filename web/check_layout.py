@@ -17,6 +17,8 @@ from playwright.sync_api import expect, sync_playwright
 sys.path.insert(0, str(Path(__file__).parent))
 from check_ui import BASE, open_chat, open_vehicle
 
+BASE = os.getenv('MECHANIC_BASE', BASE)   # можно прогнать и по живому стенду
+
 DEVICES = {   # ширина × высота CSS-пикселей
     'se-320': (320, 568),        # старый iPhone SE, предельно узкий
     'android-360': (360, 640),   # 5–5,5" Android
