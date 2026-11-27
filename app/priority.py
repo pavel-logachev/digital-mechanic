@@ -94,7 +94,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
     hist_note = _history_note(past)
 
     if status == "normal":
-        v = Verdict("normal", None, "По звуку двигателя отклонений нет. Работайте по обычному графику ТО.", False,
+        v = Verdict("normal", None, "По звуку двигателя отклонений нет: эксплуатацию продолжайте, следующая проверка – по обычному графику ТО.", False,
                     [f"Оценка отклонения {fmt(score)} из 1 – низкая, уверенность программы {fmt(conf)}, запись {QUALITY_RU.get(quality, quality)}.",
                      "Это вывод по одной записи звука, а не осмотр машины."], rule="R2-normal")
         if quality == "warning" or (conf is not None and d(conf) < CONF_MIN):

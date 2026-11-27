@@ -71,7 +71,7 @@ noChecks|Проверок пока нет|Hozircha tekshiruv yo‘q|Ҳоло с�
 score|Оценка отклонения|Og‘ish balli|Баҳои инҳироф|Четтөө баасы|Ауытқу бағасы|गड़बड़ी का स्कोर|Anomaly score
 pastTickets|Заявки по машине|Mashina bo‘yicha buyurtmalar|Дархостҳои ин мошин|Бул унаа боюнча өтүнмөлөр|Осы көлік бойынша өтінімдер|इस गाड़ी के वर्क ऑर्डर|Vehicle work orders
 noTickets|Заявок пока нет|Hozircha buyurtma yo‘q|Ҳоло дархост нест|Азырынча өтүнмө жок|Әзірге өтінім жоқ|अभी कोई वर्क ऑर्डर नहीं है|No work orders yet
-diagnose|Открыть результат проверки|Tekshiruv natijasini ochish|Натиҷаи санҷишро кушодан|Текшерүүнүн жыйынтыгын ачуу|Тексеру нәтижесін ашу|जाँच का नतीजा खोलें|Open check result
+diagnose|Получить результат диагностики|Diagnostika natijasini olish|Гирифтани натиҷаи ташхис|Диагностиканын жыйынтыгын алуу|Диагностика нәтижесін алу|जाँच का नतीजा पाएँ|Get diagnostic result
 loading|Загружаем данные…|Ma’lumot yuklanmoqda…|Маълумот бор мешавад…|Маалымат жүктөлүүдө…|Дерек жүктелуде…|जानकारी आ रही है…|Loading…
 loadFailed|Не удалось загрузить данные|Ma’lumot yuklanmadi|Маълумот бор нашуд|Маалымат жүктөлгөн жок|Дерек жүктелмеді|जानकारी नहीं आ सकी|Could not load data
 retry|Повторить|Qayta urinish|Аз нав кӯшиш кунед|Кайра аракет кылуу|Қайталау|फिर कोशिश करें|Try again
