@@ -32,7 +32,7 @@ dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=d
 end = min(dur, next(m["t"] for m in marks if m["kind"] == "end") + 0.3)
 
 # ---------- ускорение: только интервалы ожидания модели (первые 1,0 с и последние 0,6 с – в реальном времени) ----------
-waits, opened = [], None
+waits, opened, opened_at = [], None, []
 for m in marks:
     if m["kind"] == "wait<":
         opened = m["t"]
@@ -40,6 +40,7 @@ for m in marks:
         a, b = opened + 1.0, m["t"] - 0.6
         if b - a > 2.0:
             waits.append((a, b))
+            opened_at.append(m["t"] - opened)   # сколько на самом деле ждали ответа
         opened = None
 segments, cur = [], 0.0
 for a, b in waits:
@@ -77,6 +78,7 @@ PW = round(PH * 390 / 844 / 2) * 2
 PX, PY = (CW - PW) // 2, (CH - PH) // 2
 SC = PH / 844                               # CSS px телефона -> px кадра
 R = 34                                      # скругление экрана
+WAIT_ROWS = [(8, 710, 374, 60), (8, 730, 374, 40)]   # строка ожидания над полем вопроса, CSS px
 
 NAVY, INK, MUTED, DIM, YELLOW, GREEN = (16, 27, 38), (255, 255, 255), (190, 205, 218), (126, 146, 164), (249, 206, 73), (120, 214, 160)
 
@@ -164,7 +166,7 @@ def state_at(t):
             if s[2] and s[2] not in extra_seen:
                 extra_seen.append(s[2])
     call = next((c for c in calls if c["out"] <= t < c["out_end"]), None)
-    wait = next((b - a for a, b in waits if out_time(a) <= t < out_time(b)), None)
+    wait = next(((i, b - a, opened_at[i]) for i, (a, b) in enumerate(waits) if out_time(a) <= t < out_time(b)), None)
     return step, scen_seen, extra_seen, call, wait
 
 
@@ -248,13 +250,27 @@ def draw_state(t):
         ex, ey = RX - 2, cy + ch_ / 2
         d.line([(ax + 14, ay), (ex - 28, ey), (ex, ey)], fill=YELLOW, width=4, joint="curve")
         d.polygon([(ax + 2, ay), (ax + 22, ay - 10), (ax + 22, ay + 10)], fill=YELLOW)
-    if wait:
-        bx, by = RX, CH - 132
-        d.rounded_rectangle((bx, by, bx + RW, by + 64), 32, fill=(255, 255, 255, 24))
+    if wait and not call:
+        idx, _, real = wait
+        # строка «Готовлю объяснение / Готовлю ответ…» над полем вопроса (CSS px экрана 390×844): у первого ожидания – в две строки
+        x, y0, w, h = WAIT_ROWS[min(idx, 1)]
+        bx0, by0, bx1, by1 = PX + x * SC, PY + y0 * SC, PX + (x + w) * SC, PY + (y0 + h) * SC
+        glow = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
+        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=YELLOW + (150,), width=10)
+        img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((bx0, by0, bx1, by1), 12, outline=YELLOW, width=4)
+        cy, ch_ = int(yy + 34), 128
+        d.rounded_rectangle((RX, cy, RX + RW, cy + ch_), 16, fill=YELLOW + (255,))
         for i in range(2):
-            ox = bx + 26 + i * 16
-            d.polygon([(ox, by + 20), (ox + 16, by + 32), (ox, by + 44)], fill=YELLOW)
-        d.text((bx + 72, by + 13), f"Ждем ответ модели · ускорено ×{SPEED:g}", font=F(28, True), fill=INK)
+            ox = RX + 26 + i * 18
+            d.polygon([(ox, cy + 26), (ox + 18, cy + 40), (ox, cy + 54)], fill=NAVY)
+        d.text((RX + 80, cy + 18), "Ждем ответ модели", font=F(32, True), fill=NAVY)
+        d.text((RX + 80, cy + 66), f"ожидание ускорено ×{SPEED:g}, по факту {real:.0f} с", font=F(27), fill=NAVY)
+        ax, ay = bx1 + 2, (by0 + by1) / 2
+        ex, ey = RX - 2, cy + ch_ / 2
+        d.line([(ax + 14, ay), (ex - 28, ey), (ex, ey)], fill=YELLOW, width=4, joint="curve")
+        d.polygon([(ax + 2, ay), (ax + 22, ay - 10), (ax + 22, ay + 10)], fill=YELLOW)
     return img
 
 
