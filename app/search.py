@@ -1,11 +1,11 @@
 """Гибридный поиск по физическим страницам руководств."""
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import json
 import logging
 import math
 import os
-from pathlib import Path
 import re
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from threading import Lock, local
 from time import monotonic
@@ -231,7 +231,7 @@ class Searcher:
         scores = np.zeros(len(ids))
         depth = max(TOP_N, k)
         terms = set()
-        for q, vector in zip(queries, dense):
+        for q, vector in zip(queries, dense, strict=True):
             words = list(dict.fromkeys(_tokens(q)))
             terms.update(words)
             lexical = bm25.get_scores(words)

@@ -10,9 +10,14 @@ python render_demo.py [--clean]
 Звук: вопрос механика (q-c2.wav), который в записи подавался в браузер как микрофон, ставится на то же место.
 Ничего не вырезается и не переставляется: отрезки идут встык по порядку, меняется только скорость ожидания.
 """
-import json, os, shutil, subprocess, sys
+import json
+import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 CLEAN = "--clean" in sys.argv
 HERE = Path(__file__).resolve().parent
@@ -28,11 +33,17 @@ calls.sort(key=lambda c: c["t"])
 SPEED = 3.0
 FPS = 30
 WIN = "C:/Windows/Fonts/"
-F = lambda size, bold=False: ImageFont.truetype(WIN + ("segoeuib.ttf" if bold else "segoeui.ttf"), size)
-FS = lambda size: ImageFont.truetype(WIN + "seguisb.ttf", size)
+def F(size, bold=False):
+    return ImageFont.truetype(WIN + ("segoeuib.ttf" if bold else "segoeui.ttf"), size)
+
+
+def FS(size):
+    return ImageFont.truetype(WIN + "seguisb.ttf", size)
+
+
 
 dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(raw)],
-                           capture_output=True, text=True).stdout.strip())
+                           capture_output=True, text=True, check=True).stdout.strip())
 end = min(dur, next(m["t"] for m in marks if m["kind"] == "end") + 0.3)
 
 # ---------- ускорение: только интервалы ожидания модели (первые 1,0 с и последние 0,6 с – в реальном времени) ----------
@@ -240,14 +251,14 @@ def draw_state(t):
         bx1, by1 = bx0 + w * SC, by0 + h * SC
         bx0, by0, bx1, by1 = max(bx0, PX + 3), max(by0, PY + 3), min(bx1, PX + PW - 3), min(by1, PY + PH - 3)
         glow = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
-        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=YELLOW + (150,), width=10)
+        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=(*YELLOW, 150), width=10)
         img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((bx0, by0, bx1, by1), 12, outline=YELLOW, width=4)
         lines = wrap(d, call["text"], F(30, True), RW - 48)
         ch_ = 36 + 42 * len(lines)
         cy = int(min(yy + 34, CH - 170 - ch_))
-        d.rounded_rectangle((RX, cy, RX + RW, cy + ch_), 16, fill=YELLOW + (255,))
+        d.rounded_rectangle((RX, cy, RX + RW, cy + ch_), 16, fill=(*YELLOW, 255))
         for i, line in enumerate(lines):
             d.text((RX + 24, cy + 14 + i * 42), line, font=F(30, True), fill=NAVY)
         ax, ay = bx1 + 2, (by0 + by1) / 2
@@ -260,12 +271,12 @@ def draw_state(t):
         x, y0, w, h = WAIT_ROWS[min(idx, 1)]
         bx0, by0, bx1, by1 = PX + x * SC, PY + y0 * SC, PX + (x + w) * SC, PY + (y0 + h) * SC
         glow = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
-        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=YELLOW + (150,), width=10)
+        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=(*YELLOW, 150), width=10)
         img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((bx0, by0, bx1, by1), 12, outline=YELLOW, width=4)
         cy, ch_ = int(yy + 34), 128
-        d.rounded_rectangle((RX, cy, RX + RW, cy + ch_), 16, fill=YELLOW + (255,))
+        d.rounded_rectangle((RX, cy, RX + RW, cy + ch_), 16, fill=(*YELLOW, 255))
         for i in range(2):
             ox = RX + 26 + i * 18
             d.polygon([(ox, cy + 26), (ox + 18, cy + 40), (ox, cy + 54)], fill=NAVY)

@@ -1,10 +1,10 @@
 """Сравнивает RRF и Jev на раскрытых контрольных вопросах."""
 import argparse
-from collections import Counter
 import json
+import sys
+from collections import Counter
 from pathlib import Path
 from statistics import median
-import sys
 from time import perf_counter
 
 if not __package__:  # Также поддерживается `python eval/retrieval_eval.py`.
@@ -12,7 +12,7 @@ if not __package__:  # Также поддерживается `python eval/retr
 
 from app import config
 from app.manuals import manuals_for_engine
-from app.search import Searcher, TOP_N
+from app.search import TOP_N, Searcher
 
 
 def _data_dir():

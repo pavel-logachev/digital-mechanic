@@ -54,6 +54,7 @@ def test_metrics_count_first_matching_page_only():
 
 def test_rerank_uses_rrf_when_a_batch_errors(monkeypatch):
     import httpx
+
     from app import config, search
 
     class Encoder:

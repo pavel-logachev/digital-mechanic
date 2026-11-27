@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import queue
 import secrets
 import threading
 import time
-import logging
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -93,7 +93,7 @@ def login(body: LoginIn, request: Request):
     else:
         token = None
     if not token:
-        _fails[ip] = recent + [time.time()]
+        _fails[ip] = [*recent, time.time()]
         raise HTTPException(401, "Неверный логин или пароль")
     audit.write("login", user=body.login or None, ip=ip)
     r = JSONResponse({"ok": True})
@@ -272,7 +272,7 @@ def chat(body: ChatIn, request: Request):
                 # кнопка «Получить результат» всегда показывает карточку, даже если разговор уже был
                 a.t_get_diagnosis()
             a.run(text[:2000], ticket_requested=True if body.action == "draft_ticket" else None)
-        except Exception as e:  # noqa: BLE001 – показываем механику понятную ошибку, детали в лог
+        except Exception as e:
             log.exception("agent failed")
             q.put({"type": "error", "text": f"Не получилось выполнить запрос ({type(e).__name__}). Попробуйте еще раз."})
         finally:
@@ -308,7 +308,7 @@ async def transcribe(request: Request, audio: UploadFile = File(...), lang: str 
         text = stt.transcribe(data_, stt.audio_format(audio.content_type or "", audio.filename or ""), lang)
         audit.write("voice", user=current_user(request).login if current_user(request) else None, lang=lang, bytes=len(data_), text=text)
     except stt.SttError as e:
-        raise HTTPException(502, f"Не удалось распознать речь: {e}")
+        raise HTTPException(502, f"Не удалось распознать речь: {e}") from e
     return {"text": text, "lang": lang}
 
 
@@ -330,9 +330,9 @@ def confirm(body: ConfirmIn, request: Request):
         audit.write("ticket", user=u.login if u else None, draft=body.draft_id, result=res)
         return res
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     except clients.ServiceError as e:
-        raise HTTPException(502, f"{e.service}: {e.detail}")
+        raise HTTPException(502, f"{e.service}: {e.detail}") from e
 
 
 # --- статика (веб-интерфейс) ---

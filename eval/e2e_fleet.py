@@ -60,9 +60,9 @@ def check_vehicle(base: str, vid: str) -> dict:
         out.update(ml_status=last["status"], verdict=d["verdict"], rule=d.get("rule"), urgency=d.get("urgency"), confidence=d.get("confidence"),
                    ticket_allowed=d.get("ticket_allowed"), inspect_first=d.get("inspect_first"), code=last.get("anomaly_type"))
         # правила F3 ТЗ и брифа заказчика
-        if last["status"] == "check_failed" or last.get("signal_quality") == "bad":
-            if d["verdict"] != "check_failed" or d.get("ticket_allowed") or d.get("urgency"):
-                bad("сбой записи обработан не как сбой")
+        failed_check = last["status"] == "check_failed" or last.get("signal_quality") == "bad"
+        if failed_check and (d["verdict"] != "check_failed" or d.get("ticket_allowed") or d.get("urgency")):
+            bad("сбой записи обработан не как сбой")
         if last["status"] == "normal" and d["verdict"] == "anomaly":
             bad("норма превратилась в отклонение")
         if d.get("rule") == "R3-not-applicable":

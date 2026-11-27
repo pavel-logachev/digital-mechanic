@@ -1,12 +1,11 @@
 """Reproduce the report aggregates from saved benchmark outputs, without API calls."""
 from __future__ import annotations
 
-from collections import Counter
 import math
+from collections import Counter
 from typing import Any
 
-from eval.quality_eval import HERE, classify_failure, read_json, ref_list, summarize, write_json
-
+from eval.quality_eval import classify_failure, read_json, ref_list, summarize, write_json
 
 
 def _data_dir():
@@ -81,13 +80,13 @@ def main():
     for p in sorted(_data_dir().glob('quality-v2-compare-*.json')):
         d = read_json(p)
         model_rows[d['meta']['model']] = d['rows']
-    common = set(sample).intersection(*(set(r['id'] for r in model) for model in model_rows.values()))
+    common = set(sample).intersection(*({r['id'] for r in model} for model in model_rows.values()))
     for model, rows in model_rows.items():
-        assert len(rows) == len({r['id'] for r in rows}) and set(r['id'] for r in rows) <= set(sample), model
-    stats['comparison'] = dict(sample_size=len(sample), common_ids=[x for x in sample if x in common],
-                               coverage={m: len(rows) for m, rows in model_rows.items()},
-                               results={m: report_stats(normalize([r for r in rows if r['id'] in common], questions, manual, 'comparison'))
-                                        for m, rows in model_rows.items()})
+        assert len(rows) == len({r['id'] for r in rows}) and {r['id'] for r in rows} <= set(sample), model
+    stats['comparison'] = {'sample_size': len(sample), 'common_ids': [x for x in sample if x in common],
+                               'coverage': {m: len(rows) for m, rows in model_rows.items()},
+                               'results': {m: report_stats(normalize([r for r in rows if r['id'] in common], questions, manual, 'comparison'))
+                                        for m, rows in model_rows.items()}}
     stats['calibration'] = {}
     for stage, rows in (('before', before), ('after', after)):
         rs = {r['id']: r for r in rows}
@@ -99,11 +98,11 @@ def main():
     end = _data('quality-budget-end.json')
     if end.exists():
         final = read_json(end)
-        stats['budget'] = dict(openrouter_account_delta_usd=round(final['openrouter_usage'] - start.get('openrouter_usage_before_preflight', start['openrouter_usage']), 8),
-                               openrouter_main_delta_usd=round(final['openrouter_usage'] - start['openrouter_usage'], 8),
-                               deepseek_account_delta_usd=round(start['deepseek_remaining'] - final['deepseek_remaining'], 2))
+        stats['budget'] = {'openrouter_account_delta_usd': round(final['openrouter_usage'] - start.get('openrouter_usage_before_preflight', start['openrouter_usage']), 8),
+                               'openrouter_main_delta_usd': round(final['openrouter_usage'] - start['openrouter_usage'], 8),
+                               'deepseek_account_delta_usd': round(start['deepseek_remaining'] - final['deepseek_remaining'], 2)}
     counts = Counter(q['category'] for q in questions.values())
-    stats['dataset'] = dict(n=len(questions), categories=dict(counts))
+    stats['dataset'] = {'n': len(questions), 'categories': dict(counts)}
     write_json(_data('quality-summary.json'), stats)
     for k, v in stats.items():
         print(k, v)

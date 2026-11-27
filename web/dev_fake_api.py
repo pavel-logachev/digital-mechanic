@@ -3,7 +3,7 @@ import asyncio
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -202,21 +202,21 @@ def page_metadata(manual_id: str, page: int):
 
 
 def step(tool, title, status, detail=''):
-    return dict(type='step', tool=tool, title=title, status=status, detail=detail)
+    return {'type': 'step', 'tool': tool, 'title': title, 'status': status, 'detail': detail}
 
 
 def message(text, citations=()):
-    return dict(type='message', text=text, citations=list(citations))
+    return {'type': 'message', 'text': text, 'citations': list(citations)}
 
 
 def reference(page, n, quote):
     info = manual_info(YAMZ)
-    return dict(n=n, manual_id=YAMZ, title=info['title'], designation=info['designation'], page=page, quote=quote)
+    return {'n': n, 'manual_id': YAMZ, 'title': info['title'], 'designation': info['designation'], 'page': page, 'quote': quote}
 
 
 def draft(v, s, result):
     specific = v['engine_model'] == 'ЯМЗ-236М2' and s['anomaly_type'] == 'F01'
-    return {'draft_id': str(uuid4()), 'vehicle_id': v['vehicle_id'], 'session_id': s['session_id'], 'anomaly_type': s['anomaly_type'], 'conclusion': f"Возможная причина: {s['anomaly_title'][0].lower() + s['anomaly_title'][1:]}. Подтвердить при осмотре.", 'urgency': result['urgency'], 'urgency_reasons': result['urgency_reasons'], 'operations': ['Осмотреть клапанный механизм', 'Измерить зазоры и сверить с руководством'] if specific else ['Провести очный осмотр и подтвердить источник звука'], 'spare_parts': [], 'references': [dict(manual=MANUALS[YAMZ][1], pdf_page=31, manual_id=YAMZ, title=MANUALS[YAMZ][0])] if specific else []}
+    return {'draft_id': str(uuid4()), 'vehicle_id': v['vehicle_id'], 'session_id': s['session_id'], 'anomaly_type': s['anomaly_type'], 'conclusion': f"Возможная причина: {s['anomaly_title'][0].lower() + s['anomaly_title'][1:]}. Подтвердить при осмотре.", 'urgency': result['urgency'], 'urgency_reasons': result['urgency_reasons'], 'operations': ['Осмотреть клапанный механизм', 'Измерить зазоры и сверить с руководством'] if specific else ['Провести очный осмотр и подтвердить источник звука'], 'spare_parts': [], 'references': [{'manual': MANUALS[YAMZ][1], 'pdf_page': 31, 'manual_id': YAMZ, 'title': MANUALS[YAMZ][0]}] if specific else []}
 
 
 @app.post('/api/chat')
@@ -233,7 +233,7 @@ def chat(req: Chat):
             title = 'Запрос результата проверки в ML-сервис'
             yield step('get_diagnosis', title, 'running', 'Ищем выбранную запись.')
             yield step('get_diagnosis', title, 'done', 'Запись найдена и результат получен.')
-            yield dict(type='diagnosis', data=result)
+            yield {'type': 'diagnosis', 'data': result}
             await asyncio.sleep(float(os.environ.get('FAKE_EXPLAIN_DELAY', '0')))  # для проверки экрана ожидания объяснения
             yield message({'normal': 'По этой записи отклонений не видно. Если появятся стук, шум или лампа на панели – осмотрите машину.', 'anomaly': 'Тип отклонения указывает на возможную причину. Ее нужно подтвердить при осмотре. Можно обсудить результат или подготовить заявку на осмотр.', 'check_failed': 'Запись не подошла для анализа. О состоянии двигателя по ней судить нельзя.'}[s['status']])
         elif req.action == 'draft_ticket':
@@ -241,12 +241,12 @@ def chat(req: Chat):
             yield step('draft_ticket', title, 'running', 'Собираем данные проверки.')
             if s['status'] != 'anomaly':
                 yield step('draft_ticket', title, 'error', 'В этой проверке нет отклонения.')
-                yield dict(type='error', text='Черновик доступен только после обнаружения отклонения.')
+                yield {'type': 'error', 'text': 'Черновик доступен только после обнаружения отклонения.'}
             else:
                 d = draft(v, s, result)
                 DRAFTS[d['draft_id']] = d
                 yield step('draft_ticket', title, 'done', 'Черновик готов, ничего не отправлено.')
-                yield dict(type='draft', draft=d)
+                yield {'type': 'draft', 'draft': d}
         else:
             title = 'Поиск и сверка в руководстве'
             yield step('search_manuals', title, 'running', f"Ищем по двигателю {v['engine_model']}.")
@@ -257,7 +257,7 @@ def chat(req: Chat):
             else:
                 yield step('search_manuals', title, 'done', 'В тестовом сценарии подходящий фрагмент не найден.')
                 yield message('В тестовом режиме нет проверенного ответа на этот вопрос. Не буду подставлять норматив от другого двигателя.')
-        yield dict(type='done')
+        yield {'type': 'done'}
 
     async def stream():
         async for event in events():
@@ -282,7 +282,7 @@ async def confirm(req: Confirm):
     if not data['conclusion'].strip():
         raise HTTPException(422, 'Введите заключение')
     ticket_id = f"TKT-{sum(map(len, TICKETS.values())) + 1:04d}"
-    TICKETS.setdefault(data['vehicle_id'], []).append({'ticket_id': ticket_id, 'session_id': data['session_id'], 'anomaly_type': data['anomaly_type'], 'urgency': data['urgency'], 'created_at': datetime.now(timezone.utc).isoformat()})
+    TICKETS.setdefault(data['vehicle_id'], []).append({'ticket_id': ticket_id, 'session_id': data['session_id'], 'anomaly_type': data['anomaly_type'], 'urgency': data['urgency'], 'created_at': datetime.now(UTC).isoformat()})
     result = {'ticket_id': ticket_id, 'status': 'created'}
     CONFIRMED[req.draft_id] = result
     return result

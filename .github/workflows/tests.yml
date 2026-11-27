@@ -1,4 +1,4 @@
-# Проверки на каждый push и pull request: правила приоритета, проверка цифр и ссылок, заявка, контракт API,
+# Проверки на каждый push и pull request: линтер ruff (настройки – ruff.toml), правила приоритета, проверка цифр и ссылок, заявка, контракт API,
 # синтаксис интерфейса. Тесты не ходят в LLM и не требуют руководств: поиск подменяется маленьким индексом из тестов.
 name: tests
 on: [push, pull_request]
@@ -11,6 +11,11 @@ jobs:
         with: { python-version: "3.12", cache: pip }
       - run: pip install -r requirements-test.txt
       - run: python -m pytest -q
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx run ruff==0.17.6 check .
   web:
     runs-on: ubuntu-latest
     steps:

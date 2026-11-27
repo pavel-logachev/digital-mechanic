@@ -15,10 +15,11 @@
 """
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from .faults import ENGINE_DRIVE_NOTE, FAULTS, SEVERITY_RU, applicability
+from .faults import ENGINE_DRIVE_NOTE, FAULTS, applicability
 
 POLICY_VERSION = "PRIO-2"
 SCORE_HIGH = Decimal("0.70")
@@ -139,7 +140,7 @@ def evaluate(result: dict, engine: str, sessions: list[dict], tickets: list[dict
                        warnings, "R3-not-applicable", sev, appl, defect_note=defect)
 
     repeated = [s for s in past if s["status"] == "anomaly" and s.get("anomaly_type") == code and _usable(s)]
-    growing = _growing(past + [result], code)
+    growing = _growing([*past, result], code)
     strong = score is not None and conf is not None and d(score) >= SCORE_HIGH and d(conf) >= CONF_HIGH and quality == "good"
     doubtful = quality == "warning" or (conf is not None and d(conf) < CONF_MIN)
 
@@ -216,7 +217,7 @@ def _growing(seq: list[dict], code: str) -> bool:
     if len(pts) < 3:
         return False
     pts = pts[-HISTORY_LIMIT:]
-    inc = all(d(b["anomaly_score"]) > d(a["anomaly_score"]) for a, b in zip(pts, pts[1:]))
+    inc = all(d(b["anomaly_score"]) > d(a["anomaly_score"]) for a, b in itertools.pairwise(pts))
     return inc and d(pts[-1]["anomaly_score"]) - d(pts[0]["anomaly_score"]) >= TREND_DELTA
 
 

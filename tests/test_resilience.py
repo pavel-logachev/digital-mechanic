@@ -1,5 +1,6 @@
 """Надежность для работы в автопарке: сбои внешних сервисов, перезапуск, двойное нажатие."""
 import threading
+from typing import ClassVar
 
 import httpx
 import pytest
@@ -60,7 +61,7 @@ def test_llm_falls_back_to_reserve_model(monkeypatch):
         content, tool_calls = "ответ", None
 
     class Resp:
-        choices = [type("C", (), {"message": Msg})]
+        choices: ClassVar[list] = [type("C", (), {"message": Msg})]
         usage = None
 
     seen = {}
@@ -137,6 +138,7 @@ def test_audit_rotates_by_month_and_keeps_text_only(tmp_path, monkeypatch):
 
 def test_security_headers(monkeypatch):
     from fastapi.testclient import TestClient
+
     from app import clients, main
     monkeypatch.setattr(clients, "health", lambda: {"ml": True, "toir": True})
     r = TestClient(main.app).get("/api/health")
@@ -147,6 +149,7 @@ def test_security_headers(monkeypatch):
 
 def test_users_roles_and_sessions(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
+
     from app import config, data, main, users
     monkeypatch.setattr(config, "STATE_DIR", tmp_path)
     monkeypatch.setattr(config, "USERS_FILE", tmp_path / "users.json")
@@ -186,6 +189,7 @@ def test_doubtful_signal_ticket_needs_confirmed_inspection(monkeypatch):
 
 def test_demo_video_open_even_with_login(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
+
     from app import config, main, users
     monkeypatch.setattr(config, "STATE_DIR", tmp_path)
     monkeypatch.setattr(users, "enabled", lambda: True)

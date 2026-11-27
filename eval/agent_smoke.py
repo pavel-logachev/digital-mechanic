@@ -10,6 +10,7 @@ from app import agent
 class FakeSearcher:
     def __init__(self):
         import pymupdf
+
         from app import config
         from app.manuals import MANUALS
         self.pages = {}

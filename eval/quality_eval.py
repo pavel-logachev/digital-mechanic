@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
-from hashlib import sha256
 import json
-from pathlib import Path
 import statistics
 import time
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from hashlib import sha256
+from pathlib import Path
 
 import httpx
 from openai import OpenAI
@@ -91,17 +91,17 @@ def summarize(rows):
     successful_rows = [r for r in rows if r.get('judgment')]
     citable = [r for r in successful_rows if r['judgment']['verdict'] != 'refused_ok']
     quote_measurable = [r for r in citable if type(r['judgment'].get('displayed_quote_supported')) is bool]
-    return dict(n=len(rows), n_answerable=len(answerable), n_absent=len(absent),
-                verdicts=dict(counts), correct_pct=pct(known['correct'], len(answerable)),
-                correct_plus_partially_pct=pct(known['correct'] + known['partially'], len(answerable)),
-                strict_task_success_pct=pct(known['correct'] + refused_ok, len(rows)),
-                refused_ok=refused_ok, scored=len(successful_rows),
-                citation_supported_pct=pct(sum(r['judgment'].get('citation_supported', False) for r in citable), len(citable)),
-                displayed_quote_supported_pct=pct(sum(r['judgment']['displayed_quote_supported'] for r in quote_measurable), len(quote_measurable)),
-                p50_seconds=round(statistics.median(r['seconds'] for r in rows), 2) if rows else None,
-                agent_mean_usd=round((costs['agent_usd'] + costs['rerank_usd']) / len(rows), 8) if rows else None,
-                cost=costs, rerank_unknown_requests=sum(r.get('rerank_unknown_requests', 0) for r in rows),
-                failures=dict(Counter(r['failure'] for r in rows if r.get('failure'))))
+    return {'n': len(rows), 'n_answerable': len(answerable), 'n_absent': len(absent),
+                'verdicts': dict(counts), 'correct_pct': pct(known['correct'], len(answerable)),
+                'correct_plus_partially_pct': pct(known['correct'] + known['partially'], len(answerable)),
+                'strict_task_success_pct': pct(known['correct'] + refused_ok, len(rows)),
+                'refused_ok': refused_ok, 'scored': len(successful_rows),
+                'citation_supported_pct': pct(sum(r['judgment'].get('citation_supported', False) for r in citable), len(citable)),
+                'displayed_quote_supported_pct': pct(sum(r['judgment']['displayed_quote_supported'] for r in quote_measurable), len(quote_measurable)),
+                'p50_seconds': round(statistics.median(r['seconds'] for r in rows), 2) if rows else None,
+                'agent_mean_usd': round((costs['agent_usd'] + costs['rerank_usd']) / len(rows), 8) if rows else None,
+                'cost': costs, 'rerank_unknown_requests': sum(r.get('rerank_unknown_requests', 0) for r in rows),
+                'failures': dict(Counter(r['failure'] for r in rows if r.get('failure')))}
 
 
 def ref_list(q):
@@ -138,7 +138,7 @@ class Meter(llm.Usage):
         super().add(u, secs, kind)
         if u is not None:
             raw = u.model_dump()
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             self.log[-1].update(raw_usage=raw, utc=now.isoformat(),
                                 cost_usd=raw.get('cost') if self.provider == 'openrouter' else ds_cost(self.model, raw, now))
 
@@ -170,7 +170,7 @@ def run_case(q, provider, model):
            'expected_pages': ref_list(q), 'engine': v['engine_model'], 'lang': q.get('lang', 'ru')}
     try:
         a.run(q['question'])
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 – любой сбой агента фиксируется в строке отчета, прогон идет дальше
         row['error'] = f'{type(exc).__name__}: {exc}'
     row['seconds'] = round(time.monotonic() - t0, 3)
     msg = next((e for e in reversed(events) if e['type'] == 'message'), {})
@@ -205,10 +205,10 @@ def historical_case(q, r):
 
 
 def judge_input(q, row, id_):
-    return dict(id=id_, question=q['question'], engine=q['selected_vehicle_engine'], lang=q.get('lang', 'ru'),
-                expected_answerable=row['answerable'], reference_facts=q.get('expected_answer_facts', []),
-                reference_pages=ref_list(q), answer=row['answer'], citations=row['citations'],
-                citation_number_mapping_unknown=row.get('historical', False))
+    return {'id': id_, 'question': q['question'], 'engine': q['selected_vehicle_engine'], 'lang': q.get('lang', 'ru'),
+                'expected_answerable': row['answerable'], 'reference_facts': q.get('expected_answer_facts', []),
+                'reference_pages': ref_list(q), 'answer': row['answer'], 'citations': row['citations'],
+                'citation_number_mapping_unknown': row.get('historical', False)}
 
 
 JUDGE_FORMAT = {'type': 'json_schema', 'json_schema': {'name': 'manual_eval', 'strict': True, 'schema': {
@@ -258,7 +258,7 @@ def grade_with_retry(client, judge, items):
         return {}, []
     try:
         judged, usage, err = grade_batch(client, judge, items)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 – сбой судьи пишется в отчет, пачка делится и повторяется
         judged, usage, err = {}, {}, f'{type(e).__name__}: {e}'
     attempts = [{'ids': [i for _, _, i in items], 'usage': usage, 'error': err}]
     if err and len(items) > 1 and (usage or err.startswith(('APITimeoutError', 'RateLimitError'))):
@@ -266,7 +266,7 @@ def grade_with_retry(client, judge, items):
         for subset in (items[:mid], items[mid:]):
             try:
                 more, usage, err = grade_batch(client, judge, subset)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 – см. выше
                 more, usage, err = {}, {}, f'{type(e).__name__}: {e}'
             judged.update(more)
             attempts.append({'ids': [i for _, _, i in subset], 'usage': usage, 'error': err})
@@ -316,7 +316,9 @@ def main():
         qs = [q for q in qs if q['id'] in saved]
         for q in qs:
             saved[q['id']].update(expected_pages=ref_list(q), answerable=q.get('answerable', q['category'] != 'нет данных'))
-    fingerprint = lambda p: sha256(p.read_bytes()).hexdigest()
+    def fingerprint(p):
+        return sha256(p.read_bytes()).hexdigest()
+
     meta = {'model': args.model, 'provider': args.provider, 'judge': args.judge, 'dataset': args.dataset.name,
             'dataset_sha256': fingerprint(args.dataset), 'judge_rubric_sha256': sha256(RUBRIC.encode()).hexdigest(),
             'app_sha256': ({name: fingerprint(config.ROOT / 'app' / name) for name in ('agent.py', 'search.py', 'verify.py', 'llm.py')}
@@ -341,8 +343,8 @@ def main():
         queue = []
 
         def submit_grade(batch, rows):
-            items = [(q, row, row['id']) for q, row in zip(batch, rows) if not row.get('error')]
-            items += [(q, {**row, **row['pre_verify']}, row['id'] + ':pre') for q, row in zip(batch, rows)
+            items = [(q, row, row['id']) for q, row in zip(batch, rows, strict=True) if not row.get('error')]
+            items += [(q, {**row, **row['pre_verify']}, row['id'] + ':pre') for q, row in zip(batch, rows, strict=True)
                       if row.get('pre_verify') and not row.get('error')]
             return judge_pool.submit(grade_with_retry, judge_client, args.judge, items)
 

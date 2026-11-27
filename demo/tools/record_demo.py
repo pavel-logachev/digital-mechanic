@@ -6,9 +6,18 @@ python record_demo.py [base_url] [--probe]
 (какой элемент экрана подсвечивать в версии с пояснениями и когда).
 Голосовой вопрос подается в браузер как звук с микрофона (q-c2.wav) и распознается настоящим сервисом стенда.
 """
-import base64, bisect, json, os, shutil, subprocess, sys, time
+import base64
+import bisect
+import contextlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
 from pathlib import Path
-from playwright.sync_api import sync_playwright, expect
+
+from playwright.sync_api import expect, sync_playwright
 
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 BASE = ARGS[0] if ARGS else "https://mechanic.logachev.net"
@@ -377,10 +386,8 @@ def run():
             n = len(frames)
             (frames_dir / f"{n:05d}.jpg").write_bytes(base64.b64decode(ev["data"]))
             frames.append({"file": f"{n:05d}.jpg", "wall": time.monotonic()})
-            try:
+            with contextlib.suppress(Exception):
                 cdp.send("Page.screencastFrameAck", {"sessionId": ev["sessionId"]})
-            except Exception:
-                pass
 
         if not PROBE:
             cdp.on("Page.screencastFrame", on_frame)
@@ -395,10 +402,8 @@ def run():
         finally:
             mark("Конец", "end")
             if not PROBE:
-                try:
+                with contextlib.suppress(Exception):
                     cdp.send("Page.stopScreencast")
-                except Exception:
-                    pass
                 (OUT / f"{NAME}-frames.json").write_text(json.dumps({"t0": T0, "frames": frames}), encoding="utf-8")
             (OUT / f"{NAME}-marks.json").write_text(json.dumps(marks, ensure_ascii=False, indent=1), encoding="utf-8")
             (OUT / f"{NAME}-callouts.json").write_text(json.dumps(callouts, ensure_ascii=False, indent=1), encoding="utf-8")

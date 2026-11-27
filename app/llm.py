@@ -68,7 +68,7 @@ class Usage:
 def chat(messages: list[dict], tools: list[dict] | None = None, usage: Usage | None = None,
          temperature: float = 0.2, max_tokens: int = 1800):
     t0 = time.time()
-    kw = dict(model=config.LLM_MODEL, messages=messages, temperature=temperature, max_tokens=max_tokens)
+    kw = {"model": config.LLM_MODEL, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
     if tools:
         kw["tools"] = tools
     if "deepseek" in config.LLM_BASE_URL:

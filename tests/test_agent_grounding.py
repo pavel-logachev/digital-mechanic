@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from app import agent, verify
 
 
@@ -5,7 +7,7 @@ def test_search_exposes_full_manual_page_beyond_old_2200_limit(monkeypatch):
     mid = 'yamz-236_re_2010'
     text = 'Шапка ' + 'заполнитель ' * 195 + 'Норматив испытания 37 мм.'
     class Searcher:
-        rerank_stats = {}
+        rerank_stats: ClassVar[dict] = {}
         def search(self, *_args, **_kwargs):
             return [{'manual_id': mid, 'page': 19, 'text': text}]
     monkeypatch.setattr(agent, 'searcher', Searcher)

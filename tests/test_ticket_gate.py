@@ -1,4 +1,6 @@
 """Заявка уходит в ТОиР только через confirm_ticket (кнопка механика), с проверкой полей кодом."""
+from typing import ClassVar
+
 import pytest
 
 from app import agent, clients
@@ -8,7 +10,7 @@ class StubSearcher:
     def search(self, q, engine, k=5, rewrites=None):
         return [{"manual_id": "yamz-236_rk_2014", "page": 40, "score": 1, "text": "затяжка болтов крышек коренных подшипников", "snippet": ""}]
 
-    pages = {}
+    pages: ClassVar[dict] = {}
 
     def page_text(self, m, p):
         default = " ".join(["Давление масла в системе смазки проверять контрольным манометром на прогретом двигателе."] * 6)
@@ -39,7 +41,7 @@ def test_prepare_requires_seen_reference(stubs):
 
 
 def test_draft_then_confirm(stubs):
-    a, conv = _agent()
+    a, _conv = _agent()
     a.t_search_manual(["коренные подшипники"])
     out = a.t_prepare_ticket("Низкое давление масла", ["Проверить давление манометром"], ["вкладыши"],
                              [{"manual_id": "yamz-236_rk_2014", "page": 40}, {"manual_id": "zmz-5234_rk_2025", "page": 5}])

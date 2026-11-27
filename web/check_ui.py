@@ -537,6 +537,7 @@ def screens(page):
     screenshot(page, '10-fleet')
     page.locator('[data-filter="open_ticket"]').click()
     page.locator('[data-plate="T792HO98"]').click()
+    expect(page.locator('#diagnose')).to_be_visible()   # карточка машины загружена, а не «Загружаем данные…»
     screenshot(page, '21-vehicle-ticket')
     page.goto(BASE)
     open_chat(page, 'M333YK47')
@@ -583,7 +584,11 @@ def screens(page):
     screenshot(page, '18-language')
     page.goto(BASE)
     open_chat(page, 'K961TH198')
-    page.locator('.inspection-notice').scroll_into_view_if_needed()
+    expect(page.locator('.inspection-notice')).to_be_visible()
+    # снимок – после того, как объяснение пришло: кнопка перехода либо скрыта, либо уже «Объяснение готово»
+    page.wait_for_function("(() => { const b = document.querySelector('#explain-jump'); return !b || b.hidden || b.classList.contains('is-ready'); })()")
+    # карточка перерисовывается, когда приходит объяснение, – прокручиваем одним вызовом в браузере, без гонки с перерисовкой
+    page.evaluate("document.querySelector('.inspection-notice').scrollIntoView({block: 'nearest'})")
     screenshot(page, '22-inspection-verdict')
     page.locator('[data-command="draft"]').click()
     expect(page.locator('#confirm-ticket')).to_be_disabled()
@@ -632,6 +637,7 @@ def interactions(page):
     page.locator('.wide-link').click()
     # B3/С4: сводка норма / требует внимания / карантин, очередь без машин в норме, карантин первым
     rows = page.locator('.fleet-row')
+    expect(rows.first).to_be_visible()   # сводка грузится запросом – не читать строки раньше, чем они пришли
     group = {'quarantine': 'quarantine', 'anomaly': 'attention', 'check_failed': 'attention', 'normal': 'normal'}
     entries = rows.evaluate_all('els => els.map(e => e.dataset.stage)')
     tiles = {k: int(page.locator(f'[data-filter="{k}"] .tile-number').inner_text()) for k in ('quarantine', 'attention', 'normal')}
@@ -891,7 +897,7 @@ def main():
             page = context.new_page()
             page.set_default_timeout(7000)
             errors = []
-            page.on('pageerror', lambda error: errors.append(str(error)))
+            page.on('pageerror', lambda error, errors=errors: errors.append(str(error)))
             page.goto('http://127.0.0.1:8000' if name in {'real_voice', 'real_kickoff'} else BASE)
             scenarios[name](page)
             assert not errors, errors

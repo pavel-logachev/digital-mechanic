@@ -11,8 +11,8 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from . import clients, config, data, llm, verify
 from .conflicts import conflicts_for

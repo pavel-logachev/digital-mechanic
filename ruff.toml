@@ -1,0 +1,17 @@
+target-version = "py312"
+line-length = 140
+extend-exclude = ["mocks/mock_ml", "mocks/mock_toir"]   # заглушки заказчика храним без изменений
+
+[lint]
+select = ["E4", "E7", "E9", "F", "W", "B", "I", "UP", "C4", "SIM", "RUF", "BLE", "S110", "PLW1510"]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # кириллица, «» и короткое тире в строках и комментариях – намеренно
+    "SIM108",                      # тернарник вместо if/else не всегда читается проще
+]
+
+[lint.flake8-bugbear]
+# FastAPI объявляет параметры запроса через вызовы в значениях по умолчанию
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Depends", "fastapi.Query", "fastapi.Header"]
+
+[lint.isort]
+known-first-party = ["app", "eval", "mocks", "tools", "web"]

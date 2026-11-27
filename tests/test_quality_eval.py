@@ -1,4 +1,4 @@
-from eval.quality_eval import classify_failure, validate_judgment, summarize
+from eval.quality_eval import classify_failure, summarize, validate_judgment
 
 
 def test_wrong_answer_without_gold_in_tools_is_retrieval_failure():

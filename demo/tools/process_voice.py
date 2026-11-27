@@ -7,10 +7,13 @@ python process_voice.py voice/voice-<дата>.webm
 4) эквалайзер, компрессия, громкость -16 LUFS; вопрос механика из ролика – чуть тише голоса.
 Результат: voice-clean.wav и demo-final.mp4 (+ demo-final-clean.mp4 без подписей).
 """
-import json, subprocess, sys
+import json
+import subprocess
+import sys
 from pathlib import Path
-import numpy as np
+
 import noisereduce as nr
+import numpy as np
 
 HERE = Path(__file__).resolve().parent
 V = HERE.parent
@@ -62,7 +65,9 @@ def room_fill(a, b):
     n = int((b - a) * SR)
     fill = np.resize(room, n)
     k = min(int(0.03 * SR), n // 2)
-    w = np.ones(n); w[:k] = ramp(k); w[-k:] = ramp(k)[::-1]
+    w = np.ones(n)
+    w[:k] = ramp(k)
+    w[-k:] = ramp(k)[::-1]
     i = int(a * SR)
     out[i:i + n] = out[i:i + n] * (1 - w) + fill * w
 
@@ -72,7 +77,8 @@ F = int(0.015 * SR)
 pieces = []
 for a, b, dst in MOVES:
     seg = y[int(a * SR):int(b * SR)].copy()
-    seg[:F] *= ramp(F); seg[-F:] *= ramp(F)[::-1]
+    seg[:F] *= ramp(F)
+    seg[-F:] *= ramp(F)[::-1]
     pieces.append((dst, seg))
     room_fill(a, b)
 for dst, seg in pieces:
@@ -95,7 +101,8 @@ while i < len(speech):
         j = i
         while j < len(speech) and speech[j]:
             j += 1
-        spans.append([t[i], t[j - 1] + win / SR]); i = j
+        spans.append([t[i], t[j - 1] + win / SR])
+        i = j
     else:
         i += 1
 merged = []
@@ -140,7 +147,7 @@ subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-
 
 # 4. громкость: двухпроходный loudnorm до -16 LUFS
 st = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(clean), "-af", "loudnorm=I=-16:TP=-1.5:LRA=7:print_format=json",
-                     "-f", "null", "-"], capture_output=True, text=True).stderr
+                     "-f", "null", "-"], capture_output=True, text=True, check=True).stderr
 m = json.loads(st[st.rindex("{"):st.rindex("}") + 1])
 ln = (f"loudnorm=I=-16:TP=-1.5:LRA=7:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
       f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")

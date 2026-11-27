@@ -1,11 +1,11 @@
 """Сборка локального индекса шести PDF: `python -m app.ingest`."""
-from base64 import b64encode
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime, timezone
 import hashlib
 import io
 import json
 import re
+from base64 import b64encode
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from datetime import UTC, datetime
 from time import perf_counter
 
 import httpx
@@ -63,7 +63,7 @@ def _cost(usage, hour):
 
 def _recognize(client, image, cache_path):
     """Распознаёт одну страницу и сохраняет результат вместе с usage."""
-    hour = datetime.now(timezone.utc).hour
+    hour = datetime.now(UTC).hour
     image_url = "data:image/png;base64," + b64encode(image).decode("ascii")
     try:
         response = client.post(f"{config.LLM_BASE_URL.rstrip('/')}/chat/completions", json={
