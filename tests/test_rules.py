@@ -138,6 +138,16 @@ def test_doubtful_signal_shows_threshold():
     assert v.as_dict()["conf_threshold"] == 0.6
 
 
+def test_unconfirmed_inspection_is_not_all_clear():
+    """#159: если осмотр не подтвердил признак, проверку не закрываем как «исправно» и в рейс как исправную не отпускаем."""
+    for code, engine in (("F04", "ЯМЗ-536"), ("F02", "ЯМЗ-236М2"), ("F08", "ЯМЗ-536")):
+        s = _s("S1", code=code, score=0.6, conf=0.55)
+        v = evaluate(s, engine, [s])
+        text = " ".join([v.action, *v.warnings, *v.reasons]).lower()
+        assert v.inspect_first and v.urgency is not None
+        assert "идет в рейс" not in text and "исправной машину не считайте" in text
+
+
 def test_page_covers_unit():
     from app.faults import page_covers_unit
     body = " ".join(["Проверка давления масла контрольным манометром на прогретом двигателе."] * 8)
