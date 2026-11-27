@@ -10,13 +10,23 @@ WEB = Path(__file__).resolve().parents[1] / "web"
 DYNAMIC = ("guide", "fault")   # ключи, которые собираются в коде: t(`guide${n}Text`), t(`fault${code}`)
 
 
-def dictionary() -> dict[str, list[str]]:
-    rows = {}
+def entries() -> list[tuple[str, list[str]]]:
+    out = []
     for line in (WEB / "i18n.js").read_text(encoding="utf-8").splitlines():
         m = re.match(r"^([A-Za-z0-9]+)\|(.*)$", line)
         if m:
-            rows[m.group(1)] = m.group(2).split("|")
-    return rows
+            out.append((m.group(1), m.group(2).split("|")))
+    return out
+
+
+def dictionary() -> dict[str, list[str]]:
+    return dict(entries())
+
+
+def test_keys_are_unique():
+    # повтор ключа молча перекрывает первую строку – правка первой ни на что не влияет
+    keys = [k for k, _ in entries()]
+    assert not {k for k in keys if keys.count(k) > 1}
 
 
 def ui_source() -> str:

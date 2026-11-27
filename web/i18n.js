@@ -69,7 +69,6 @@ checks|Прошлые проверки|Avvalgi tekshiruvlar|Санҷишҳои �
 lastCheck|Последняя проверка|Oxirgi tekshiruv|Санҷиши охирин|Акыркы текшерүү|Соңғы тексеру|आखिरी जाँच|Latest check
 noChecks|Проверок пока нет|Hozircha tekshiruv yo‘q|Ҳоло санҷиш нест|Азырынча текшерүү жок|Әзірге тексеру жоқ|अभी कोई जाँच नहीं है|No checks yet
 score|Оценка отклонения|Og‘ish balli|Баҳои инҳироф|Четтөө баасы|Ауытқу бағасы|गड़बड़ी का स्कोर|Anomaly score
-noScore|Нет оценки|Ball yo‘q|Баҳо нест|Баа жок|Баға жоқ|कोई स्कोर नहीं|No score
 pastTickets|Заявки по машине|Mashina bo‘yicha buyurtmalar|Дархостҳои ин мошин|Бул унаа боюнча өтүнмөлөр|Осы көлік бойынша өтінімдер|इस गाड़ी के वर्क ऑर्डर|Vehicle work orders
 noTickets|Заявок пока нет|Hozircha buyurtma yo‘q|Ҳоло дархост нест|Азырынча өтүнмө жок|Әзірге өтінім жоқ|अभी कोई वर्क ऑर्डर नहीं है|No work orders yet
 diagnose|Открыть результат проверки|Tekshiruv natijasini ochish|Натиҷаи санҷишро кушодан|Текшерүүнүн жыйынтыгын ачуу|Тексеру нәтижесін ашу|जाँच का नतीजा खोलें|Open check result
