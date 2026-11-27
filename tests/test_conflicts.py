@@ -32,3 +32,9 @@ def test_oil_pressure_conflict_only_from_outlier_table():
     found = conflicts_for({("yamz-236_rk_2014", 12)})
     assert len(found) == 1 and "400–700" in found[0]["rule"]
     assert conflicts_for(set(), "в таблице 400-730 кПа, это норма?", {"yamz-236_rk_2014", "yamz-236_re_2010"})
+
+
+def test_no_referral_to_specialist():
+    from app import agent, conflicts
+    assert "специалист" not in agent.SYSTEM.replace("Не отсылай «к специалисту»", "").replace("к «специалисту» не отсылай", "").replace("механик сам специалист", "")
+    assert all("специалист" not in c.rule for c in conflicts.CONFLICTS)
