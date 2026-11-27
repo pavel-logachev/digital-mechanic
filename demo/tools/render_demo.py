@@ -21,6 +21,10 @@ B = Path(os.environ.get("DEMO_OUT", V / "build"))
 raw = B / "main-raw.mp4"
 marks = json.loads((B / "main-marks.json").read_text(encoding="utf-8"))
 calls = json.loads((B / "main-callouts.json").read_text(encoding="utf-8"))
+# подсветки, которых нет в записи: время – секунды сырой записи, рамка – CSS px экрана 390×844
+calls += [{"t": 81.75, "end": 85.65, "box": [24, 90, 332, 110],
+           "text": "Прямого ответа в руководстве нет – помощник так и пишет"}]
+calls.sort(key=lambda c: c["t"])
 SPEED = 3.0
 FPS = 30
 WIN = "C:/Windows/Fonts/"
