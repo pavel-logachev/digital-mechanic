@@ -7,7 +7,10 @@ python -m tools.fetch_materials
 """
 import io
 import json
+import shutil
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -27,9 +30,21 @@ MOCKS_DIR = config.ROOT / "mocks"
 API = "https://cloud-api.yandex.net/v1/disk/public/resources"
 
 
+def _open(url: str, timeout: int, attempts: int = 4):
+    """Открыть ссылку с повтором: сбой DNS или сети на одном запросе не должен ронять установку."""
+    for i in range(attempts):
+        try:
+            return urllib.request.urlopen(url, timeout=timeout)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            if i == attempts - 1:
+                sys.exit(f"не удалось скачать материалы: {getattr(e, 'reason', e)}. Проверьте сеть и MATERIALS_URL")
+            time.sleep(2 ** i)
+    raise AssertionError("unreachable")
+
+
 def listing(public_url: str) -> list[dict]:
     q = urllib.parse.urlencode({"public_key": public_url, "limit": 200})
-    with urllib.request.urlopen(f"{API}?{q}", timeout=60) as r:
+    with _open(f"{API}?{q}", timeout=60) as r:
         return json.load(r)["_embedded"]["items"]
 
 
@@ -44,7 +59,10 @@ def fetch_manuals(items: list[dict]) -> None:
             print("есть", dst.name)
             continue
         print("скачиваю", it["name"], "->", dst.name, flush=True)
-        urllib.request.urlretrieve(it["file"], dst)
+        tmp = dst.with_suffix(".part")   # недокачанный файл не займет место готового
+        with _open(it["file"], timeout=120) as r, tmp.open("wb") as f:
+            shutil.copyfileobj(r, f)
+        tmp.replace(dst)
 
 
 def fetch_mocks(items: list[dict]) -> None:
@@ -52,7 +70,7 @@ def fetch_mocks(items: list[dict]) -> None:
     archive = next((it for it in items if it["name"].startswith(MOCKS_ZIP) and it["name"].endswith(".zip")), None)
     if archive is None:
         sys.exit("в папке нет архива с заглушками " + MOCKS_ZIP + "*.zip")
-    with urllib.request.urlopen(archive["file"], timeout=120) as r:
+    with _open(archive["file"], timeout=120) as r:
         zf = zipfile.ZipFile(io.BytesIO(r.read()))
     for info in zf.infolist():
         rel = info.filename.split("/", 1)[1] if "/" in info.filename else ""
