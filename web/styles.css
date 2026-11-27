@@ -38,10 +38,14 @@ h1, h2, h3, legend { font-weight: 750; line-height: 1.2; }
 h1 { font-size: 1.67rem; }
 h2 { font-size: 1.24rem; }
 h3 { font-size: 1.12rem; }
-p, li, dd, h1, h2, h3, strong, .brand, .pill, button { overflow-wrap: anywhere; }
+/* слово переносится только если оно одно не влезает в строку (длинный номер, код). break-word, а не anywhere:
+   anywhere обнуляет минимальную ширину текста, и узкие кнопки и колонки рвут обычные слова посередине */
+p, li, dd, h1, h2, h3, strong, .brand, .pill, button { overflow-wrap: break-word; }
 /* без одиноких слов в последней строке абзаца, заголовки ровными строками */
 p, li, dd, .hint, blockquote { text-wrap: pretty; }
 h1, h2, h3, h4 { text-wrap: balance; }
+/* подпись кнопки в две строки – ровными строками, без одинокого слова во второй */
+button, .pill, .notice strong { text-wrap: balance; }
 :focus-visible { outline: 3px solid #005bad; outline-offset: 2px; }
 .top :focus-visible { outline-color: var(--white); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -65,7 +69,8 @@ h1, h2, h3, h4 { text-wrap: balance; }
 @media (max-width: 375px) { .brand { font-size: 16px; } }
 @media (max-width: 340px) { .mark { display: none; } .brand { font-size: 15px; } }
 /* The action dock reserves a full grid track outside the scrollport. */
-main { display: grid; align-content: start; gap: 12px; padding: 16px var(--edge) 24px; min-width: 0; overflow: auto; scroll-padding: 12px 0; }
+/* строки по содержимому: иначе, когда страница длиннее экрана, сетка сжимает кнопки до min-height и текст вылезает за рамку */
+main { display: grid; grid-auto-rows: max-content; align-content: start; gap: 12px; padding: 16px var(--edge) 24px; min-width: 0; overflow: auto; scroll-padding: 12px 0; }
 .shell:has(#dock:empty) main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 .dock { border-top: 1px solid var(--line); background: var(--white); display: grid; gap: 8px; padding: 8px var(--edge) calc(8px + env(safe-area-inset-bottom)); }
 .intro, .stack { display: grid; gap: 12px; min-width: 0; }
@@ -113,7 +118,7 @@ button:disabled { color: #4b5865; border-color: #c9d2d8; background: #e9eef1; fo
 .plate-region { margin-inline-start: 6px; border-inline-start: 1px solid var(--edge-line); padding-inline-start: 6px; font-size: .77em; }
 .vehicle-head .plate { font-size: 1.83rem; }
 .row-model, .status-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
-.row-model > span, .cause { overflow-wrap: anywhere; }
+.row-model > span, .cause { overflow-wrap: break-word; }
 .garage { white-space: nowrap; font-weight: 650; }
 /* статус всегда отдельной строкой, причина под ним – одинаково во всех карточках, всё по одной левой кромке */
 .status-line { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -207,7 +212,7 @@ ol.fold-body { padding-inline-start: 30px; }
 .defect-note h4 { margin: 4px 0 0; font-size: .92rem; color: var(--muted); }
 .defect-text { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-wrap: break-word; user-select: text; }
 .nowrap { white-space: nowrap; }
-.check-label { display: flex; gap: 12px; align-items: flex-start; padding-block: 14px; min-height: var(--target); cursor: pointer; font-weight: 650; overflow-wrap: anywhere; }
+.check-label { display: flex; gap: 12px; align-items: flex-start; padding-block: 14px; min-height: var(--target); cursor: pointer; font-weight: 650; overflow-wrap: break-word; }
 .check-label input { flex: none; margin: 0; margin-top: calc((1.45em - 24px) / 2); width: 24px; height: 24px; accent-color: var(--action); cursor: inherit; }
 .explain { display: grid; gap: 8px; min-width: 0; }
 .explain-title { padding-inline: 0; }
@@ -217,7 +222,7 @@ ol.fold-body { padding-inline-start: 30px; }
 .explain-jump.is-ready { background: var(--action); color: var(--white); }
 .explain-jump.is-ready .spinner { display: none; }
 .explain-pending { display: flex; align-items: center; gap: 10px; background: var(--neutral-bg); border-color: var(--neutral-bg); color: var(--neutral); font-weight: 680; line-height: 1.35; }
-.chat-status, .image-status, .voice-status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 8px 12px; border-radius: 8px; background: var(--neutral-bg); color: var(--neutral); font-weight: 680; line-height: 1.3; overflow-wrap: anywhere; min-width: 0; }
+.chat-status, .image-status, .voice-status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 8px 12px; border-radius: 8px; background: var(--neutral-bg); color: var(--neutral); font-weight: 680; line-height: 1.3; overflow-wrap: break-word; min-width: 0; }
 .voice-status.red { background: var(--red-bg); color: var(--red); }
 /* идет запись: красная плашка с мигающей точкой, чтобы было видно, что микрофон слушает */
 #voice-live { background: var(--red-bg); color: var(--red); }
@@ -242,7 +247,7 @@ ol.fold-body { padding-inline-start: 30px; }
 .more-detail { justify-self: start; gap: 8px; }
 /* в инструкции – два варианта друг под другом: на узком экране с крупным шрифтом слово не рвется */
 .detail-choice .detail-switch { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.detail-choice .detail-switch button { border-radius: 8px !important; border: 1px solid var(--edge-line) !important; justify-content: flex-start; }
+.detail-choice .detail-switch button { border-radius: 8px !important; border: 1px solid var(--edge-line) !important; justify-content: flex-start; text-align: start; }
 .detail-choice .detail-switch button[aria-pressed=true] { border-color: var(--action) !important; }
 .detail-switch button:first-child { border-start-end-radius: 0; border-end-end-radius: 0; border-inline-end: 0; }
 .detail-switch button:last-child { border-start-start-radius: 0; border-end-start-radius: 0; }
@@ -277,7 +282,11 @@ ol.fold-body { padding-inline-start: 30px; }
 dialog::backdrop { background: #172326b3; }
 #language-dialog, #data-dialog { width: min(calc(100% - 24px), 420px); max-height: calc(100dvh - 24px); border-radius: 12px; padding: 16px; }
 .data-link { display: flex; align-items: center; justify-self: start; min-height: var(--target); color: var(--muted); font-size: .86rem; text-underline-offset: 3px; }
-.data-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* ряды из двух кнопок: рядом, пока подписи помещаются целиком, иначе друг под другом */
+.data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.data-actions > * { flex: 1 1 8rem; }
+/* длинный текст согласия на маленьком экране прокручивается, кнопки всегда видны внизу окна */
+#data-dialog .data-actions { position: sticky; bottom: -16px; margin: 0 -16px -16px; padding: 12px 16px 16px; background: var(--paper); border-top: 1px solid var(--line); }
 #data-dialog .check-label { margin-block: 8px; }
 .sheet-head button { border-color: transparent; background: var(--neutral-bg); }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
@@ -345,8 +354,10 @@ dialog::backdrop { background: #172326b3; }
 .wide-link.center { justify-content: center; }
 /* узкий экран или крупный шрифт: плитки в столбик, число слева от подписи */
 @media (max-width: 440px) { .tiles { grid-template-columns: 1fr; } .tile { min-height: 0; grid-template-columns: minmax(4.2rem, auto) minmax(0, 1fr); align-items: center; gap: 12px; } }
-@media (max-width: 440px) { .large-type .tiles { grid-template-columns: 1fr; } .large-type .tile { min-height: 0; grid-template-columns: minmax(4.6rem, auto) minmax(0, 1fr); align-items: center; gap: 12px; } .large-type .tile-label { font-size: 1rem; } }
+/* крупный шрифт: плитки в столбик и на больших телефонах, иначе «Дефектовка» упирается в край */
+@media (max-width: 540px) { .large-type .tiles { grid-template-columns: 1fr; } .large-type .tile { min-height: 0; grid-template-columns: minmax(4.6rem, auto) minmax(0, 1fr); align-items: center; gap: 12px; } .large-type .tile-label { font-size: 1rem; } }
 .tile-number { white-space: nowrap; }
+@media (max-width: 359px) { .large-type .tile-label { font-size: .9rem; } }
 .page-head { display: grid; gap: 2px; }
 .page-head h1 { margin: 0; font-size: 1.45rem; }
 .row-priority { font-weight: 700; color: var(--ink); }
@@ -361,7 +372,7 @@ dialog::backdrop { background: #172326b3; }
 .row-date time { white-space: nowrap; }
 
 /* ответ помощника никогда не раздвигает экран: длинные коды и артикулы переносятся */
-.markdown, .markdown > *, .markdown li, .fold-body > *, .message-sources, .source-excerpt { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.markdown, .markdown > *, .markdown li, .fold-body > *, .message-sources, .source-excerpt { min-width: 0; max-width: 100%; overflow-wrap: break-word; }
 .markdown table { display: block; max-width: 100%; overflow-x: auto; }
 
 /* кнопка «Отправить» под распознанным текстом – слово целиком, без переноса по буквам */
@@ -370,8 +381,8 @@ dialog::backdrop { background: #172326b3; }
 /* Вводная инструкция: крупно, по одному действию на шаг, кнопки всегда внизу окна */
 #guide { width: min(calc(100% - 16px), 460px); max-height: calc(100dvh - 16px); border: 0; border-radius: 14px; padding: 0; background: var(--paper); color: var(--ink); }
 #guide[open] { display: flex; flex-direction: column; }
-.guide-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--target); padding: 4px 20px 0; }
-.guide-count { color: var(--muted); font-weight: 700; }
+.guide-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: var(--target); padding: 4px 20px 0; }
+.guide-count { color: var(--muted); font-weight: 700; white-space: nowrap; }
 .guide-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 14px; padding: 4px 20px 16px; }
 .guide-body h2 { font-size: 1.45rem; }
 .guide-text { font-size: 1.06rem; line-height: 1.5; }

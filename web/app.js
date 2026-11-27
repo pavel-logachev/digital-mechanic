@@ -22,6 +22,13 @@ let detail = stored('mechanic:detail') === 'detailed' ? 'detailed' : 'brief';
 let voiceConsent = stored('mechanic:voice-consent') === 'true';
 const t = (key, vars) => text(lang, key, vars);
 // редакционная норма: короткое тире вместо длинного, в русском интерфейсе без «ё»
+// типографика для показа: короткие предлоги и союзы (в, до, и, на) не остаются в конце строки,
+// тире не начинает строку. Только для отображения – в буфер обмена и в ТОиР уходит обычный текст
+// частицы ли/же/бы цепляются к слову перед ними, а не к следующему – иначе длинная неразрывная цепочка не влезает в строку
+const shortWord = /(^|[\s«(])((?!(?:ли|же|бы) )[А-Яа-яЁё]{1,2}|[Дд]ля|[Бб]ез|[Пп]од|[Нн]ад|[Пп]ри|[Пп]ро) (?=\S)/gu;
+const typeset = text => text.replace(shortWord, '$1$2\u00A0').replace(shortWord, '$1$2\u00A0').replace(/ (ли|же|бы)(?=[\s.,?!:;»)]|$)/gu, '\u00A0$1').replace(/ –/g, '\u00A0–');
+// текст для показа на экране: та же чистка и типографика, что у el(), для узлов, которые обновляются через textContent
+const shown = value => typeset(displayText(value));
 const displayText = value => { const text = String(value ?? '').replaceAll('\u2014', '–'); return lang === 'ru' ? text.replaceAll('ё', 'е').replaceAll('Ё', 'Е') : text; };
 const stages = {
   quarantine: ['quarantine', 'red', 'ban'], anomaly: ['anomaly', 'amber', 'warn'],
@@ -44,6 +51,12 @@ const formatDate = options => {
 let moscow, ruDay, ruTime, number;
 let routeSerial = 0;
 const routeScroll = new Map();
+// номер заявки – одним куском: строка рвется перед номером, а не на дефисе внутри TKT-0002
+function ticketNote(id) {
+  const [before, after = ''] = t('ticketOpen', {id: '\u0000'}).split('\u0000');
+  return el('span', {class: 'ticket-note'}, before, el('span', {class: 'nowrap'}, id), after);
+}
+
 function applySettings() {
   document.documentElement.lang = lang;
   document.documentElement.classList.toggle('large-type', large);
@@ -74,7 +87,7 @@ function el(tag, attrs = {}, ...children) {
     else node.setAttribute(key, value === true ? '' : ['aria-label', 'title', 'alt', 'placeholder'].includes(key) ? displayText(value) : value);
   });
   for (const child of children.flat(Infinity)) {
-    if (child != null && child !== false) node.append(typeof child === 'string' ? displayText(child) : child);
+    if (child != null && child !== false) node.append(typeof child === 'string' ? typeset(displayText(child)) : child);
   }
   return node;
 }
@@ -245,7 +258,7 @@ function openGuide(step = 0) {
         // крупный шрифт – сразу на первом шаге, а не только в конце инструкции
         step === 0 ? action([el('span', {class: 'size-face', 'aria-hidden': 'true'}, 'Aᴀ'), t(large ? 'guideSmaller' : 'guideBigger')],
           () => { toggleLarge(); show(0); $('#guide-size', guide).focus(); }, {id: 'guide-size', 'aria-pressed': String(large)}) : null,
-        last ? detailChoice(() => { $('#detail-hint', guide).textContent = t(detail === 'detailed' ? 'detailedHint' : 'briefHint'); }) : null),
+        last ? detailChoice(() => { $('#detail-hint', guide).textContent = shown(t(detail === 'detailed' ? 'detailedHint' : 'briefHint')); }) : null),
       el('div', {class: 'guide-dots', 'aria-hidden': 'true'}, Array.from({length: total}, (_, i) => el('span', {class: i === step ? 'is-current' : null}))),
       el('div', {class: `guide-actions${step ? '' : ' single'}`}, step ? action([icon('prev'), t('back')], () => show(step - 1), {id: 'guide-prev'}) : null, next));
     $('.guide-body', guide).scrollTop = 0;
@@ -381,7 +394,7 @@ function renderPark() {
     const key = searchKey(state.query);
     const found = key ? ordered.filter(v => [v.vehicle_id, v.garage_no].some(x => searchKey(x).includes(key))) : ordered;
     const visible = state.all ? found : found.slice(0, 8);
-    count.textContent = t('count', {found: visible.length, total: found.length});
+    count.textContent = shown(t('count', {found: visible.length, total: found.length}));
     clear.hidden = !state.query;
     list.replaceChildren(...visible.map(vehicleRow));
     if (!found.length) list.append(box(el('strong', {}, t('noResults'))));
@@ -423,7 +436,7 @@ function renderFleet() {
     const normals = by('normal').length;
     more.replaceChildren(!f && !state.fleetNormal && normals ? action(t('showNormal', {count: normals}), () => { state.fleetNormal = true; update(); }, {class: 'wide-link center'}) : '');
     for (const btn of $$('[data-filter]', main)) btn.setAttribute('aria-pressed', String(btn.dataset.filter === f));
-    heading.textContent = t(f ? 'fleetGroup' : 'fleetQueue', {name: f === 'open_ticket' ? t('openTickets').toLocaleLowerCase(lang) : f === 'check_failed' ? t('failed').toLocaleLowerCase(lang) : f ? t(tiles.find(x => x[0] === f)[1]).toLocaleLowerCase(lang) : ''});
+    heading.textContent = shown(t(f ? 'fleetGroup' : 'fleetQueue', {name: f === 'open_ticket' ? t('openTickets').toLocaleLowerCase(lang) : f === 'check_failed' ? t('failed').toLocaleLowerCase(lang) : f ? t(tiles.find(x => x[0] === f)[1]).toLocaleLowerCase(lang) : ''}));
   };
   const pick = key => () => { state.fleetFilter = state.fleetFilter === key ? '' : key; update(); };
   const heading = el('h2', {class: 'list-title'});
@@ -443,7 +456,7 @@ function fleetRow(v, rank) {
   return action([el('span', {class: 'rank', 'aria-hidden': 'true'}, String(rank)),
     el('span', {class: 'row-copy'}, plate(v.vehicle_id), vehicleModel(v), statusLine(stage, v.last_check),
       priorityLabel(v.last_urgency) && stage !== 'normal' ? el('span', {class: `row-priority ${v.last_urgency}`}, priorityLine(v.last_urgency)) : null,
-      el('span', {class: 'row-meta'}, v.open_ticket ? el('span', {class: 'ticket-note'}, t('ticketOpen', {id: v.open_ticket})) : null,
+      el('span', {class: 'row-meta'}, v.open_ticket ? ticketNote(v.open_ticket) : null,
         v.last_check?.checked_at ? el('span', {class: 'row-date'}, `${t('checkedLabel')}: `, checkTime(v.last_check.checked_at)) : null)),
     icon('next')], () => navigate({page: 'vehicle', vid: v.vehicle_id}), {class: 'vehicle-row fleet-row', 'data-stage': stage, 'data-plate': v.vehicle_id});
 }
@@ -462,7 +475,7 @@ function renderVehicle(v) {
   main.replaceChildren(
     el('section', {class: 'box vehicle-head'}, plate(v.vehicle_id), vehicleModel(v),
       v.engine_model && hint(`${t('engine')}: ${v.engine_model}`),
-      v.open_ticket && el('span', {class: 'ticket-note'}, t('ticketOpen', {id: v.open_ticket}))),
+      v.open_ticket && ticketNote(v.open_ticket)),
     el('section', {class: 'box selection'}, el('h2', {}, t('lastCheck')),
       latest ? [checkTime(latest.checked_at), statusLine(vehicleStage(v, latest, true), latest),
         primary(t('diagnose'), () => openCheck(v, latest), {id: 'diagnose'})] : hint(t('noChecks'))),
@@ -618,7 +631,7 @@ function sourceExcerpt(quote, key, opens) {
     container.classList.toggle('is-expanded');
     const expanded = container.classList.contains('is-expanded');
     toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.textContent = t(expanded ? 'less' : 'more');
+    toggle.textContent = shown(t(expanded ? 'less' : 'more'));
     fitExcerpt(container);
   }, {class: 'excerpt-toggle', 'aria-expanded': 'false'});
   const container = el('div', {class: 'source-excerpt', 'data-excerpt': key}, copy, toggle);
@@ -775,7 +788,7 @@ function updateChat(c, latestOnly = false, scrollTo = null) {
   const progress = $('#chat-progress');
   // пока ждем объяснение к уже показанному результату, индикатор стоит на месте ответа, а не внизу
   $('#chat-progress-row').hidden = !c.busy || Boolean(turn?.diagnosis && turn.pending);
-  const statusText = c.busy ? pendingText(turn) : '';
+  const statusText = c.busy ? shown(pendingText(turn)) : '';
   if (progress.textContent !== statusText) progress.textContent = statusText;
   updateComposer(c);
   if (scrollTo) feed.lastElementChild?.querySelector(scrollTo)?.scrollIntoView({block: 'start'});
@@ -798,7 +811,7 @@ function syncExplainJump(c) {
   button.hidden = !show;
   if (!show) return;
   button.classList.toggle('is-ready', !turn.pending);
-  const text = t(turn.pending ? 'explainBelow' : 'explainReady');
+  const text = shown(t(turn.pending ? 'explainBelow' : 'explainReady'));
   const label = $('#explain-jump-text');
   if (label.textContent !== text) label.textContent = text;
 }
@@ -901,7 +914,8 @@ function updateComposer(c) {
   voice.hidden = Boolean(active) || !notice;
   voice.classList.toggle('red', Boolean(notice && !active && notice !== 'micReady'));
   const message = active ? $('#voice-label') : voice;
-  if (message.textContent !== (notice ? t(notice) : '')) message.textContent = notice ? t(notice) : '';
+  const noticeText = notice ? shown(t(notice)) : '';
+  if (message.textContent !== noticeText) message.textContent = noticeText;
   const timer = $('#mic-timer');
   timer.hidden = !running;
   resizeQuestion();
@@ -1128,7 +1142,7 @@ function renderDraft(v, s, c) {
   const note = hint('', {id: 'confirm-note', role: 'status'});
   const syncConfirm = () => {
     button.disabled = Boolean(c.confirming || c.confirmUncertain || blocked());
-    note.textContent = t(blocked() ? 'inspectBeforeSend' : 'confirmNote');
+    note.textContent = shown(t(blocked() ? 'inspectBeforeSend' : 'confirmNote'));
   };
   const inspection = c.draftNeedsInspection && checkRow('inspection-confirmed', t('inspectionConfirmed'), {
     form: 'draft-form', required: true, checked: Boolean(c.edits.inspectionConfirmed), disabled: c.confirming || c.confirmUncertain,
@@ -1147,7 +1161,7 @@ async function confirmTicket(c) {
     ...(override ? {urgency_reason: override} : {}),
     ...(c.draftNeedsInspection ? {inspection_confirmed: Boolean(c.edits.inspectionConfirmed)} : {})};
   const invalid = !conclusion ? t('needConclusion') : c.edits.urgency !== c.draft.urgency && !override ? t('needReason') : '';
-  if (invalid) { $('#ticket-error').hidden = false; $('#ticket-error').textContent = invalid; return; }
+  if (invalid) { $('#ticket-error').hidden = false; $('#ticket-error').textContent = shown(invalid); return; }
   c.confirming = true;
   c.confirmError = '';
   const button = $('#confirm-ticket');

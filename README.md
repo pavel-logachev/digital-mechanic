@@ -68,7 +68,7 @@ docker compose up -d
 
 Без Docker: Python 3.12, `pip install -r requirements.txt`, заглушки – `uvicorn mock_ml.app:app --port 8001` и `uvicorn mock_toir.app:app --port 8002` из папки `mocks`, приложение – `uvicorn app.main:app --port 8000`.
 
-Тесты: `pytest -q` (67 тестов на синтетическом парке, без руководств и LLM) и линтер `ruff check .` (настройки – `ruff.toml`) гоняются в GitHub Actions на каждый push; интерфейс – `python web/check_ui.py`, 14 сценариев в браузере на телефонном экране. Оценка поиска: `python -m eval.retrieval_eval`. Сквозная оценка агента на контрольных вопросах: `python -m eval.agent_eval`.
+Тесты: `pytest -q` (67 тестов на синтетическом парке, без руководств и LLM) и линтер `ruff check .` (настройки – `ruff.toml`) гоняются в GitHub Actions на каждый push; интерфейс – `python web/check_ui.py`, 14 сценариев в браузере на телефонном экране, и `python web/check_layout.py` – верстка на 9 размерах от 320 px до планшета в обычном и крупном шрифте. Оценка поиска: `python -m eval.retrieval_eval`. Сквозная оценка агента на контрольных вопросах: `python -m eval.agent_eval`.
 
 ## Работа в автопарке
 
