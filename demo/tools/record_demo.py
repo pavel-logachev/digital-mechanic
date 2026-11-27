@@ -240,8 +240,15 @@ def flow():
     page.wait_for_function(f"() => document.querySelectorAll('.agent-message').length > {before}", timeout=150000)
     wait_agent()
     mark("Ответ с источниками", "wait>")
-    scroll_to(page.locator(".agent-message").last)
-    pause(6.0)
+    answer = page.locator(".agent-message").last
+    scroll_to(answer)
+    pause(0.6)
+    # фраза о том, что прямого ответа в книге нет (о ней говорит озвучка); если модель сформулировала иначе – видно в логе
+    no_ban = answer.locator("p, li").filter(has_text="запрет")
+    if not no_ban.count():
+        print("!! в ответе нет фразы про запрет:", answer.inner_text()[:300], flush=True)
+    callout(no_ban.first if no_ban.count() else answer.locator("p").first, "Прямого ответа в руководстве нет – помощник так и пишет", 3.9)
+    pause(1.5)
     scroll_main(300, steps=22, delay=0.05)
     pause(3.0)
     src = page.locator(".message-sources").last

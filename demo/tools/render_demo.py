@@ -9,6 +9,8 @@ python render_demo.py [--clean]
   timeline.json                       – время каждого шага в готовом ролике (для текста озвучки).
 Звук: вопрос механика (q-c2.wav), который в записи подавался в браузер как микрофон, ставится на то же место.
 Ничего не вырезается и не переставляется: отрезки идут встык по порядку, меняется только скорость ожидания.
+--target timeline.json – ускорить каждое ожидание ровно настолько, чтобы его конец пришелся на то же время, что в целевом
+ролике (переснятый видеоряд под уже записанную озвучку); коэффициент каждого ожидания пишется в кадре.
 """
 import json
 import os
@@ -26,11 +28,12 @@ B = Path(os.environ.get("DEMO_OUT", V / "build"))
 raw = B / "main-raw.mp4"
 marks = json.loads((B / "main-marks.json").read_text(encoding="utf-8"))
 calls = json.loads((B / "main-callouts.json").read_text(encoding="utf-8"))
-# подсветки, которых нет в записи: время – секунды сырой записи, рамка – CSS px экрана 390×844
-calls += [{"t": 81.75, "end": 85.65, "box": [24, 90, 332, 110],
-           "text": "Прямого ответа в руководстве нет – помощник так и пишет"}]
 calls.sort(key=lambda c: c["t"])
 SPEED = 3.0
+NO_SPEEDUP = {"Распознавание речи"}   # распознавание голоса показываем в реальном времени
+TARGET = None
+if "--target" in sys.argv:
+    TARGET = json.loads(Path(sys.argv[sys.argv.index("--target") + 1]).read_text(encoding="utf-8"))["marks"]
 FPS = 30
 WIN = "C:/Windows/Fonts/"
 def F(size, bold=False):
@@ -47,20 +50,30 @@ dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=d
 end = min(dur, next(m["t"] for m in marks if m["kind"] == "end") + 0.3)
 
 # ---------- ускорение: только интервалы ожидания модели (первые 1,0 с и последние 0,6 с – в реальном времени) ----------
-waits, opened, opened_at = [], None, []
-for m in marks:
+if TARGET:
+    assert [m["label"] for m in TARGET] == [m["label"] for m in marks], "шаги записи не совпадают с целевым роликом"
+waits, speeds, opened, opened_label, opened_at = [], [], None, None, []
+segments, cur, acc = [], 0.0, 0.0
+for i, m in enumerate(marks):
     if m["kind"] == "wait<":
-        opened = m["t"]
+        opened, opened_label = m["t"], m["label"]
     elif m["kind"] == "wait>" and opened is not None:
         a, b = opened + 1.0, m["t"] - 0.6
-        if b - a > 2.0:
+        k = SPEED
+        if TARGET:   # конец ожидания – на то же время, что в целевом ролике
+            room = TARGET[i]["out"] - 0.6 - (acc + (a - cur))
+            k = (b - a) / room if room > 0 else 99.0
+            k = 1.0 if k < 1.05 else min(k, 12.0)
+        if b - a > 2.0 and opened_label not in NO_SPEEDUP and k > 1.0:
+            segments.append((cur, a, 1.0))
+            acc += a - cur
+            segments.append((a, b, k))
+            acc += (b - a) / k
+            cur = b
             waits.append((a, b))
+            speeds.append(k)
             opened_at.append(m["t"] - opened)   # сколько на самом деле ждали ответа
         opened = None
-segments, cur = [], 0.0
-for a, b in waits:
-    segments += [(cur, a, 1.0), (a, b, SPEED)]
-    cur = b
 segments.append((cur, end, 1.0))
 
 
@@ -80,9 +93,12 @@ for c in calls:
     c["out"], c["out_end"] = out_time(c["t"]), out_time(c["end"])
 (V / "timeline.json").write_text(json.dumps({
     "duration": round(total, 2), "speed": SPEED,
-    "speedups": [{"from": round(out_time(a), 2), "to": round(out_time(b), 2), "real_seconds": round(b - a, 1)} for a, b in waits],
+    "speedups": [{"from": round(out_time(a), 2), "to": round(out_time(b), 2), "real_seconds": round(b - a, 1), "speed": round(k, 2)}
+                 for (a, b), k in zip(waits, speeds, strict=True)],
     "marks": marks}, ensure_ascii=False, indent=1), encoding="utf-8")
-print(f"длительность {total:.1f} с, ускорений {len(waits)}: " + ", ".join(f"{b - a:.1f}→{(b - a) / SPEED:.1f}" for a, b in waits))
+print(f"длительность {total:.1f} с, ускорений {len(waits)}: " + ", ".join(f"{b - a:.1f}→{(b - a) / k:.1f} (×{k:.1f})" for (a, b), k in zip(waits, speeds, strict=True)))
+if TARGET:
+    print("сдвиг шагов против целевого ролика, с:", " ".join(f"{m['out'] - t['out']:+.2f}" for m, t in zip(marks, TARGET, strict=True)))
 if total > 179:
     sys.exit(f"ролик длиннее 3 минут: {total:.1f} с")
 
@@ -250,10 +266,6 @@ def draw_state(t):
         bx0, by0 = PX + x * SC, PY + y0 * SC
         bx1, by1 = bx0 + w * SC, by0 + h * SC
         bx0, by0, bx1, by1 = max(bx0, PX + 3), max(by0, PY + 3), min(bx1, PX + PW - 3), min(by1, PY + PH - 3)
-        glow = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
-        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=(*YELLOW, 150), width=10)
-        img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
-        d = ImageDraw.Draw(img)
         d.rounded_rectangle((bx0, by0, bx1, by1), 12, outline=YELLOW, width=4)
         lines = wrap(d, call["text"], F(30, True), RW - 48)
         ch_ = 36 + 42 * len(lines)
@@ -270,10 +282,6 @@ def draw_state(t):
         # строка «Готовлю объяснение / Готовлю ответ…» над полем вопроса (CSS px экрана 390×844): у первого ожидания – в две строки
         x, y0, w, h = WAIT_ROWS[min(idx, 1)]
         bx0, by0, bx1, by1 = PX + x * SC, PY + y0 * SC, PX + (x + w) * SC, PY + (y0 + h) * SC
-        glow = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
-        ImageDraw.Draw(glow).rounded_rectangle((bx0 - 2, by0 - 2, bx1 + 2, by1 + 2), 14, outline=(*YELLOW, 150), width=10)
-        img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
-        d = ImageDraw.Draw(img)
         d.rounded_rectangle((bx0, by0, bx1, by1), 12, outline=YELLOW, width=4)
         cy, ch_ = int(yy + 34), 128
         d.rounded_rectangle((RX, cy, RX + RW, cy + ch_), 16, fill=(*YELLOW, 255))
@@ -281,7 +289,11 @@ def draw_state(t):
             ox = RX + 26 + i * 18
             d.polygon([(ox, cy + 26), (ox + 18, cy + 40), (ox, cy + 54)], fill=NAVY)
         d.text((RX + 80, cy + 18), "Ждем ответ модели", font=F(32, True), fill=NAVY)
-        d.text((RX + 80, cy + 66), f"ожидание ускорено ×{SPEED:g}, по факту {real:.0f} с", font=F(27), fill=NAVY)
+        sub = f"ожидание ускорено ×{speeds[idx]:.1f}".replace(".0", "").replace(".", ",") + f", по факту {real:.0f} с"
+        size = 27
+        while d.textlength(sub, font=F(size)) > RW - 100 and size > 20:
+            size -= 1
+        d.text((RX + 80, cy + 66), sub, font=F(size), fill=NAVY)
         ax, ay = bx1 + 2, (by0 + by1) / 2
         ex, ey = RX - 2, cy + ch_ / 2
         d.line([(ax + 14, ay), (ex - 28, ey), (ex, ey)], fill=YELLOW, width=4, joint="curve")
