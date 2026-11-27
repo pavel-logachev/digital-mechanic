@@ -91,6 +91,10 @@ def main() -> None:
     items = listing(url)
     fetch_manuals(items)
     fetch_mocks(items)
+    # каталоги для томов создаем от пользователя хоста: иначе Docker создаст их от root и сервис
+    # (в контейнере работает не от root, uid = APP_UID) не сможет записать индекс и журнал
+    for d in (config.INDEX_DIR, config.PAGES_DIR, config.STATE_DIR):
+        d.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":

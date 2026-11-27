@@ -22,7 +22,8 @@ services:
     image: digital-mechanic:latest
     build:
       context: .
-      args: { BASE: "${BASE_IMAGE:-python:3.12-slim}" }
+      # APP_UID – uid владельца каталога data/ на хосте (id -u), чтобы сервис мог писать индекс и журнал
+      args: { BASE: "${BASE_IMAGE:-python:3.12-slim}", APP_UID: "${APP_UID:-1000}" }
     env_file: .env
     environment:
       ML_SERVICE_URL: http://mock-ml:8001
